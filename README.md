@@ -16,3 +16,22 @@ As we have mentioned previously, the reasons were:
 # Naming
 
 As the convention of making up codenames for system components after J-Pop references, we have decided to name the installer after Ado's single, [Readymade](https://youtu.be/jg09lNupc1s) which happens to have a cool meaning to it as this installer essentially installs ready-made squashfs images.
+
+The lyrics themselves can also be a fun comeback to all the popular meme practice of installing Linux distributions manually, such as LFS, Gentoo, and Arch Linux, and then priding themselves into making things more complicated for themselves.
+
+> Dirty.. You tell me to swallow my words
+> 
+> Then you tell me I’m good, I’m just scared of how you’re feeling
+> 
+> Baby.. Your twisted love
+> 
+> So arrogant wearing those order-made brands
+> 
+> I ring my tongue and I get accuseed. If I become socially awkward, I’ll be witch-hunted
+> 
+> You act hero-ish, I’m sure that’s so easy for you
+> 
+> Where is “beyond the society”? F**k money and love
+
+#### Source: https://www.lyrical-nonsense.com/global/lyrics/ado/readymade/english/
+
