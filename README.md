@@ -13,6 +13,14 @@ As we have mentioned previously, the reasons were:
 - **YaST** is designed for SUSE and SUSE only, it also suffers from the same issues as Anaconda, with an extremely large and complex codebase for simply being a wrapper for various system utilities.
 - **Calamares**' support for Fedora is very hacky, as it is simply a barebones installer framework. It also has issues with BTRFS installs and does not support our desired features such as homed.
 
+
+# Checklist
+- [ ] Working prototype
+  - [ ] Install from squashFS image
+  - [ ] Clean up system for firstboot
+- [ ] BTRFS support
+- [ ] systemd-homed support
+
 # Naming
 
 As the convention of making up codenames for system components after J-Pop references, we have decided to name the installer after Ado's single, [Readymade](https://youtu.be/jg09lNupc1s) which happens to have a cool meaning to it as this installer essentially installs ready-made squashfs images.
