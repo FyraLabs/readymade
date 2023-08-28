@@ -13,7 +13,7 @@ anyhow = { version = "1.0.72", features = ["backtrace"] }
 clap = "4.3.19"
 color-eyre = "0.6.2"
 distinst = { path = "../distinst", version = "0.5.0" }
-tracing = "0.1.37"
+tracing = { version = "0.1.37", features = ["log", "max_level_debug", "log-always"] }
 tracing-subscriber = "0.3.13"
 
 
