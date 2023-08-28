@@ -5,6 +5,8 @@ Readymade is a Linux Distribution installer based on the great [distinst](https:
 
 It is created as a replacement to Red Hat's [Anaconda](https://github.com/rhinstaller/anaconda) installer for Ultramarine Linux and tauOS after we have heard many complaints about the poor UX design of Anaconda, and the lack of working alternative installers for RPM-based distributions.
 
+This repository includes the installer itself, and a modified version of the distinst and sys-mount libraries to support Fedora and RPM-based distributions. It may be upstreamed in the future as we push code upstream.
+
 # Why?
 
 As we have mentioned previously, the reasons were:

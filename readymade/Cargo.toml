@@ -5,10 +5,16 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+# oh my fucking god, sys76 makes their shit not buildable on non-debian platforms
+
 [dependencies]
 anyhow = { version = "1.0.72", features = ["backtrace"] }
 clap = "4.3.19"
 color-eyre = "0.6.2"
-distinst = { git = "https://github.com/pop-os/distinst.git", version = "0.5.0", branch = "master" }
-loopdev = "0.4.0"
+distinst = { path = "../distinst", version = "0.5.0" }
 tracing = "0.1.37"
+tracing-subscriber = "0.3.13"
+
+
+# force replace loopdev with the patched version

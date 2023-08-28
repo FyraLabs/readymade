@@ -1,0 +1,6 @@
+[submodule "distinst"]
+	path = distinst
+	url = https://github.com/FyraLabs/distinst.git
+[submodule "sys-mount"]
+	path = sys-mount
+	url = https://github.com/FyraLabs/sys-mount.git
