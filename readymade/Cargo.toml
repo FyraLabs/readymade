@@ -10,6 +10,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = { version = "1.0.72", features = ["backtrace"] }
+# bitflags = "2.4.0"
 clap = "4.3.19"
 color-eyre = "0.6.2"
 distinst = { path = "../distinst", version = "0.5.0" }
@@ -18,11 +19,16 @@ tracing-subscriber = "0.3.13"
 
 [dependencies.gtk]
 package = "gtk4"
-version = "0.7.2"
+git = "https://github.com/gtk-rs/gtk4-rs"
+version = "^0.8"
+
+[dependencies.gdk]
+package = "gdk4"
+git = "https://github.com/gtk-rs/gtk4-rs"
 
 [dependencies.he]
 package = "libhelium"
 git = "https://github.com/tau-OS/rust"
 version = "1.0.0"
-features = ["v1_4"]
+features = ["v1_3"]
 # force replace loopdev with the patched version
