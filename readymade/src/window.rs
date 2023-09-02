@@ -34,11 +34,18 @@ mod imp {
 
             let os = crate::release::release_root("/").unwrap();
 
-            self.welcome_label.set_text(format!("Welcome to {}", os.pretty_name).as_str());
 
-            let devices = distinst::Disks::probe_devices ()?;
-            devices.iter().for_each(|d| {
-                println!("{}: {}", d.name, d.size);
+            sudo::escalate_if_needed().unwrap();
+
+            self.welcome_label
+                .set_text(format!("Welcome to {}", os.pretty_name).as_str());
+
+            // WARN: This requires root privileges
+            let devices = distinst::Disks::probe_devices().unwrap();
+            // tracing::debug!(dev = ?devices);
+            tracing::debug!("physical devices:\n {:#?}", devices);
+            devices.physical.iter().for_each(|d| {
+                println!("{}: {}", d.model_name, d.device_path.display());
             });
         }
     }
