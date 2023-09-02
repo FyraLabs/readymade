@@ -20,6 +20,7 @@ tracing-subscriber = "0.3.13"
 glib-build-tools = "0.18.0"
 os-release = "0.1.0"
 sudo = "0.6.0"
+libbtrfsutil = "0.6.0"
 
 [dependencies.gtk]
 package = "gtk4"

@@ -23,6 +23,15 @@ As we have mentioned previously, the reasons were:
 - [ ] BTRFS support
 - [ ] systemd-homed support
 
+
+# Dependencies
+- `pkgconfig(libbtrfsutil)`
+- `distinst` (included as a submodule)
+- `sys-mount` (included as a submodule)
+- Rust 1.55.0 or later
+- `libostree` (For OSTree support)
+- `erofs-utils` (For EROFS support) (Not yet implemented) 
+
 # Naming
 
 As the convention of making up codenames for system components after J-Pop references, we have decided to name the installer after Ado's single, [Readymade](https://youtu.be/jg09lNupc1s) which happens to have a cool meaning to it as this installer essentially installs ready-made squashfs images.
