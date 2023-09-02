@@ -1,0 +1,58 @@
+using Gtk 4.0;
+using He 1;
+
+menu primary-menu {
+  item (_("Preferences…"), "win.preferences")
+  item (_("Keyboard Shortcuts"), "win.show-help-overlay")
+  item (_("About tauOS Rust Template"), "app.about")
+}
+
+template ApplicationWindow : He.ApplicationWindow {
+  default-width: 360;
+  default-height: 360;
+
+  Gtk.Box {
+    orientation: vertical;
+
+    He.AppBar {
+      show-back: false;
+
+      Gtk.MenuButton {
+        icon-name: "open-menu-symbolic";
+        menu-model: primary-menu;
+      }
+    }
+
+    Gtk.Stack {
+      Gtk.StackPage {
+        name: "welcome";
+        title: "Welcome to tauOS";
+
+        child: Gtk.Box {
+            orientation: vertical;
+
+          Gtk.Label welcome_label {
+            label: "Welcome to tauOS";
+          }
+
+          He.PillButton {
+            label: "Get Started";
+          }
+        };
+      }
+
+      Gtk.StackPage {
+        name: "menu";
+        title: "Menu";
+
+        child: Gtk.Box {
+          orientation: vertical;
+
+          Gtk.Label {
+            label: "Readymade Installer";
+          }
+        };
+      }
+    }
+  }
+}
