@@ -3,13 +3,13 @@ use gtk::{gio, glib};
 use he::subclass::prelude::*;
 
 mod imp {
+    use gdk::prelude::StaticTypeExt;
+
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(file = "src/window.blp")]
     pub struct ApplicationWindow {
-        #[template_child]
-        pub welcome_label: TemplateChild<gtk::Label>,
     }
 
     #[glib::object_subclass]
@@ -19,6 +19,7 @@ mod imp {
         type ParentType = he::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
+            crate::views::welcome::WelcomePage::ensure_type();
             klass.bind_template();
         }
 
@@ -31,22 +32,6 @@ mod imp {
     impl ObjectImpl for ApplicationWindow {
         fn constructed(&self) {
             self.parent_constructed();
-
-            let os = crate::release::release_root("/").unwrap();
-
-
-            sudo::escalate_if_needed().unwrap();
-
-            self.welcome_label
-                .set_text(format!("Welcome to {}", os.pretty_name).as_str());
-
-            // WARN: This requires root privileges
-            let devices = distinst::Disks::probe_devices().unwrap();
-            // tracing::debug!(dev = ?devices);
-            tracing::debug!("physical devices:\n {:#?}", devices);
-            devices.physical.iter().for_each(|d| {
-                println!("{}: {}", d.model_name, d.device_path.display());
-            });
         }
     }
     impl WidgetImpl for ApplicationWindow {}

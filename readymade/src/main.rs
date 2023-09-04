@@ -1,4 +1,5 @@
 mod release;
+mod util;
 use color_eyre::eyre::{Result, eyre};
 use gettextrs::{bind_textdomain_codeset, gettext, LocaleCategory};
 use gtk::gio::ffi::{g_resources_register, GResource};
@@ -6,6 +7,7 @@ use gtk::glib;
 use gtk::{prelude::*, subclass::prelude::*};
 // TODO: Do a GUI and CLI for this, maybe.
 
+mod views;
 mod window;
 
 const APP_ID: &str = "com.fyralabs.Readymade";

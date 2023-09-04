@@ -28,30 +28,7 @@ template ApplicationWindow : He.ApplicationWindow {
         name: "welcome";
         title: "Welcome to tauOS";
 
-        child: Gtk.Box {
-            orientation: vertical;
-
-          Gtk.Label welcome_label {
-            label: "Welcome to tauOS";
-          }
-
-          He.PillButton {
-            label: "Get Started";
-          }
-        };
-      }
-
-      Gtk.StackPage {
-        name: "menu";
-        title: "Menu";
-
-        child: Gtk.Box {
-          orientation: vertical;
-
-          Gtk.Label {
-            label: "Readymade Installer";
-          }
-        };
+        child: .WelcomePage {};
       }
     }
   }

@@ -1,0 +1,8 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "./readymade/Cargo.toml",
+        "./distinst/Cargo.toml",
+        "./sys-mount/Cargo.toml",
+        "./readymade/Cargo.toml"
+    ]
+}
