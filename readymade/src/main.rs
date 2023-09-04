@@ -1,6 +1,6 @@
 mod release;
 mod util;
-use color_eyre::eyre::{Result, eyre};
+use color_eyre::eyre::{eyre, Result};
 use gettextrs::{bind_textdomain_codeset, gettext, LocaleCategory};
 use gtk::gio::ffi::{g_resources_register, GResource};
 use gtk::glib;

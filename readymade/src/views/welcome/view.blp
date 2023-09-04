@@ -2,4 +2,41 @@ using Gtk 4.0;
 using He 1;
 
 template WelcomePage : He.Bin {
+  hexpand: true;
+  vexpand: true;
+  margin-top: 12;
+  margin-bottom: 12;
+  margin-start: 12;
+  margin-end: 12;
+
+  Gtk.Box {
+    hexpand: true;
+    vexpand: true;
+    orientation: vertical;
+    spacing: 12;
+
+    Gtk.Label {
+      vexpand: true;
+      label: "Welcome to tauOS";
+      styles ["view-title"]
+    }
+
+    He.PillButton {
+      halign: center;
+      label: "Get Started";
+    }
+
+    Gtk.Box {
+      halign: start;
+      orientation: vertical;
+
+      Gtk.Label {
+        label: "Version 1 \"Neko\"";
+      }
+
+      Gtk.Label {
+        label: "Build 20230000";
+      }
+    }
+  }
 }
