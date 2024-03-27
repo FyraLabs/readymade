@@ -5,14 +5,16 @@ use serde::{Deserialize, Serialize};
 // todo: rewrite this shit and kill albius
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Recipe {
     pub setup: Vec<DiskOperation>,
     pub mountpoints: Vec<Mountpoint>,
     pub installation: Installation,
-    pub post_installation: Vec<PostInstallaion>,
+    pub post_installation: Vec<PostInstallation>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum DiskOperationType {
     Label,
     Mkpart,
@@ -22,19 +24,19 @@ pub enum DiskOperationType {
     Setflag,
     Format,
     LuksFormat,
-    PvCreate,
-    PvResize,
-    PvRemove,
-    VgCreate,
-    VgRename,
-    VgExtend,
-    VgReduce,
-    VgRemove,
-    LvCreate,
-    LvRename,
-    LvRemove,
+    Pvcreate,
+    Pvresize,
+    Pvremove,
+    Vgcreate,
+    Vgrename,
+    Vgextend,
+    Vgreduce,
+    Vgremove,
+    Lvcreate,
+    Lvrename,
+    Lvremove,
     MakeThinPool,
-    LvCreatePool,
+    LvcreateThin,
     LvmFormat,
     LvmLuksFormat,
 }
@@ -46,11 +48,50 @@ pub struct DiskOperation {
     pub params: Vec<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Mountpoint {
-  pub partition: PathBuf,
-  pub mountpoint: PathBuf,
+    pub partition: PathBuf,
+    pub mountpoint: PathBuf,
 }
 
-pub struct Installation {
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Method {
+    Unsquashfs,
+    Oci,
+    Source,
+}
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Installation {
+    pub method: Method,
+    pub source: PathBuf,
+    pub initramfs_pre: Vec<String>,
+    pub initramfs_post: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PostInstallationOperation {
+    Adduser,
+    Timezone,
+    Shell,
+    Pkgremove,
+    Hostname,
+    Locale,
+    Swapon,
+    Keyboard,
+    GrubInstall,
+    GrubDefaultConfig,
+    GrubAddScript,
+    GrubRemoveScript,
+    GrubMkconfig,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PostInstallation {
+    pub chroot: bool,
+    pub operation: PostInstallationOperation,
+    pub params: Vec<String>,
 }
