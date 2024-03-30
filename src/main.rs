@@ -1,6 +1,9 @@
 mod albius;
+mod util;
 use gtk::prelude::{BoxExt, ButtonExt, GtkWindowExt, OrientableExt};
 use relm4::{gtk, ComponentParts, ComponentSender, RelmApp, RelmWidgetExt, SimpleComponent};
+
+const APPID: &str = "com.fyralabs.Readymade";
 
 struct AppModel {
     counter: u8,
@@ -21,7 +24,7 @@ impl SimpleComponent for AppModel {
 
     view! {
         gtk::Window {
-            set_title: Some("Simple app"),
+            set_title: Some("Readymade Installer"),
             set_default_width: 300,
             set_default_height: 100,
 
@@ -29,6 +32,11 @@ impl SimpleComponent for AppModel {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 5,
                 set_margin_all: 5,
+
+                gtk::Label {
+                    set_label: "Welcome to Readymade Installer!",
+                },
+                // insert logo here i guess, branding time
 
                 gtk::Button {
                     set_label: "Increment",
@@ -75,6 +83,6 @@ impl SimpleComponent for AppModel {
 }
 
 fn main() {
-    let app = RelmApp::new("relm4.test.simple");
+    let app = RelmApp::new(APPID);
     app.run::<AppModel>(0);
 }
