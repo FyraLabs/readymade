@@ -16,19 +16,7 @@ relm4-components = "0.8.1"
 bytesize = { version = "1.3.0", features = ["serde"] }
 sys-info = "0.9.1"
 
-# # loopdev = { package = "loopdev-3", version = "0.5.0" }
-# sys76 trying their hardest to update dependencies (they use Debian so it works on their machine)
 
-# bindgen = "0.69.4"
-
-
-# [dependencies.os-detect]
-# git = "https://github.com/pop-os/distinst"
-# branch = "master"
-
-# # [patch.crates-io]
-# # loopdev = { git = "https://github.com/mdaffin/loopdev", version = "0.5.0"}
-
-# # [replace]
-# # "loopdev:0.4.0" = { package = "loopdev-3" }
-# # "sys_mount:1.5.1" = { git = "https://github.com/pop-os/sys-mount" }
+[dependencies.os-detect]
+git = "https://github.com/FyraLabs/distinst"
+branch = "master"
