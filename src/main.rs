@@ -1,7 +1,16 @@
 mod albius;
+mod pages;
 mod util;
 use gtk::prelude::{BoxExt, ButtonExt, GtkWindowExt, OrientableExt};
 use relm4::{gtk, ComponentParts, ComponentSender, RelmApp, RelmWidgetExt, SimpleComponent};
+
+// todo: lazy_static const variables for the setup params
+
+// todo: GtkStack for paging
+
+// todo: wizard
+
+// the code is non-existent, but the boilerplate is there
 
 const APPID: &str = "com.fyralabs.Readymade";
 
@@ -28,30 +37,40 @@ impl SimpleComponent for AppModel {
             set_default_width: 300,
             set_default_height: 100,
 
+
+
+
             gtk::Box {
+
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 5,
                 set_margin_all: 5,
 
-                gtk::Label {
-                    set_label: "Welcome to Readymade Installer!",
-                },
-                // insert logo here i guess, branding time
-
-                gtk::Button {
-                    set_label: "Increment",
-                    connect_clicked => AppMsg::Increment
+                #[template]
+                crate::pages::welcome::Welcome {
+                    // distro_name: "Ultramarine Linux".to_string(),
                 },
 
-                gtk::Button::with_label("Decrement") {
-                    connect_clicked => AppMsg::Decrement
-                },
 
-                gtk::Label {
-                    #[watch]
-                    set_label: &format!("Counter: {}", model.counter),
-                    set_margin_all: 5,
-                }
+                // gtk::Label {
+                //     set_label: "Welcome to Readymade Installer!",
+                // },
+                // // insert logo here i guess, branding time
+
+                // gtk::Button {
+                //     set_label: "Increment",
+                //     connect_clicked => AppMsg::Increment
+                // },
+
+                // gtk::Button::with_label("Decrement") {
+                //     connect_clicked => AppMsg::Decrement
+                // },
+
+                // gtk::Label {
+                //     #[watch]
+                //     set_label: &format!("Counter: {}", model.counter),
+                //     set_margin_all: 5,
+                // }
             }
         }
     }
