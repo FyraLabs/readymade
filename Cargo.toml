@@ -17,6 +17,6 @@ bytesize = { version = "1.3.0", features = ["serde"] }
 sys-info = "0.9.1"
 
 
-# [dependencies.os-detect]
-# git = "https://github.com/FyraLabs/distinst"
-# rev = "b02000685f571342b609bb38557aecc5c64e4efd"
+[dependencies.os-detect]
+git = "https://github.com/FyraLabs/distinst"
+branch = "master"
