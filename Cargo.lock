@@ -823,7 +823,7 @@ checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 [[package]]
 name = "os-detect"
 version = "0.2.2"
-source = "git+https://github.com/FyraLabs/distinst?branch=master#0c446143521ce286588b9464faf66b6ce06969d8"
+source = "git+https://github.com/FyraLabs/distinst?branch=master#0bd079e9026452e633bdae94b79dc46a1e1e0911"
 dependencies = [
  "log",
  "os-release",
