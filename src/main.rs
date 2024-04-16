@@ -2,7 +2,8 @@ mod albius;
 mod pages;
 mod util;
 use gtk::prelude::{BoxExt, ButtonExt, GtkWindowExt, OrientableExt};
-use relm4::{gtk, ComponentParts, ComponentSender, RelmApp, RelmWidgetExt, SimpleComponent};
+use relm4::{ComponentParts, ComponentSender, RelmApp, RelmWidgetExt, SimpleComponent, ContainerChild};
+use libhelium::prelude::*;
 
 // todo: lazy_static const variables for the setup params
 
@@ -32,45 +33,27 @@ impl SimpleComponent for AppModel {
     type Output = ();
 
     view! {
-        gtk::Window {
+        libhelium::ApplicationWindow {
             set_title: Some("Readymade Installer"),
-            set_default_width: 300,
-            set_default_height: 100,
+            set_default_width: 550,
+            set_default_height: 400,
 
-
-
-
-            gtk::Box {
-
+            #[wrap(Some)]
+            set_child = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 5,
-                set_margin_all: 5,
 
-                #[template]
-                crate::pages::welcome::Welcome {
-                    // distro_name: "Ultramarine Linux".to_string(),
-                },
+                libhelium::ViewMono {
+                    set_title: "Destination",
 
+                    add = &gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
+                        set_spacing: 4,
+                        set_vexpand: true,
+                        set_hexpand: true,
+                        set_valign: gtk::Align::Center,
 
-                // gtk::Label {
-                //     set_label: "Welcome to Readymade Installer!",
-                // },
-                // // insert logo here i guess, branding time
-
-                // gtk::Button {
-                //     set_label: "Increment",
-                //     connect_clicked => AppMsg::Increment
-                // },
-
-                // gtk::Button::with_label("Decrement") {
-                //     connect_clicked => AppMsg::Decrement
-                // },
-
-                // gtk::Label {
-                //     #[watch]
-                //     set_label: &format!("Counter: {}", model.counter),
-                //     set_margin_all: 5,
-                // }
+                    }
+                }
             }
         }
     }
@@ -102,6 +85,7 @@ impl SimpleComponent for AppModel {
 }
 
 fn main() {
-    let app = RelmApp::new(APPID);
+    let app = libhelium::Application::new(Some(APPID), gtk::gio::ApplicationFlags::default());
+    let app = RelmApp::from_app(app);
     app.run::<AppModel>(0);
 }
