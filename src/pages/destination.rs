@@ -1,16 +1,19 @@
 use crate::NavigationAction;
 use gtk::prelude::*;
 use libhelium::prelude::*;
-use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent, WidgetTemplate, factory::{FactoryComponent, FactorySender, DynamicIndex, FactoryVecDeque}};
+use relm4::{
+    factory::{DynamicIndex, FactoryComponent, FactorySender, FactoryVecDeque},
+    ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent, WidgetTemplate,
+};
 
 struct DiskInit {
     disk_name: String,
-    os_name: String
+    os_name: String,
 }
 
 struct Disk {
     disk_name: String,
-    os_name: String
+    os_name: String,
 }
 
 #[relm4::factory]
@@ -46,20 +49,20 @@ impl FactoryComponent for Disk {
     fn init_model(value: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
         Self {
             disk_name: value.disk_name,
-            os_name: value.os_name
+            os_name: value.os_name,
         }
     }
 }
 
 pub struct DestinationPage {
-    disks: FactoryVecDeque<Disk>
+    disks: FactoryVecDeque<Disk>,
 }
 
 #[derive(Debug)]
 pub enum DestinationPageMsg {
     #[doc(hidden)]
     Navigate(NavigationAction),
-    SelectionChanged
+    SelectionChanged,
 }
 
 #[derive(Debug)]
@@ -121,26 +124,25 @@ impl SimpleComponent for DestinationPage {
         let mut disks = FactoryVecDeque::builder()
             .launch(gtk::FlowBox::default())
             .forward(sender.input_sender(), |output| match output {
-                _ => todo!()
+                _ => todo!(),
             });
 
         disks.guard().push_front(DiskInit {
             disk_name: "fuck".to_string(),
-            os_name: "owo".to_string()
+            os_name: "owo".to_string(),
         });
 
         disks.guard().push_front(DiskInit {
             disk_name: "fuck".to_string(),
-            os_name: "owo".to_string()
+            os_name: "owo".to_string(),
         });
 
-                disks.guard().push_front(DiskInit {
+        disks.guard().push_front(DiskInit {
             disk_name: "fuck".to_string(),
-            os_name: "owo".to_string()
+            os_name: "owo".to_string(),
         });
 
-
-        let model = Self {disks};
+        let model = Self { disks };
 
         let disk_list = model.disks.widget();
         let widgets = view_output!();
