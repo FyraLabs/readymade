@@ -7,6 +7,7 @@ use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
 use gtk::prelude::{BoxExt, ButtonExt, GtkWindowExt, OrientableExt};
 use libhelium::prelude::*;
+use pages::destination::DestinationPageOutput;
 use pages::welcome::WelcomePageOutput;
 use pages::{destination::DestinationPage, welcome::WelcomePage};
 use relm4::{
@@ -40,7 +41,6 @@ enum Page {
 const PAGES: [Page; 2] = [Page::Welcome, Page::Destination];
 
 struct AppModel {
-    counter: u8,
     page: Page,
 
     welcome_page: Controller<WelcomePage>,
@@ -69,11 +69,7 @@ impl SimpleComponent for AppModel {
             #[transition = "SlideLeftRight"]
             set_child = match model.page {
                 Page::Welcome => *model.welcome_page.widget(),
-                Page::Destination => {
-                    gtk::Box {
-
-                    }
-                }
+                Page::Destination => *model.destination_page.widget(),
             },
         }
     }
@@ -85,14 +81,18 @@ impl SimpleComponent for AppModel {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = AppModel {
-            counter,
             page: Page::Welcome,
             welcome_page: WelcomePage::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
                     WelcomePageOutput::Navigate(action) => AppMsg::Navigate(action),
                 }),
-            destination_page: DestinationPage::builder().launch(()).detach(), // .forward(sender.input_sender(), |()| AppMsg::Navigate()),
+            destination_page: DestinationPage::builder().launch(()).forward(
+                sender.input_sender(),
+                |msg| match msg {
+                    DestinationPageOutput::Navigate(action) => AppMsg::Navigate(action),
+                },
+            ),
         };
 
         // Insert the macro code generation here
@@ -105,7 +105,7 @@ impl SimpleComponent for AppModel {
         match msg {
             AppMsg::Navigate(NavigationAction::Forward) => {
                 self.page = PAGES[PAGES.iter().position(|&p| p == self.page).unwrap() + 1];
-            },
+            }
             AppMsg::Navigate(NavigationAction::Back) => {
                 self.page = PAGES[PAGES.iter().position(|&p| p == self.page).unwrap() - 1];
             }
