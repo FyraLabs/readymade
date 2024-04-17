@@ -1,9 +1,18 @@
 mod albius;
 mod pages;
 mod util;
+use std::ops::{Deref, Index};
+
+use gtk::gio::ApplicationFlags;
+use gtk::glib::translate::FromGlibPtrNone;
 use gtk::prelude::{BoxExt, ButtonExt, GtkWindowExt, OrientableExt};
-use relm4::{ComponentParts, ComponentSender, RelmApp, RelmWidgetExt, SimpleComponent, ContainerChild};
 use libhelium::prelude::*;
+use pages::welcome::WelcomePageOutput;
+use pages::{destination::DestinationPage, welcome::WelcomePage};
+use relm4::{
+    Component, ComponentController, ComponentParts, ComponentSender, ContainerChild, Controller,
+    RelmApp, RelmSetChildExt, RelmWidgetExt, SimpleComponent,
+};
 
 // todo: lazy_static const variables for the setup params
 
@@ -15,14 +24,32 @@ use libhelium::prelude::*;
 
 const APPID: &str = "com.fyralabs.Readymade";
 
+#[derive(Debug)]
+pub enum NavigationAction {
+    Back,
+    Forward,
+    Quit,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum Page {
+    Welcome,
+    Destination,
+}
+
+const PAGES: [Page; 2] = [Page::Welcome, Page::Destination];
+
 struct AppModel {
     counter: u8,
+    page: Page,
+
+    welcome_page: Controller<WelcomePage>,
+    destination_page: Controller<DestinationPage>,
 }
 
 #[derive(Debug)]
 enum AppMsg {
-    Increment,
-    Decrement,
+    Navigate(NavigationAction),
 }
 
 #[relm4::component]
@@ -39,22 +66,15 @@ impl SimpleComponent for AppModel {
             set_default_height: 400,
 
             #[wrap(Some)]
-            set_child = &gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-
-                libhelium::ViewMono {
-                    set_title: "Destination",
-
-                    add = &gtk::Box {
-                        set_orientation: gtk::Orientation::Vertical,
-                        set_spacing: 4,
-                        set_vexpand: true,
-                        set_hexpand: true,
-                        set_valign: gtk::Align::Center,
+            #[transition = "SlideLeftRight"]
+            set_child = match model.page {
+                Page::Welcome => *model.welcome_page.widget(),
+                Page::Destination => {
+                    gtk::Box {
 
                     }
                 }
-            }
+            },
         }
     }
 
@@ -64,7 +84,16 @@ impl SimpleComponent for AppModel {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = AppModel { counter };
+        let model = AppModel {
+            counter,
+            page: Page::Welcome,
+            welcome_page: WelcomePage::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    WelcomePageOutput::Navigate(action) => AppMsg::Navigate(action),
+                }),
+            destination_page: DestinationPage::builder().launch(()).detach(), // .forward(sender.input_sender(), |()| AppMsg::Navigate()),
+        };
 
         // Insert the macro code generation here
         let widgets = view_output!();
@@ -74,18 +103,31 @@ impl SimpleComponent for AppModel {
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
-            AppMsg::Increment => {
-                self.counter = self.counter.wrapping_add(1);
+            AppMsg::Navigate(NavigationAction::Forward) => {
+                self.page = PAGES[PAGES.iter().position(|&p| p == self.page).unwrap() + 1];
+            },
+            AppMsg::Navigate(NavigationAction::Back) => {
+                self.page = PAGES[PAGES.iter().position(|&p| p == self.page).unwrap() - 1];
             }
-            AppMsg::Decrement => {
-                self.counter = self.counter.wrapping_sub(1);
-            }
+            AppMsg::Navigate(NavigationAction::Quit) => relm4::main_application().quit(),
+            _ => {}
         }
     }
 }
 
 fn main() {
-    let app = libhelium::Application::new(Some(APPID), gtk::gio::ApplicationFlags::default());
+    let app = libhelium::Application::builder()
+        .application_id(APPID)
+        .flags(ApplicationFlags::default())
+        .default_accent_color(unsafe {
+            &libhelium::ColorRGBColor::from_glib_none(&mut libhelium::ffi::HeColorRGBColor {
+                // todo: fix this upstream
+                r: 0.0,
+                g: 7.0 / 255.0,
+                b: 143.0 / 255.0,
+            } as *mut _)
+        })
+        .build();
     let app = RelmApp::from_app(app);
     app.run::<AppModel>(0);
 }
