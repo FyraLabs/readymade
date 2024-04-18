@@ -1,9 +1,8 @@
 mod albius;
+mod disks;
 mod pages;
 mod util;
-mod disks;
-use std::ops::{Deref, Index};
-
+use color_eyre::Result;
 use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
 use gtk::prelude::{BoxExt, ButtonExt, GtkWindowExt, OrientableExt};
@@ -15,6 +14,7 @@ use relm4::{
     Component, ComponentController, ComponentParts, ComponentSender, ContainerChild, Controller,
     RelmApp, RelmSetChildExt, RelmWidgetExt, SimpleComponent,
 };
+use std::ops::{Deref, Index};
 
 // todo: lazy_static const variables for the setup params
 
@@ -116,8 +116,18 @@ impl SimpleComponent for AppModel {
     }
 }
 
-fn main() {
-    crate::disks::detect_os();
+fn main() -> Result<()> {
+    color_eyre::install()?;
+    tracing_subscriber::fmt()
+        .with_env_filter("info")
+        .with_ansi(true)
+        .pretty()
+        .init();
+
+    tracing::info!("Readymade Installer {version}", version = env!("CARGO_PKG_VERSION"));
+    
+
+
     let app = libhelium::Application::builder()
         .application_id(APPID)
         .flags(ApplicationFlags::default())
@@ -131,5 +141,5 @@ fn main() {
         })
         .build();
     let app = RelmApp::from_app(app);
-    app.run::<AppModel>(0);
+    Ok(app.run::<AppModel>(0))
 }

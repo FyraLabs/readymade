@@ -57,7 +57,12 @@ impl OSProbe {
     }
 
     pub fn scan() -> Option<Vec<Self>> {
-        let scan = cmd_lib::run_fun!("os-prober").ok();
+
+        // check if root already
+
+        let scan = crate::util::run_as_root("os-prober").ok();
+
+        // let scan = cmd_lib::run_fun!("os-prober").ok();
 
         if let Some(strout) = scan {
             let mut out = vec![];
@@ -74,7 +79,7 @@ impl OSProbe {
 
             Some(out)
         } else {
-            eprintln!("ERROR: os-prober failed to run! Are we root? Is it installed? Continuing without OS detection.");
+            tracing::error!("ERROR: os-prober failed to run! Are we root? Is it installed? Continuing without OS detection.");
             return None;
         }
     }
@@ -124,19 +129,15 @@ pub fn detect_os() -> Vec<DiskInit> {
 
     let osprobe = OSProbe::scan();
 
-    if let Some(osprobe) = &osprobe {
-        for os in osprobe {
-            println!("{:#?}", os);
-        }
-    }
+    tracing::debug!(?osprobe, "OS Probe");
 
     const PLACEHOLDER: &str = "Unknown";
-    println!("{:#?}", disks_data);
+    tracing::debug!(?disks_data, "Disks Data");
 
     for d in disks_data {
         let mut os_name = PLACEHOLDER.to_string();
         let devpath = d.device;
-        println!("path: {:#?}", devpath);
+        tracing::debug!(?devpath, "Device Path");
         let mut diskname = d.description;
 
         // filter devpaths to only include real disks

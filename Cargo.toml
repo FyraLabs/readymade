@@ -20,6 +20,8 @@ udisks2 = "0.1.0"
 rs-drivelist = "0.9.3"
 cmd_lib = "1.9.3"
 sys-mount = "3.0.1"
+tracing = { version = "0.1.40", features = ["log"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"
