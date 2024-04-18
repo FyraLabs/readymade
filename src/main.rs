@@ -1,6 +1,7 @@
 mod albius;
 mod pages;
 mod util;
+mod disks;
 use std::ops::{Deref, Index};
 
 use gtk::gio::ApplicationFlags;
@@ -116,6 +117,7 @@ impl SimpleComponent for AppModel {
 }
 
 fn main() {
+    crate::disks::detect_os();
     let app = libhelium::Application::builder()
         .application_id(APPID)
         .flags(ApplicationFlags::default())

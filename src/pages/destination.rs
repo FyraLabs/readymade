@@ -6,9 +6,9 @@ use relm4::{
     ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent, WidgetTemplate,
 };
 
-struct DiskInit {
-    disk_name: String,
-    os_name: String,
+pub struct DiskInit {
+    pub disk_name: String,
+    pub os_name: String,
 }
 
 struct Disk {
@@ -127,7 +127,13 @@ impl SimpleComponent for DestinationPage {
                 _ => todo!(),
             });
 
-        disks.guard().push_front(DiskInit {
+        let disks_data = crate::disks::detect_os();
+
+        for disk in disks_data {
+            disks.guard().push_front(disk);
+        }
+
+        /* disks.guard().push_front(DiskInit {
             disk_name: "fuck".to_string(),
             os_name: "owo".to_string(),
         });
@@ -140,7 +146,7 @@ impl SimpleComponent for DestinationPage {
         disks.guard().push_front(DiskInit {
             disk_name: "fuck".to_string(),
             os_name: "owo".to_string(),
-        });
+        }); */
 
         let model = Self { disks };
 
