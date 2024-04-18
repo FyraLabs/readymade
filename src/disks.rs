@@ -160,9 +160,9 @@ pub fn detect_os() -> Vec<DiskInit> {
             continue;
         }
 
-        // if devpath.contains("zram") {
-        //     continue;
-        // }
+        if devpath.contains("zram") {
+            continue;
+        }
 
         // if devpath.contains("loop") {
         //     continue;
