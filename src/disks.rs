@@ -60,13 +60,14 @@ impl OSProbe {
         )
     }
 
-    #[tracing::instrument]
+    // #[tracing::instrument]
     pub fn scan() -> Option<Vec<Self>> {
         // check if root already
 
         const ERROR: &str = "os-prober failed to run! Are we root? Is it installed? Continuing without OS detection.";
 
         let scan = tracing::info_span!("Scanning for OS").in_scope(|| {
+            tracing::info!("Scanning for OS with os-prober");
             crate::util::run_as_root("os-prober")
                 .ok()
                 .map(|x| x.trim().to_string())
