@@ -18,7 +18,10 @@ sys-info = "0.9.1"
 libhelium = { version = "0.2.0", features = ["gtk_v4_10", "v1_6"] }
 udisks2 = "0.1.0"
 rs-drivelist = "0.9.3"
+cmd_lib = "1.9.3"
+sys-mount = "3.0.1"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"
 branch = "master"
+
