@@ -25,8 +25,8 @@ impl Disk {
 
 pub fn parse_os(os: os_detect::OS) -> String {
     match os {
-        os_detect::OS::Windows(title) => format!("Windows ({})", title),
-        os_detect::OS::MacOs(title) => format!("macOS ({})", title),
+        os_detect::OS::Windows(title) => format!("{}", title),
+        os_detect::OS::MacOs(title) => format!("macOS {}", title),
         os_detect::OS::Linux { info, .. } => format!("{}", info.pretty_name),
     }
 }

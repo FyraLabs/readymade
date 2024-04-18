@@ -2,6 +2,7 @@
 use bytesize::ByteSize;
 
 pub const MAX_EFI_SIZE: ByteSize = ByteSize::gb(1);
+pub const DEFAULT_SQUASH_LOCATION: &str = "/run/initramfs/live/LiveOS/squashfs.img";
 
 #[cfg(target_os = "linux")]
 /// Check if the current running system is UEFI or not.
