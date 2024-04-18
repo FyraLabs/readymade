@@ -17,8 +17,10 @@ pub struct OSProbe {
 }
 
 impl OSProbe {
+    #[tracing::instrument]
     pub fn from_entry(entry: &str) -> Self {
-        let parts: Vec<&str> = entry.split(":").collect();
+        let parts: Vec<&str> = tracing::span!(tracing::Level::DEBUG, "OS Probe Entry", ?entry)
+            .in_scope(|| entry.split(":").collect());
 
         // Minimum 4 parts, Part 5, 6 and 7 are optional
 
@@ -56,15 +58,23 @@ impl OSProbe {
         }
     }
 
+    #[tracing::instrument]
     pub fn scan() -> Option<Vec<Self>> {
-
         // check if root already
 
-        let scan = crate::util::run_as_root("os-prober").ok();
+        const ERROR: &str = "os-prober failed to run! Are we root? Is it installed? Continuing without OS detection.";
 
-        // let scan = cmd_lib::run_fun!("os-prober").ok();
+        let scan = tracing::info_span!("Scanning for OS").in_scope(|| {
+            crate::util::run_as_root("os-prober")
+                .ok()
+                .map(|x| x.trim().to_string())
+                .filter(|x| !x.is_empty())
+        });
+
+        // let scan: Option<String> = Some("".to_string()); // test case for failure
 
         if let Some(strout) = scan {
+            tracing::info!(?strout, "OS Probe Output");
             let mut out = vec![];
 
             for line in strout.split("\n") {
@@ -79,7 +89,7 @@ impl OSProbe {
 
             Some(out)
         } else {
-            tracing::error!("ERROR: os-prober failed to run! Are we root? Is it installed? Continuing without OS detection.");
+            tracing::error!("{}", ERROR);
             return None;
         }
     }
