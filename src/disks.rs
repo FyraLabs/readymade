@@ -2,9 +2,83 @@
 
 // todo: figure out a way to find installed OS on disks and its partitions
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::pages::destination::DiskInit;
+#[derive(Debug, Clone)]
+pub struct OSProbe {
+    pub part: PathBuf,
+    pub os_name_pretty: String,
+    pub os_name: String,
+    pub part_type: String,
+    pub part_fs: Option<String>,
+    pub part_uuid: Option<String>,
+    pub kernel_opts: Option<String>,
+}
+
+impl OSProbe {
+    pub fn from_entry(entry: &str) -> Self {
+        let parts: Vec<&str> = entry.split(":").collect();
+
+        // Minimum 4 parts, Part 5, 6 and 7 are optional
+
+        let part = PathBuf::from(parts[0]);
+        let os_name_pretty = parts[1];
+        let os_name = parts[2];
+        let part_type = parts[3];
+
+        let part_fs = if parts.len() > 4 {
+            Some(parts[4].to_string())
+        } else {
+            None
+        };
+
+        let part_uuid = if parts.len() > 5 {
+            Some(parts[5].to_string())
+        } else {
+            None
+        };
+
+        let kernel_opts = if parts.len() > 6 {
+            Some(parts[6].to_string())
+        } else {
+            None
+        };
+
+        Self {
+            part,
+            os_name_pretty: os_name_pretty.to_string(),
+            os_name: os_name.to_string(),
+            part_type: part_type.to_string(),
+            part_fs,
+            part_uuid,
+            kernel_opts,
+        }
+    }
+
+    pub fn scan() -> Option<Vec<Self>> {
+        let scan = cmd_lib::run_fun!("os-prober").ok();
+
+        if let Some(strout) = scan {
+            let mut out = vec![];
+
+            for line in strout.split("\n") {
+                let line = line.trim();
+                if line.is_empty() {
+                    continue;
+                }
+
+                let os_probe = OSProbe::from_entry(line);
+                out.push(os_probe);
+            }
+
+            Some(out)
+        } else {
+            eprintln!("ERROR: os-prober failed to run! Are we root? Is it installed? Continuing without OS detection.");
+            return None;
+        }
+    }
+}
 
 struct Disk {
     disk_name: String,
@@ -23,13 +97,6 @@ impl Disk {
     }
 }
 
-pub fn parse_os(os: os_detect::OS) -> String {
-    match os {
-        os_detect::OS::Windows(title) => format!("{}", title),
-        os_detect::OS::MacOs(title) => format!("macOS {}", title),
-        os_detect::OS::Linux { info, .. } => format!("{}", info.pretty_name),
-    }
-}
 #[derive(Debug, Clone)]
 pub struct LsblkOutput {
     pub path: String,
@@ -44,40 +111,6 @@ impl LsblkOutput {
     }
 }
 
-fn find_efi_parts() -> Vec<LsblkOutput> {
-    let efiparts =
-        cmd_lib::run_fun!(lsblk -o path,uuid,PARTTYPE,PARTTYPENAME | grep -E "EFI System$" )
-            .unwrap();
-
-    println!("{:#?}", efiparts);
-
-    let mut out = vec![];
-
-    // split by newline
-
-    for line in efiparts.split("\n") {
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() < 4 {
-            continue;
-        }
-        let path = parts[0];
-        let uuid = parts[1];
-        let parttype = parts[2];
-        let parttypename = parts[3];
-
-        let lsblk_output = LsblkOutput {
-            path: path.to_string(),
-            uuid: uuid.to_string(),
-            parttype: parttype.to_string(),
-            parttypename: parttypename.to_string(),
-        };
-
-        out.push(lsblk_output.clone());
-    }
-
-    out
-}
-
 /// Try and scan the system for disks and their installed OS
 // Honestly, this is a mess and I have no idea how to get os_detect to work.
 // I cannot test this function because my system only has one OS installed.
@@ -89,10 +122,19 @@ pub fn detect_os() -> Vec<DiskInit> {
 
     // let efiparts = find_efi_parts();
 
+    let osprobe = OSProbe::scan();
+
+    if let Some(osprobe) = &osprobe {
+        for os in osprobe {
+            println!("{:#?}", os);
+        }
+    }
+
     const PLACEHOLDER: &str = "Unknown";
     println!("{:#?}", disks_data);
 
     for d in disks_data {
+        let mut os_name = PLACEHOLDER.to_string();
         let devpath = d.device;
         println!("path: {:#?}", devpath);
         let mut diskname = d.description;
@@ -104,72 +146,28 @@ pub fn detect_os() -> Vec<DiskInit> {
             continue;
         }
 
-        if devpath.contains("zram") {
-            continue;
-        }
+        // if devpath.contains("zram") {
+        //     continue;
+        // }
 
-        if devpath.contains("loop") {
-            continue;
-        }
+        // if devpath.contains("loop") {
+        //     continue;
+        // }
 
-        if diskname.is_empty() {
+        if diskname.trim().is_empty() {
             diskname = devpath.clone();
         }
-        let partitions = cmd_lib::run_fun!(lsblk -o path,uuid,PARTTYPE,PARTTYPENAME).unwrap();
-        let mut os_name = PLACEHOLDER.to_string();
 
-        if !partitions.is_empty() {
-            // list all partitions on disk
-
-            // println!("{:#?}", partitions);
-
-            // split by newline
-            // !? what the fuck am i doing
-
-            for line in partitions.split("\n") {
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() < 4 {
-                    continue;
+        if let Some(osprobe) = &osprobe {
+            for os in osprobe {
+                if os.part.to_str().unwrap().contains(&devpath) {
+                    os_name = os.os_name_pretty.clone();
                 }
-                let path = parts[0];
-                let uuid = parts[1];
-                let parttype = parts[2];
-                let parttypename = parts[3];
-
-                let lsblk_output = LsblkOutput {
-                    path: path.to_string(),
-                    uuid: uuid.to_string(),
-                    parttype: parttype.to_string(),
-                    parttypename: parttypename.to_string(),
-                };
-
-                // println!("{:#?}", lsblk_output);
-
-
-                // Don't let the thing replace all disks
-                if !lsblk_output.match_device(&devpath) {
-                    continue;
-                }
-
-                // run os_detect on each partition
-
-                let a = os_detect::detect_os_from_device(Path::new(&lsblk_output.path), "auto");
-
-                println!("tried os: {:#?}", a);
-
-                if let Some(os) = a {
-                    let name = parse_os(os);
-
-                    os_name = name.clone();
-                    break;
-                }
-
-                // let b = os_detect::detect_os_from_path(Path::new("/"));
-                // println!("os: {:#?}", b);
             }
-        };
+        }
 
-        let disk = Disk::new(diskname, os_name.to_string());
+        let disk = Disk::new(diskname, os_name);
+
         vec_diskinit.push(disk.into_init());
     }
 
