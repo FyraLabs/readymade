@@ -47,15 +47,17 @@ impl OSProbe {
             None
         };
 
-        Self {
-            part,
-            os_name_pretty: os_name_pretty.to_string(),
-            os_name: os_name.to_string(),
-            part_type: part_type.to_string(),
-            part_fs,
-            part_uuid,
-            kernel_opts,
-        }
+        tracing::info_span!("Serializing os-prober entry").in_scope(
+            || Self {
+                part,
+                os_name_pretty: os_name_pretty.to_string(),
+                os_name: os_name.to_string(),
+                part_type: part_type.to_string(),
+                part_fs,
+                part_uuid,
+                kernel_opts,
+            },
+        )
     }
 
     #[tracing::instrument]
