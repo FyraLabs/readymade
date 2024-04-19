@@ -8,13 +8,13 @@ use gtk::glib::translate::FromGlibPtrNone;
 use gtk::prelude::{BoxExt, ButtonExt, GtkWindowExt, OrientableExt};
 use libhelium::prelude::*;
 use pages::destination::DestinationPageOutput;
+use pages::installation::InstallationPage;
 use pages::welcome::WelcomePageOutput;
 use pages::{destination::DestinationPage, welcome::WelcomePage};
 use relm4::{
     Component, ComponentController, ComponentParts, ComponentSender, ContainerChild, Controller,
     RelmApp, RelmSetChildExt, RelmWidgetExt, SimpleComponent,
 };
-use std::ops::{Deref, Index};
 
 // todo: lazy_static const variables for the setup params
 
@@ -37,15 +37,17 @@ pub enum NavigationAction {
 enum Page {
     Welcome,
     Destination,
+    Installation,
 }
 
-const PAGES: [Page; 2] = [Page::Welcome, Page::Destination];
+const PAGES: [Page; 3] = [Page::Welcome, Page::Destination, Page::Installation];
 
 struct AppModel {
     page: Page,
 
     welcome_page: Controller<WelcomePage>,
     destination_page: Controller<DestinationPage>,
+    installation_page: Controller<InstallationPage>,
 }
 
 #[derive(Debug)]
@@ -71,7 +73,8 @@ impl SimpleComponent for AppModel {
             set_child = match model.page {
                 Page::Welcome => *model.welcome_page.widget(),
                 Page::Destination => *model.destination_page.widget(),
-            },
+                Page::Installation => *model.installation_page.widget(),
+            }
         }
     }
 
@@ -81,6 +84,10 @@ impl SimpleComponent for AppModel {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
+        // TODO: make libhelium force this
+        let settings = gtk::Settings::for_display(&gtk::gdk::Display::default().unwrap());
+        settings.set_gtk_icon_theme_name(Some("Hydrogen"));
+
         let model = AppModel {
             page: Page::Welcome,
             welcome_page: WelcomePage::builder()
@@ -94,6 +101,7 @@ impl SimpleComponent for AppModel {
                     DestinationPageOutput::Navigate(action) => AppMsg::Navigate(action),
                 },
             ),
+            installation_page: InstallationPage::builder().launch(()).detach(),
         };
 
         // Insert the macro code generation here
@@ -124,9 +132,10 @@ fn main() -> Result<()> {
         .pretty()
         .init();
 
-    tracing::info!("Readymade Installer {version}", version = env!("CARGO_PKG_VERSION"));
-    
-
+    tracing::info!(
+        "Readymade Installer {version}",
+        version = env!("CARGO_PKG_VERSION")
+    );
 
     let app = libhelium::Application::builder()
         .application_id(APPID)
@@ -140,6 +149,7 @@ fn main() -> Result<()> {
             } as *mut _)
         })
         .build();
+
     let app = RelmApp::from_app(app);
     Ok(app.run::<AppModel>(0))
 }
