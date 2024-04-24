@@ -2,72 +2,14 @@
 
 // todo: figure out a way to find installed OS on disks and its partitions
 
-use std::path::{Path, PathBuf};
+pub mod init;
+mod lsblk;
+mod osprobe;
+
+use osprobe::OSProbe;
+use std::path::Path;
 
 use crate::pages::destination::DiskInit;
-#[derive(Debug, Clone)]
-pub struct OSProbe {
-    pub part: PathBuf,
-    pub os_name_pretty: String,
-    pub os_name: String,
-    pub part_type: String,
-    pub part_fs: Option<String>,
-    pub part_uuid: Option<String>,
-    pub kernel_opts: Option<String>,
-}
-
-impl OSProbe {
-    #[tracing::instrument]
-    pub fn from_entry(entry: &str) -> Self {
-        let parts: Vec<&str> =
-            tracing::debug_span!("OS Probe Entry", ?entry).in_scope(|| entry.split(":").collect());
-
-        // Minimum 4 parts, Part 5, 6 and 7 are optional
-
-        let [part, os_name_pretty, os_name, part_type, ..] = parts[..] else {
-            panic!("Expected at least 4 OS Probe entries for `{entry}`, but found the following: {parts:?}");
-        };
-
-        tracing::info_span!("Serializing os-prober entry").in_scope(|| Self {
-            part: part.into(),
-            os_name_pretty: os_name_pretty.to_string(),
-            os_name: os_name.to_string(),
-            part_type: part_type.to_string(),
-            part_fs: parts.get(4).map(ToString::to_string),
-            part_uuid: parts.get(5).map(ToString::to_string),
-            kernel_opts: parts.get(6).map(ToString::to_string),
-        })
-    }
-
-    // #[tracing::instrument]
-    pub fn scan() -> Option<Vec<Self>> {
-        // check if root already
-
-        const ERROR: &str = "os-prober failed to run! Are we root? Is it installed? Continuing without OS detection.";
-
-        let scan = tracing::info_span!("Scanning for OS").in_scope(|| {
-            tracing::info!("Scanning for OS with os-prober");
-            (crate::util::run_as_root("os-prober").ok())
-                .map(|x| x.trim().to_string())
-                .filter(|x| !x.is_empty())
-        });
-
-        // let scan: Option<String> = Some("".to_string()); // test case for failure
-
-        scan.map(|strout| {
-            tracing::info!(?strout, "OS Probe Output");
-
-            (strout.split('\n').map(|s| s.trim()))
-                .filter(|l| !l.is_empty())
-                .map(OSProbe::from_entry)
-                .collect()
-        })
-        .or_else(|| {
-            tracing::error!("{ERROR}");
-            None
-        })
-    }
-}
 
 struct Disk {
     disk_name: String,
@@ -83,20 +25,6 @@ impl Disk {
             disk_name: self.disk_name,
             os_name: self.os_name,
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct LsblkOutput {
-    pub path: String,
-    pub uuid: String,
-    pub parttype: String,
-    pub parttypename: String,
-}
-
-impl LsblkOutput {
-    pub fn match_device(&self, device: &str) -> bool {
-        self.path.contains(device)
     }
 }
 
@@ -118,8 +46,7 @@ pub fn detect_os() -> Vec<DiskInit> {
     const PLACEHOLDER: &str = "Unknown";
     tracing::debug!(?disks_data, "Disks Data");
 
-    for d in disks_data {
-        let mut os_name = PLACEHOLDER.to_string();
+    for d in disks_data.into_iter().filter(_lsblk_filter) {
         let devpath = d.device;
         tracing::debug!(?devpath, "Device Path");
         let mut diskname = d.description;
@@ -143,13 +70,12 @@ pub fn detect_os() -> Vec<DiskInit> {
             diskname = devpath.clone();
         }
 
-        if let Some(osprobe) = &osprobe {
-            for os in osprobe {
-                if os.part.to_str().unwrap().contains(&devpath) {
-                    os_name = os.os_name_pretty.clone();
-                }
-            }
-        }
+        let os_name = (osprobe.as_ref())
+            .and_then(|x| {
+                x.iter()
+                    .find(|os| os.part.to_str().map_or(false, |s| s.contains(&devpath)))
+            })
+            .map_or(PLACEHOLDER.to_string(), |os| os.os_name_pretty.clone());
 
         let disk = Disk::new(diskname, os_name);
 
@@ -159,6 +85,11 @@ pub fn detect_os() -> Vec<DiskInit> {
     vec_diskinit
 
     // search for disks on the system
+}
+
+pub fn _lsblk_filter(d: &rs_drivelist::device::DeviceDescriptor) -> bool {
+    let devpath = &d.device;
+    Path::new(devpath).exists() && !devpath.contains("zram")
 }
 
 #[test]
