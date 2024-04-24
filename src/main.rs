@@ -53,7 +53,7 @@ const APPID: &str = "com.fyralabs.Readymade";
 enum Page {
     Welcome,
     Destination,
-    InstallType,
+    InstallationType,
     Confirmation,
 }
 
@@ -95,7 +95,7 @@ impl SimpleComponent for AppModel {
             set_child = match model.page {
                 Page::Welcome => *model.welcome_page.widget(),
                 Page::Destination => *model.destination_page.widget(),
-                Page::InstallType => *model.installation_page.widget(),
+                Page::InstallationType => *model.installation_page.widget(),
                 Page::Confirmation => *model.confirmation_page.widget(),
             }
         }

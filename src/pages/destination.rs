@@ -116,7 +116,7 @@ impl SimpleComponent for DestinationPage {
                     libhelium::PillButton {
                         set_label: "Next",
                         inline_css: "padding-left: 48px; padding-right: 48px",
-                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallType)),
+                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallationType)),
                         #[watch]
                         set_sensitive: INSTALLATION_STATE.read().destination_disk.is_some()
                     }

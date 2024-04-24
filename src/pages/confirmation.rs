@@ -96,7 +96,7 @@ impl SimpleComponent for ConfirmationPage {
 
                     libhelium::TextButton {
                         set_label: "Previous",
-                        connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
+                        connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallationType))
                     },
 
                     gtk::Box {
