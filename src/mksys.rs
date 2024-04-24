@@ -4,10 +4,15 @@ use std::path::Path;
 use tracing::{trace, trace_span};
 
 // TODO: somehow track progress of unsquash
-#[tracing::instrument]
-pub fn unsquash_copy(squashfs: &Path, destroot: &Path) -> Result<()> {
+#[tracing::instrument(skip(callback))]
+pub fn unsquash_copy(
+    squashfs: &Path,
+    destroot: &Path,
+    mut callback: impl FnMut(usize, usize),
+) -> Result<()> {
     let squashimg = std::io::BufReader::new(std::fs::File::open(squashfs)?);
     let fs = FilesystemReader::from_reader(squashimg)?;
+    let num_files = fs.files().count();
     // alloc required space for file data readers
     let mut threads = vec![];
     let (buf_read, buf_decompress) = fs.alloc_read_buffers();
@@ -15,7 +20,8 @@ pub fn unsquash_copy(squashfs: &Path, destroot: &Path) -> Result<()> {
     // HACK: leak arcfs, it's a small mem size (just the arc), so it should be fine
     // prevent rust from complaining about lifetime
     let arcfs: &'static _ = Box::leak(Box::new(arcfs));
-    for node in arcfs.files() {
+    for (i, node) in arcfs.files().enumerate() {
+        callback(i - threads.len(), num_files);
         // Strip `/` else join() will output the arg (to root) directly
         let path = destroot.join(&node.fullpath.strip_prefix("/")?);
         let span = trace_span!("Processing file in squashfs image", ?path);
@@ -44,7 +50,9 @@ pub fn unsquash_copy(squashfs: &Path, destroot: &Path) -> Result<()> {
         }
     }
     let mut errs = vec![];
-    for th in threads {
+    let l = threads.len();
+    for (i, th) in threads.into_iter().enumerate() {
+        callback(num_files - l + i, num_files);
         match th.join() {
             Ok(Err(e)) => errs.push(e),
             Err(_) => {
@@ -101,6 +109,7 @@ fn test_unsquash() -> Result<()> {
     unsquash_copy(
         &PathBuf::from("./test.sqsh"),
         &PathBuf::from("./test-unsquash/"),
+        |_, _| (),
     )?;
     assert!(PathBuf::from("test-unsquash/mksys.rs").is_file());
     std::fs::remove_dir_all("./test-unsquash/")?;
