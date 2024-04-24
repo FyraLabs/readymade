@@ -2,19 +2,28 @@ mod albius;
 mod disks;
 mod pages;
 mod util;
+
 use color_eyre::Result;
 use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
 use gtk::prelude::{BoxExt, ButtonExt, GtkWindowExt, OrientableExt};
 use libhelium::prelude::*;
-use pages::destination::DestinationPageOutput;
-use pages::installation::InstallationPage;
+use pages::destination::{DestinationPageOutput, DiskInit};
+use pages::installation::{InstallationPage, InstallationPageMsg};
 use pages::welcome::WelcomePageOutput;
 use pages::{destination::DestinationPage, welcome::WelcomePage};
 use relm4::{
     Component, ComponentController, ComponentParts, ComponentSender, ContainerChild, Controller,
-    RelmApp, RelmSetChildExt, RelmWidgetExt, SimpleComponent,
+    RelmApp, RelmSetChildExt, RelmWidgetExt, SharedState, SimpleComponent,
 };
+
+#[derive(Debug, Default)]
+struct InstallationState {
+    pub destination_disk: Option<DiskInit>,
+}
+
+/// State related to the user's installation configuration
+static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
 
 // todo: lazy_static const variables for the setup params
 

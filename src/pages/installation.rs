@@ -1,4 +1,4 @@
-use crate::NavigationAction;
+use crate::{NavigationAction, INSTALLATION_STATE};
 use gtk::prelude::*;
 use libhelium::prelude::*;
 use relm4::{
@@ -6,10 +6,13 @@ use relm4::{
     ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent, WidgetTemplate,
 };
 
+use super::destination::DiskInit;
+
 pub struct InstallationPage {}
 
 #[derive(Debug)]
 pub enum InstallationPageMsg {
+    Update,
     #[doc(hidden)]
     Navigate(NavigationAction),
 }
@@ -32,6 +35,27 @@ impl SimpleComponent for InstallationPage {
             add = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
+
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_spacing: 2,
+
+                    gtk::Image {
+                        set_icon_name: Some("drive-harddisk"),
+                        inline_css: "-gtk-icon-size: 128px"
+                    },
+
+                    gtk::Label {
+                        #[watch]
+                        set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or("".to_owned()),
+                        inline_css: "font-size: 16px; font-weight: bold"
+                    },
+
+                    gtk::Label {
+                        #[watch]
+                        set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or("".to_owned()),
+                    }
+                },
 
                 gtk::Box {
                     set_spacing: 8,
@@ -64,6 +88,8 @@ impl SimpleComponent for InstallationPage {
 
         let widgets = view_output!();
 
+        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| InstallationPageMsg::Update);
+
         ComponentParts { model, widgets }
     }
 
@@ -72,6 +98,7 @@ impl SimpleComponent for InstallationPage {
             InstallationPageMsg::Navigate(action) => sender
                 .output(InstallationPageOutput::Navigate(action))
                 .unwrap(),
+            InstallationPageMsg::Update => {}
         }
     }
 }

@@ -1,11 +1,13 @@
-use crate::NavigationAction;
+use crate::{NavigationAction, INSTALLATION_STATE};
 use gtk::prelude::*;
 use libhelium::prelude::*;
 use relm4::{
-    factory::{DynamicIndex, FactoryComponent, FactorySender, FactoryVecDeque},
+    factory::{DynamicIndex, FactoryComponent, FactorySender, FactoryVecDeque, Position},
+    typed_view::list::TypedListView,
     ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent, WidgetTemplate,
 };
 
+#[derive(Debug, Clone)]
 pub struct DiskInit {
     pub disk_name: String,
     pub os_name: String,
@@ -60,9 +62,10 @@ pub struct DestinationPage {
 
 #[derive(Debug)]
 pub enum DestinationPageMsg {
+    Update,
+    SelectionChanged,
     #[doc(hidden)]
     Navigate(NavigationAction),
-    SelectionChanged,
 }
 
 #[derive(Debug)]
@@ -86,13 +89,16 @@ impl SimpleComponent for DestinationPage {
                 set_spacing: 4,
                 #[local_ref]
                 disk_list -> gtk::FlowBox {
+                    set_selection_mode: gtk::SelectionMode::Single,
                     set_orientation: gtk::Orientation::Horizontal,
                     set_vexpand: true,
                     set_hexpand: true,
                     set_valign: gtk::Align::Center,
                     set_halign: gtk::Align::Center,
                     set_min_children_per_line: 7,
-                    connect_selected_children_changed => DestinationPageMsg::SelectionChanged
+                    set_column_spacing: 4,
+                    set_row_spacing: 4,
+                    connect_selected_children_changed => DestinationPageMsg::SelectionChanged,
                 },
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
@@ -110,6 +116,9 @@ impl SimpleComponent for DestinationPage {
                     libhelium::PillButton {
                         set_label: "Next",
                         inline_css: "padding-left: 48px; padding-right: 48px",
+                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::Forward),
+                        #[watch]
+                        set_sensitive: INSTALLATION_STATE.read().destination_disk.is_some()
                     }
                 }
             }
@@ -117,7 +126,7 @@ impl SimpleComponent for DestinationPage {
     }
 
     fn init(
-        init: Self::Init,
+        init: Self::Init, // TODO: use selection state saved in root
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
@@ -133,25 +142,12 @@ impl SimpleComponent for DestinationPage {
             disks.guard().push_front(disk);
         }
 
-        /* disks.guard().push_front(DiskInit {
-            disk_name: "fuck".to_string(),
-            os_name: "owo".to_string(),
-        });
-
-        disks.guard().push_front(DiskInit {
-            disk_name: "fuck".to_string(),
-            os_name: "owo".to_string(),
-        });
-
-        disks.guard().push_front(DiskInit {
-            disk_name: "fuck".to_string(),
-            os_name: "owo".to_string(),
-        }); */
-
         let model = Self { disks };
 
         let disk_list = model.disks.widget();
         let widgets = view_output!();
+
+        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| DestinationPageMsg::Update);
 
         ComponentParts { model, widgets }
     }
@@ -161,7 +157,21 @@ impl SimpleComponent for DestinationPage {
             DestinationPageMsg::Navigate(action) => sender
                 .output(DestinationPageOutput::Navigate(action))
                 .unwrap(),
-            DestinationPageMsg::SelectionChanged => {}
+            DestinationPageMsg::SelectionChanged => {
+                let disk_list = self.disks.widget();
+                let selected_children = disk_list.selected_children();
+                let selected_disk = selected_children.first().map(|d| {
+                    let disk = self.disks.get(d.index().try_into().unwrap()).unwrap();
+                    DiskInit {
+                        disk_name: disk.disk_name.clone(),
+                        os_name: disk.os_name.clone(),
+                    }
+                });
+
+                let mut installation_state_guard = INSTALLATION_STATE.write();
+                installation_state_guard.destination_disk = selected_disk;
+            }
+            DestinationPageMsg::Update => {}
         }
     }
 }
