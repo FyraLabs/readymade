@@ -16,7 +16,8 @@ pub fn unsquash_copy(squashfs: &Path, destroot: &Path) -> Result<()> {
     // prevent rust from complaining about lifetime
     let arcfs: &'static _ = Box::leak(Box::new(arcfs));
     for node in arcfs.files() {
-        let path = destroot.join(&node.fullpath);
+        // Strip `/` else join() will output the arg (to root) directly
+        let path = destroot.join(&node.fullpath.strip_prefix("/")?);
         let span = trace_span!("Processing file in squashfs image", ?path);
         let _guard = span.enter();
         match &node.inner {
@@ -91,4 +92,18 @@ fn _writef(
     let mut reader = fs.file(&f.basic).reader(&mut buf_read, &mut buf_decompress);
     let mut file = std::fs::File::create_new(path)?;
     std::io::copy(&mut reader, &mut file).map(|_| ())
+}
+
+#[test]
+fn test_unsquash() -> Result<()> {
+    use std::path::PathBuf;
+    cmd_lib::run_cmd!(mksquashfs "./src" test.sqsh)?;
+    unsquash_copy(
+        &PathBuf::from("./test.sqsh"),
+        &PathBuf::from("./test-unsquash/"),
+    )?;
+    assert!(PathBuf::from("test-unsquash/mksys.rs").is_file());
+    std::fs::remove_dir_all("./test-unsquash/")?;
+    std::fs::remove_file("./test.sqsh")?;
+    Ok(())
 }
