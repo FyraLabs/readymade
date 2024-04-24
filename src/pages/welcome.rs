@@ -1,8 +1,6 @@
 use crate::NavigationAction;
 use gtk::prelude::*;
-use relm4::{
-    gtk, ComponentParts, ComponentSender, RelmApp, RelmWidgetExt, SimpleComponent, WidgetTemplate,
-};
+use relm4::{gtk, ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 const DISTRO: &str = "Ultramarine Linux";
 
@@ -49,9 +47,9 @@ impl SimpleComponent for WelcomePage {
 
                 gtk::Label {
                     set_label: &format!("Either test {} from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu.", DISTRO.to_string()),
-                    set_wrap: true,
-                    set_justify: gtk::Justification::Center,
-                    inline_css: "max-width: 100px",
+                    // set_justify: gtk::Justification::Center,
+                    set_max_width_chars: 30,
+                    set_wrap: true
                 },
             },
 
@@ -68,7 +66,7 @@ impl SimpleComponent for WelcomePage {
                 libhelium::PillButton {
                     set_label: "Install",
                     inline_css: "padding-left: 48px; padding-right: 48px",
-                    connect_clicked => WelcomePageMsg::Navigate(NavigationAction::Forward)
+                    connect_clicked => WelcomePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
                 }
             }
         }

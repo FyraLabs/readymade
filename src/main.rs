@@ -9,8 +9,11 @@ use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
 use gtk::prelude::{BoxExt, ButtonExt, GtkWindowExt, OrientableExt};
 use libhelium::prelude::*;
+use pages::confirmation::ConfirmationPage;
 use pages::destination::{DestinationPageOutput, DiskInit};
-use pages::installation::{InstallationPage, InstallationPageMsg};
+use pages::installationtype::{
+    InstallationTypePage, InstallationTypePageMsg, InstallationTypePageOutput,
+};
 use pages::welcome::WelcomePageOutput;
 use pages::{destination::DestinationPage, welcome::WelcomePage};
 use relm4::{
@@ -18,11 +21,19 @@ use relm4::{
     RelmApp, RelmSetChildExt, RelmWidgetExt, SharedState, SimpleComponent,
 };
 
-use crate::pages::installation::InstallationPageOutput;
+use crate::pages::confirmation::ConfirmationPageOutput;
+
+#[derive(Debug)]
+enum InstallationType {
+    WholeDisk,
+    DualBoot, //??
+    Custom,   // config???
+}
 
 #[derive(Debug, Default)]
 struct InstallationState {
     pub destination_disk: Option<DiskInit>,
+    pub installation_type: Option<InstallationType>,
 }
 
 /// State related to the user's installation configuration
@@ -38,28 +49,27 @@ static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
 
 const APPID: &str = "com.fyralabs.Readymade";
 
-#[derive(Debug)]
-pub enum NavigationAction {
-    Back,
-    Forward,
-    Quit,
-}
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Page {
     Welcome,
     Destination,
-    Installation,
+    InstallType,
+    Confirmation,
 }
 
-const PAGES: [Page; 3] = [Page::Welcome, Page::Destination, Page::Installation];
+#[derive(Debug)]
+pub enum NavigationAction {
+    GoTo(Page),
+    Quit,
+}
 
 struct AppModel {
     page: Page,
 
     welcome_page: Controller<WelcomePage>,
     destination_page: Controller<DestinationPage>,
-    installation_page: Controller<InstallationPage>,
+    installation_page: Controller<InstallationTypePage>,
+    confirmation_page: Controller<ConfirmationPage>,
 }
 
 #[derive(Debug)]
@@ -85,7 +95,8 @@ impl SimpleComponent for AppModel {
             set_child = match model.page {
                 Page::Welcome => *model.welcome_page.widget(),
                 Page::Destination => *model.destination_page.widget(),
-                Page::Installation => *model.installation_page.widget(),
+                Page::InstallType => *model.installation_page.widget(),
+                Page::Confirmation => *model.confirmation_page.widget(),
             }
         }
     }
@@ -113,10 +124,16 @@ impl SimpleComponent for AppModel {
                     DestinationPageOutput::Navigate(action) => AppMsg::Navigate(action),
                 },
             ),
-            installation_page: InstallationPage::builder().launch(()).forward(
+            installation_page: InstallationTypePage::builder().launch(()).forward(
                 sender.input_sender(),
                 |msg| match msg {
-                    InstallationPageOutput::Navigate(action) => AppMsg::Navigate(action),
+                    InstallationTypePageOutput::Navigate(action) => AppMsg::Navigate(action),
+                },
+            ),
+            confirmation_page: ConfirmationPage::builder().launch(()).forward(
+                sender.input_sender(),
+                |msg| match msg {
+                    ConfirmationPageOutput::Navigate(action) => AppMsg::Navigate(action),
                 },
             ),
         };
@@ -129,14 +146,10 @@ impl SimpleComponent for AppModel {
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
-            AppMsg::Navigate(NavigationAction::Forward) => {
-                self.page = PAGES[PAGES.iter().position(|&p| p == self.page).unwrap() + 1];
-            }
-            AppMsg::Navigate(NavigationAction::Back) => {
-                self.page = PAGES[PAGES.iter().position(|&p| p == self.page).unwrap() - 1];
+            AppMsg::Navigate(NavigationAction::GoTo(page)) => {
+                self.page = page;
             }
             AppMsg::Navigate(NavigationAction::Quit) => relm4::main_application().quit(),
-            _ => {}
         }
     }
 }

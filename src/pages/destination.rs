@@ -106,7 +106,7 @@ impl SimpleComponent for DestinationPage {
 
                     libhelium::TextButton {
                         set_label: "Previous",
-                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::Back)
+                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome))
                     },
 
                     gtk::Box {
@@ -116,7 +116,7 @@ impl SimpleComponent for DestinationPage {
                     libhelium::PillButton {
                         set_label: "Next",
                         inline_css: "padding-left: 48px; padding-right: 48px",
-                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::Forward),
+                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallType)),
                         #[watch]
                         set_sensitive: INSTALLATION_STATE.read().destination_disk.is_some()
                     }
