@@ -1,5 +1,6 @@
 mod albius;
 mod disks;
+mod mksys;
 mod pages;
 mod util;
 

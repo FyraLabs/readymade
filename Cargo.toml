@@ -22,6 +22,7 @@ cmd_lib = "1.9.3"
 sys-mount = "3.0.1"
 tracing = { version = "0.1.40", features = ["log"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+backhand = "0.15.0"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"
