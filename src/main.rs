@@ -17,6 +17,8 @@ use relm4::{
     RelmApp, RelmSetChildExt, RelmWidgetExt, SharedState, SimpleComponent,
 };
 
+use crate::pages::installation::InstallationPageOutput;
+
 #[derive(Debug, Default)]
 struct InstallationState {
     pub destination_disk: Option<DiskInit>,
@@ -110,7 +112,12 @@ impl SimpleComponent for AppModel {
                     DestinationPageOutput::Navigate(action) => AppMsg::Navigate(action),
                 },
             ),
-            installation_page: InstallationPage::builder().launch(()).detach(),
+            installation_page: InstallationPage::builder().launch(()).forward(
+                sender.input_sender(),
+                |msg| match msg {
+                    InstallationPageOutput::Navigate(action) => AppMsg::Navigate(action),
+                },
+            ),
         };
 
         // Insert the macro code generation here
