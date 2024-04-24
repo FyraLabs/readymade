@@ -11,6 +11,7 @@ use gtk::prelude::{BoxExt, ButtonExt, GtkWindowExt, OrientableExt};
 use libhelium::prelude::*;
 use pages::confirmation::ConfirmationPage;
 use pages::destination::{DestinationPageOutput, DiskInit};
+use pages::installation::InstallationPage;
 use pages::installationtype::{
     InstallationTypePage, InstallationTypePageMsg, InstallationTypePageOutput,
 };
@@ -22,6 +23,7 @@ use relm4::{
 };
 
 use crate::pages::confirmation::ConfirmationPageOutput;
+use crate::pages::installation::InstallationPageOutput;
 
 #[derive(Debug)]
 enum InstallationType {
@@ -55,6 +57,7 @@ enum Page {
     Destination,
     InstallationType,
     Confirmation,
+    Installation,
 }
 
 #[derive(Debug)]
@@ -68,8 +71,9 @@ struct AppModel {
 
     welcome_page: Controller<WelcomePage>,
     destination_page: Controller<DestinationPage>,
-    installation_page: Controller<InstallationTypePage>,
+    installation_type_page: Controller<InstallationTypePage>,
     confirmation_page: Controller<ConfirmationPage>,
+    installation_page: Controller<InstallationPage>,
 }
 
 #[derive(Debug)]
@@ -95,8 +99,9 @@ impl SimpleComponent for AppModel {
             set_child = match model.page {
                 Page::Welcome => *model.welcome_page.widget(),
                 Page::Destination => *model.destination_page.widget(),
-                Page::InstallationType => *model.installation_page.widget(),
+                Page::InstallationType => *model.installation_type_page.widget(),
                 Page::Confirmation => *model.confirmation_page.widget(),
+                Page::Installation => *model.installation_page.widget(),
             }
         }
     }
@@ -124,7 +129,7 @@ impl SimpleComponent for AppModel {
                     DestinationPageOutput::Navigate(action) => AppMsg::Navigate(action),
                 },
             ),
-            installation_page: InstallationTypePage::builder().launch(()).forward(
+            installation_type_page: InstallationTypePage::builder().launch(()).forward(
                 sender.input_sender(),
                 |msg| match msg {
                     InstallationTypePageOutput::Navigate(action) => AppMsg::Navigate(action),
@@ -134,6 +139,12 @@ impl SimpleComponent for AppModel {
                 sender.input_sender(),
                 |msg| match msg {
                     ConfirmationPageOutput::Navigate(action) => AppMsg::Navigate(action),
+                },
+            ),
+            installation_page: InstallationPage::builder().launch(()).forward(
+                sender.input_sender(),
+                |msg| match msg {
+                    InstallationPageOutput::Navigate(action) => AppMsg::Navigate(action),
                 },
             ),
         };

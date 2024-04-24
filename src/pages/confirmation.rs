@@ -106,6 +106,7 @@ impl SimpleComponent for ConfirmationPage {
                     libhelium::PillButton {
                         set_label: "Install",
                         inline_css: "padding-left: 48px; padding-right: 48px",
+                        connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Installation))
                     },
                 }
             }
