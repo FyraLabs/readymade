@@ -3,11 +3,10 @@
 // todo: figure out a way to find installed OS on disks and its partitions
 
 pub mod init;
-mod lsblk;
 mod osprobe;
 
 use osprobe::OSProbe;
-use std::path::Path;
+use std::path::PathBuf;
 
 use crate::pages::destination::DiskInit;
 
@@ -35,61 +34,52 @@ impl Disk {
 // NOTE: Below system detection might not even work at all, I have no idea since above note.
 pub fn detect_os() -> Vec<DiskInit> {
     let disks_data = rs_drivelist::drive_list().unwrap();
-    let mut vec_diskinit = Vec::new();
 
     // let efiparts = find_efi_parts();
 
     let osprobe = OSProbe::scan();
+    let mut osprobe: std::collections::HashMap<_, _> = osprobe
+        .map(|probe| {
+            probe
+                .into_iter()
+                .map(|os| (os.part, os.os_name_pretty))
+                .collect()
+        })
+        .unwrap_or_default();
 
     tracing::debug!(?osprobe, "OS Probe");
 
     const PLACEHOLDER: &str = "Unknown";
     tracing::debug!(?disks_data, "Disks Data");
 
-    for d in disks_data.into_iter().filter(_lsblk_filter) {
-        let devpath = d.device;
-        tracing::debug!(?devpath, "Device Path");
-        let mut diskname = d.description;
+    disks_data
+        .into_iter()
+        .filter_map(_drive_list_filter)
+        .map(|(devpath, description)| {
+            tracing::debug!(?devpath, "Device Path");
+            let diskname = if description.is_empty() {
+                devpath.display().to_string()
+            } else {
+                description
+            };
 
-        // filter devpaths to only include real disks
-        // excluding zram and more
+            let os_name = osprobe
+                .get_mut(&devpath)
+                .map(std::mem::take)
+                .unwrap_or(PLACEHOLDER.to_string());
 
-        if !Path::new(&devpath).exists() {
-            continue;
-        }
-
-        if devpath.contains("zram") {
-            continue;
-        }
-
-        // if devpath.contains("loop") {
-        //     continue;
-        // }
-
-        if diskname.trim().is_empty() {
-            diskname = devpath.clone();
-        }
-
-        let os_name = (osprobe.as_ref())
-            .and_then(|x| {
-                x.iter()
-                    .find(|os| os.part.to_str().map_or(false, |s| s.contains(&devpath)))
-            })
-            .map_or(PLACEHOLDER.to_string(), |os| os.os_name_pretty.clone());
-
-        let disk = Disk::new(diskname, os_name);
-
-        vec_diskinit.push(disk.into_init());
-    }
-
-    vec_diskinit
-
-    // search for disks on the system
+            Disk::new(diskname, os_name).into_init()
+        })
+        .collect()
 }
 
-pub fn _lsblk_filter(d: &rs_drivelist::device::DeviceDescriptor) -> bool {
-    let devpath = &d.device;
-    Path::new(devpath).exists() && !devpath.contains("zram")
+fn _drive_list_filter(d: rs_drivelist::device::DeviceDescriptor) -> Option<(PathBuf, String)> {
+    let devpath = PathBuf::from(&d.device);
+    if devpath.exists() && devpath.file_name().expect("Device is not file") != "zram" {
+        Some((devpath, d.description))
+    } else {
+        None
+    }
 }
 
 #[test]

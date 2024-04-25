@@ -2,7 +2,11 @@ use crate::NavigationAction;
 use gtk::prelude::*;
 use relm4::{gtk, ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
-const DISTRO: &str = "Ultramarine Linux";
+pub const DISTRO: &str = "Ultramarine Linux";
+const WELCOME_TEXT: &str = const_format::formatcp!("Welcome to {DISTRO}");
+const WELCOME_DESC: &str = const_format::formatcp!(
+    r#"Either test {DISTRO} from this installer or start the installation now. You can always return to this screen by selecting "Installer" in the menu."#
+);
 
 pub struct WelcomePage {}
 
@@ -41,12 +45,12 @@ impl SimpleComponent for WelcomePage {
                 },
 
                 gtk::Label {
-                    set_label: &format!("Welcome to {}", DISTRO),
+                    set_label: WELCOME_TEXT,
                     inline_css: "font-weight: bold; font-size: 1.75rem",
                 },
 
                 gtk::Label {
-                    set_label: &format!("Either test {} from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu.", DISTRO),
+                    set_label: WELCOME_DESC,
                     // set_justify: gtk::Justification::Center,
                     set_max_width_chars: 30,
                     set_wrap: true

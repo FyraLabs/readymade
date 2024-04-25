@@ -1,3 +1,5 @@
+#[warn(clippy::nursery)]
+#[warn(clippy::pedantic)]
 mod albius;
 mod disks;
 mod mksys;
@@ -12,14 +14,12 @@ use libhelium::prelude::*;
 use pages::confirmation::ConfirmationPage;
 use pages::destination::{DestinationPageOutput, DiskInit};
 use pages::installation::InstallationPage;
-use pages::installationtype::{
-    InstallationTypePage, InstallationTypePageOutput,
-};
+use pages::installationtype::{InstallationTypePage, InstallationTypePageOutput};
 use pages::welcome::WelcomePageOutput;
 use pages::{destination::DestinationPage, welcome::WelcomePage};
 use relm4::{
-    Component, ComponentController, ComponentParts, ComponentSender, Controller,
-    RelmApp, SharedState, SimpleComponent,
+    Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmApp,
+    SharedState, SimpleComponent,
 };
 
 use crate::pages::confirmation::ConfirmationPageOutput;

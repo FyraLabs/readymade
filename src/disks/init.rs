@@ -1,5 +1,5 @@
-use crate::albius::DiskOperation;
 use crate::util::chain_err;
+use crate::{albius::DiskOperation, pages::welcome::DISTRO};
 use color_eyre::{
     eyre::{eyre, OptionExt},
     Report, Result, Section,
@@ -27,27 +27,7 @@ macro_rules! instr {
 /// - /         remaining
 #[tracing::instrument]
 pub fn clean_install(diskpath: &Path) -> Result<Vec<DiskOperation>> {
-    let disks = rs_drivelist::drive_list().map_err(|e| eyre!(e))?;
-    let disk = (disks.into_iter())
-        .find(|d| (d.devicePath.as_ref()).map_or(false, |p| PathBuf::from(p) == diskpath));
-    let diskobj = disk.ok_or_eyre(Report::msg("Cannot find disk"))?;
-    let disk = diskpath.to_path_buf();
-    let sdiskpath = diskpath.display().to_string();
-    let disksize = diskobj.size / MIB;
-    let lsblk = cmd_lib::run_fun!(lsblk -o partn,path)?;
-    let mut errs = vec![];
-    let partns = (lsblk.split('\n').skip(1))
-        .filter_map(|l| l.trim_start().split_once(' '))
-        .filter(|(left, right)| !left.starts_with('/') && right.starts_with(&sdiskpath)) // things that start with / are path, not partn
-        .filter_map(|(n, _)| n.parse().map_err(|e| errs.push(e)).ok())
-        .collect::<Vec<u8>>();
-    if !errs.is_empty() {
-        return Err(errs.into_iter().fold(
-            Report::msg("Cannot parse some partn values from lsblk"),
-            |report, err| report.error(err),
-        ));
-    }
-
+    let (disk, partns, disksize) = _get_disk_partns_disksize(diskpath)?;
     let mut ops = vec![];
 
     // erase all partitions
@@ -59,7 +39,7 @@ pub fn clean_install(diskpath: &Path) -> Result<Vec<DiskOperation>> {
         // params: Name, FsType, Start, End (MiB)
         disk Mkpart "EFI", "fat32", 1, 513;
         disk Mkpart "Boot", "ext4", 513, 513+1024;
-        disk Mkpart "LinuxRoot", "btrfs", 513+1024, disksize - 1
+        disk Mkpart DISTRO, "btrfs", 513+1024, disksize - 1
     );
 
     Ok(ops)
@@ -116,7 +96,57 @@ pub fn dual_boot(diskpath: &Path, resize: u64) -> Result<Vec<DiskOperation>> {
     // -- mado
     instr!(ops:
         disk Mkpart "Boot", start+resize+1, start+resize+1025;
-        disk Mkpart "LinuxRoot", start+resize+1025, size-1
+        disk Mkpart DISTRO, start+resize+1025, size-1
     );
     Ok(ops)
+}
+
+/// Erase the current partition table, make 3 partitions:
+/// - Submarine    16 MiB
+/// - /boot         1 GiB
+/// - /         remaining
+#[tracing::instrument]
+pub fn chromebook_clean_install(diskpath: &Path) -> Result<Vec<DiskOperation>> {
+    let (disk, partns, disksize) = _get_disk_partns_disksize(diskpath)?;
+    let mut ops = vec![];
+
+    // erase all partitions
+    info!(?partns, "Will erase partitions");
+    partns.into_iter().for_each(|n| instr!(ops: disk Rm n));
+
+    instr!(ops:
+        disk Label "gpt";
+        // params: Name, FsType, Start, End (MiB)
+        disk Mkpart "Submarine", "fat32", 1, 17;
+        disk Mkpart "Boot", "ext4", 17, 17+1024;
+        disk Mkpart DISTRO, "btrfs", 17+1024, disksize - 1
+    );
+
+    Ok(ops)
+}
+
+/// Returns `disk` (path of disk), `partns` (list of part nums), `disksize` in MiB.
+#[must_use]
+pub fn _get_disk_partns_disksize(diskpath: &Path) -> Result<(PathBuf, Vec<u8>, u64)> {
+    let disks = rs_drivelist::drive_list().map_err(|e| eyre!(e))?;
+    let disk = (disks.into_iter())
+        .find(|d| (d.devicePath.as_ref()).map_or(false, |p| PathBuf::from(p) == diskpath));
+    let diskobj = disk.ok_or_eyre(Report::msg("Cannot find disk"))?;
+    let disk = diskpath.to_path_buf();
+    let sdiskpath = diskpath.display().to_string();
+    let disksize = diskobj.size / MIB;
+    let lsblk = cmd_lib::run_fun!(lsblk -o partn,path)?;
+    let mut errs = vec![];
+    let partns = (lsblk.split('\n').skip(1))
+        .filter_map(|l| l.trim_start().split_once(' '))
+        .filter(|(left, right)| !left.starts_with('/') && right.starts_with(&sdiskpath)) // things that start with / are path, not partn
+        .filter_map(|(n, _)| n.parse().map_err(|e| errs.push(e)).ok())
+        .collect::<Vec<u8>>();
+    if !errs.is_empty() {
+        return Err(errs.into_iter().fold(
+            Report::msg("Cannot parse some partn values from lsblk"),
+            |report, err| report.error(err),
+        ));
+    }
+    Ok((disk, partns, disksize))
 }
