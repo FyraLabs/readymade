@@ -1,4 +1,5 @@
 use crate::albius::DiskOperation;
+use crate::util::chain_err;
 use color_eyre::{
     eyre::{eyre, OptionExt},
     Report, Result, Section,
@@ -109,10 +110,4 @@ pub fn dual_boot(diskpath: &Path, resize: u64) -> Result<Vec<DiskOperation>> {
         disk Mkpart "LinuxRoot", start+resize+1025, size-1
     );
     Ok(ops)
-}
-
-fn chain_err<E: std::error::Error + Send + Sync + 'static>(
-    msg: &'static str,
-) -> impl FnOnce(E) -> Report {
-    move |e| Report::msg(msg).error(e)
 }

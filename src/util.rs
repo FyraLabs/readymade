@@ -1,5 +1,6 @@
 //! QoL Utilities for Readymade
 use bytesize::ByteSize;
+use color_eyre::Section as _;
 
 pub const MAX_EFI_SIZE: ByteSize = ByteSize::gb(1);
 pub const DEFAULT_SQUASH_LOCATION: &str = "/run/initramfs/live/LiveOS/squashfs.img";
@@ -27,3 +28,9 @@ pub fn run_as_root(cmd: &str) -> Result<String, std::io::Error> {
 compile_error!(
     "Readymade does not support non-Linux platforms, these functions are Linux-specific."
 );
+
+pub fn chain_err<E: std::error::Error + Send + Sync + 'static>(
+    msg: &'static str,
+) -> impl FnOnce(E) -> color_eyre::Report {
+    move |e| color_eyre::Report::msg(msg).error(e)
+}
