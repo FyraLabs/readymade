@@ -109,7 +109,7 @@ fn _writef(
     })?;
     std::fs::create_dir_all(dir)?;
     let mut reader = fs.file(&f.basic).reader(&mut buf_read, &mut buf_decompress);
-    let mut file = std::fs::File::create_new(path)?;
+    let mut file = std::fs::File::create(path)?;
     std::io::copy(&mut reader, &mut file).map(|_| ())
 }
 
