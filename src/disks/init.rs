@@ -38,7 +38,8 @@ pub fn clean_install(diskpath: &Path) -> Result<Vec<DiskOperation>> {
         disk Label "gpt";
         // params: Name, FsType, Start, End (MiB)
         disk Mkpart "EFI", "fat32", 1, 513;
-        disk Mkpart "Boot", "ext4", 513, 513+1024;
+        // use XFS for /boot, it's Fedora's default
+        disk Mkpart "Boot", "xfs", 513, 513+1024;
         disk Mkpart DISTRO, "btrfs", 513+1024, disksize - 1
     );
 
@@ -83,11 +84,19 @@ pub fn dual_boot(diskpath: &Path, resize: u64) -> Result<Vec<DiskOperation>> {
     let mut start: u64 = (start.trim().parse()).map_err(chain_err("Cannot parse part start"))?;
     start *= 512 / MIB; // 1 unit was 512 B
 
+    let _start_bytesize = bytesize::ByteSize::b(start);
+
+    debug!(start, ?_start_bytesize, "Reading disk start");
+
     let sizepath = format!("/sys/block/{diskid}/size");
     debug!(sizepath, "Reading disk size");
     let size = std::fs::read_to_string(sizepath)?;
     let mut size: u64 = (size.trim().parse()).map_err(chain_err("Cannot parse disk size"))?;
     size *= 512 / MIB;
+
+    let _size_bytesize = bytesize::ByteSize::b(size);
+
+    debug!(size, ?_size_bytesize, "Reading disk size");
 
     info!(pstart = start, dsize = size, "Making parts for Linux");
 
