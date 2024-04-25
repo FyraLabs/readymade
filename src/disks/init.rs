@@ -34,15 +34,25 @@ pub fn clean_install(diskpath: &Path) -> Result<Vec<DiskOperation>> {
     let disk = diskpath.to_path_buf();
     let sdiskpath = diskpath.display().to_string();
     let disksize = diskobj.size / MIB;
-    let orignumparts = cmd_lib::run_fun!(lsblk -o path)?
-        .split('\n')
-        .filter(|l| l.starts_with(&sdiskpath) && l != &sdiskpath)
-        .count();
+    let lsblk = cmd_lib::run_fun!(lsblk -o partn,path)?;
+    let mut errs = vec![];
+    let partns = (lsblk.split('\n').skip(1))
+        .filter_map(|l| l.trim_start().split_once(' '))
+        .filter(|(left, right)| !left.starts_with('/') && right.starts_with(&sdiskpath)) // things that start with / are path, not partn
+        .filter_map(|(n, _)| n.parse().map_err(|e| errs.push(e)).ok())
+        .collect::<Vec<u8>>();
+    if !errs.is_empty() {
+        return Err(errs.into_iter().fold(
+            Report::msg("Cannot parse some partn values from lsblk"),
+            |report, err| report.error(err),
+        ));
+    }
 
     let mut ops = vec![];
 
     // erase all partitions
-    (1..=orignumparts).for_each(|n| instr!(ops: disk Rm format!("{n}")));
+    info!(?partns, "Will erase partitions");
+    partns.into_iter().for_each(|n| instr!(ops: disk Rm n));
 
     instr!(ops:
         disk Label "gpt";
@@ -67,11 +77,11 @@ pub fn dual_boot(diskpath: &Path, resize: u64) -> Result<Vec<DiskOperation>> {
     let disk = diskpath.to_path_buf();
     let lsblk = cmd_lib::run_fun!(lsblk -bo partn,path,size)?;
     // assume all dev paths start with /
+
     let (partn, path_size) = (lsblk.split('\n').skip(1))
         .filter_map(|l| l.trim_start().split_once(' '))
-        .filter(|(left, _)| !left.starts_with('/')) // things that start with / are path, not partn
-        .filter(|(_, right)| right.starts_with(&sdiskpath))
-        .last()
+        .filter(|(left, right)| !left.starts_with('/') && right.starts_with(&sdiskpath)) // things that start with / are path, not partn
+        .last() // last one is the one with max partn
         .ok_or_eyre(Report::msg("lsblk has no output"))?;
     let (partpath, size) = (path_size.split_once(' '))
         .ok_or_else(|| Report::msg("Cannot split path_size(=>note)").note(path_size.to_string()))?;
@@ -84,7 +94,6 @@ pub fn dual_boot(diskpath: &Path, resize: u64) -> Result<Vec<DiskOperation>> {
         trace!(origsize, "Parsing partnum for resize");
         instr!(ops: disk Resizepart partn, resize);
     }
-
     let (_, diskid) = (sdiskpath.rsplit_once('/')).ok_or_eyre(Report::msg("Cannot get disk id"))?;
     let (_, partid) = (partpath.rsplit_once('/')).ok_or_eyre(Report::msg("Cannot get part id"))?;
 
