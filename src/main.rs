@@ -9,7 +9,7 @@ mod util;
 use color_eyre::Result;
 use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
-use gtk::prelude::{ButtonExt, GtkWindowExt};
+use gtk::prelude::GtkWindowExt;
 use libhelium::prelude::*;
 use pages::confirmation::ConfirmationPage;
 use pages::destination::{DestinationPageOutput, DiskInit};
@@ -52,7 +52,7 @@ static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
 const APPID: &str = "com.fyralabs.Readymade";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum Page {
+pub enum Page {
     Welcome,
     Destination,
     InstallationType,
