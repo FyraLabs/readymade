@@ -34,3 +34,8 @@ pub fn chain_err<E: std::error::Error + Send + Sync + 'static>(
 ) -> impl FnOnce(E) -> color_eyre::Report {
     move |e| color_eyre::Report::msg(msg).error(e)
 }
+
+pub fn make_push<T>(mut vector: Vec<T>, elm: T) -> Vec<T> {
+    vector.push(elm);
+    vector
+}

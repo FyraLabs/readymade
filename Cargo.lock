@@ -1777,6 +1777,7 @@ dependencies = [
  "serde_json",
  "sys-info",
  "sys-mount",
+ "thiserror",
  "tracing",
  "tracing-subscriber",
  "udisks2",

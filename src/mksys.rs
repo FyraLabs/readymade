@@ -4,6 +4,8 @@ use std::path::Path;
 use tracing::{trace, trace_span};
 
 // TODO: somehow track progress of unsquash
+/// Copy contents of a squashimg into a directory `destroot`.
+/// Normally param `squashfs` should be [crate::util::DEFAULT_SQUASH_LOCATION].
 #[tracing::instrument(skip(callback))]
 pub fn unsquash_copy(
     squashfs: &Path,
@@ -12,10 +14,9 @@ pub fn unsquash_copy(
 ) -> Result<()> {
     let squashimg = std::io::BufReader::new(std::fs::File::open(squashfs)?);
     let fs = FilesystemReader::from_reader(squashimg)?;
-    let num_files = fs.files().count();
-    // alloc required space for file data readers
+    let num_files = fs.files().count(); // WARN: might be expensive?
     let mut threads = vec![];
-    let (buf_read, buf_decompress) = fs.alloc_read_buffers();
+    let (buf_read, buf_decompress) = fs.alloc_read_buffers(); // alloc required space for file data readers
     let arcfs = std::sync::Arc::new(fs);
     // HACK: leak arcfs, it's a small mem size (just the arc), so it should be fine
     // prevent rust from complaining about lifetime
@@ -49,18 +50,28 @@ pub fn unsquash_copy(
             x => trace!("Ignored {x:?}"),
         }
     }
+    _join_and_handle_threads(threads, callback, num_files)
+}
+
+fn _join_and_handle_threads(
+    threads: Vec<std::thread::JoinHandle<Result<(), std::io::Error>>>,
+    mut callback: impl FnMut(usize, usize),
+    num_files: usize,
+) -> Result<()> {
+    // TODO: use fold_while()?
     let mut errs = vec![];
     let l = threads.len();
     for (i, th) in threads.into_iter().enumerate() {
         callback(num_files - l + i, num_files);
+        let name = th.thread().name().unwrap_or_default().to_string();
         match th.join() {
-            Ok(Err(e)) => errs.push(e),
+            Ok(Err(e)) => errs.push(ParallelCopyError(name, e)),
             Err(_) => {
                 // Err(_) where _ is Box<dyn Any + Send, Global>
                 // This is some sort of issue with .join(), pretty useless err type, can do nothing
-                let report = color_eyre::Report::msg("Fail to join thread.").with_note(|| {
-                    "This is a bug. Please report: https://github.com/FyraLabs/readymade"
-                });
+                let report = color_eyre::Report::msg("Fail to join thread.")
+                    .note("This is a bug. Please report: https://github.com/FyraLabs/readymade")
+                    .note(format!("File: {name}"));
                 return Err(if errs.is_empty() {
                     report
                 } else {
@@ -116,3 +127,7 @@ fn test_unsquash() -> Result<()> {
     std::fs::remove_file("./test.sqsh")?;
     Ok(())
 }
+
+#[derive(thiserror::Error, Debug)]
+#[error("{0}: {1:?}")]
+struct ParallelCopyError(String, std::io::Error);

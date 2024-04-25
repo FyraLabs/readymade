@@ -2,9 +2,7 @@ use gtk::prelude::*;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
-use crate::{
-    NavigationAction, INSTALLATION_STATE,
-};
+use crate::{NavigationAction, INSTALLATION_STATE};
 
 pub struct ConfirmationPage {}
 

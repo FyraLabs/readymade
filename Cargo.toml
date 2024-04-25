@@ -25,6 +25,7 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 backhand = "0.15.0"
 const_format = "0.2.32"
 itertools = "0.12.1"
+thiserror = "1.0.59"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"

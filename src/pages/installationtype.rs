@@ -3,8 +3,6 @@ use gtk::prelude::*;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
-
-
 pub struct InstallationTypePage {}
 
 #[derive(Debug)]

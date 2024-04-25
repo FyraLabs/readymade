@@ -10,22 +10,7 @@ use std::path::PathBuf;
 
 use crate::pages::destination::DiskInit;
 
-struct Disk {
-    disk_name: String,
-    os_name: String,
-}
-
-impl Disk {
-    pub fn new(disk_name: String, os_name: String) -> Self {
-        Self { disk_name, os_name }
-    }
-    pub fn into_init(self) -> DiskInit {
-        DiskInit {
-            disk_name: self.disk_name,
-            os_name: self.os_name,
-        }
-    }
-}
+const OSNAME_PLACEHOLDER: &str = "Unknown";
 
 /// Try and scan the system for disks and their installed OS
 // Honestly, this is a mess and I have no idea how to get os_detect to work.
@@ -37,39 +22,15 @@ pub fn detect_os() -> Vec<DiskInit> {
 
     // let efiparts = find_efi_parts();
 
-    let osprobe = OSProbe::scan();
-    let mut osprobe: std::collections::HashMap<_, _> = osprobe
-        .map(|probe| {
-            probe
-                .into_iter()
-                .map(|os| (os.part, os.os_name_pretty))
-                .collect()
-        })
+    let mut osprobe = OSProbe::scan()
+        .map(|probe| (probe.into_iter().map(|os| (os.part, os.os_name_pretty))).collect())
         .unwrap_or_default();
 
     tracing::debug!(?osprobe, "OS Probe");
-
-    const PLACEHOLDER: &str = "Unknown";
     tracing::debug!(?disks_data, "Disks Data");
 
-    disks_data
-        .into_iter()
-        .filter_map(_drive_list_filter)
-        .map(|(devpath, description)| {
-            tracing::debug!(?devpath, "Device Path");
-            let diskname = if description.is_empty() {
-                devpath.display().to_string()
-            } else {
-                description
-            };
-
-            let os_name = osprobe
-                .get_mut(&devpath)
-                .map(std::mem::take)
-                .unwrap_or(PLACEHOLDER.to_string());
-
-            Disk::new(diskname, os_name).into_init()
-        })
+    (disks_data.into_iter().filter_map(_drive_list_filter))
+        .map(_to_diskinit(&mut osprobe))
         .collect()
 }
 
@@ -79,6 +40,24 @@ fn _drive_list_filter(d: rs_drivelist::device::DeviceDescriptor) -> Option<(Path
         Some((devpath, d.description))
     } else {
         None
+    }
+}
+
+fn _to_diskinit(
+    osprobe: &mut std::collections::HashMap<PathBuf, String>,
+) -> impl FnMut((PathBuf, String)) -> DiskInit + '_ {
+    |(devpath, desc)| {
+        tracing::debug!(?devpath, "Device Path");
+        let disk_name = if desc.is_empty() {
+            devpath.display().to_string()
+        } else {
+            desc
+        };
+
+        let os_name = (osprobe.get_mut(&devpath).map(std::mem::take))
+            .unwrap_or(OSNAME_PLACEHOLDER.to_string());
+
+        DiskInit { disk_name, os_name }
     }
 }
 
