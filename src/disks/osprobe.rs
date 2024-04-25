@@ -15,7 +15,7 @@ impl OSProbe {
     #[tracing::instrument]
     pub fn from_entry(entry: &str) -> Self {
         let parts: Vec<&str> =
-            tracing::debug_span!("OS Probe Entry", ?entry).in_scope(|| entry.split(":").collect());
+            tracing::debug_span!("OS Probe Entry", ?entry).in_scope(|| entry.split(':').collect());
 
         // Minimum 4 parts, Part 5, 6 and 7 are optional
 

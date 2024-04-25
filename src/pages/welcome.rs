@@ -41,12 +41,12 @@ impl SimpleComponent for WelcomePage {
                 },
 
                 gtk::Label {
-                    set_label: &format!("Welcome to {}", DISTRO.to_string()),
+                    set_label: &format!("Welcome to {}", DISTRO),
                     inline_css: "font-weight: bold; font-size: 1.75rem",
                 },
 
                 gtk::Label {
-                    set_label: &format!("Either test {} from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu.", DISTRO.to_string()),
+                    set_label: &format!("Either test {} from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu.", DISTRO),
                     // set_justify: gtk::Justification::Center,
                     set_max_width_chars: 30,
                     set_wrap: true
@@ -73,7 +73,7 @@ impl SimpleComponent for WelcomePage {
     }
 
     fn init(
-        init: Self::Init,
+        _init: Self::Init,
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {

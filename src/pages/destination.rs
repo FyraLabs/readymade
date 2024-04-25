@@ -2,9 +2,8 @@ use crate::{NavigationAction, INSTALLATION_STATE};
 use gtk::prelude::*;
 use libhelium::prelude::*;
 use relm4::{
-    factory::{DynamicIndex, FactoryComponent, FactorySender, FactoryVecDeque, Position},
-    typed_view::list::TypedListView,
-    ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent, WidgetTemplate,
+    factory::{DynamicIndex, FactoryComponent, FactorySender, FactoryVecDeque},
+    ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent,
 };
 
 #[derive(Debug, Clone)]
@@ -126,15 +125,13 @@ impl SimpleComponent for DestinationPage {
     }
 
     fn init(
-        init: Self::Init, // TODO: use selection state saved in root
+        _init: Self::Init, // TODO: use selection state saved in root
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let mut disks = FactoryVecDeque::builder()
             .launch(gtk::FlowBox::default())
-            .forward(sender.input_sender(), |output| match output {
-                _ => todo!(),
-            });
+            .forward(sender.input_sender(), |_output| todo!());
 
         let disks_data = crate::disks::detect_os();
 

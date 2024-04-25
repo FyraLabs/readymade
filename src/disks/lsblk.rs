@@ -14,6 +14,6 @@ impl LsblkOutput {
 
 pub fn generate_lsblk() -> Option<Vec<LsblkOutput>> {
     let disks = rs_drivelist::drive_list().ok()?;
-    for disk in disks.into_iter().filter(super::_lsblk_filter) {}
+    for _disk in disks.into_iter().filter(super::_lsblk_filter) {}
     todo!()
 }

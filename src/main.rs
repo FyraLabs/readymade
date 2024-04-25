@@ -7,19 +7,19 @@ mod util;
 use color_eyre::Result;
 use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
-use gtk::prelude::{BoxExt, ButtonExt, GtkWindowExt, OrientableExt};
+use gtk::prelude::{ButtonExt, GtkWindowExt};
 use libhelium::prelude::*;
 use pages::confirmation::ConfirmationPage;
 use pages::destination::{DestinationPageOutput, DiskInit};
 use pages::installation::InstallationPage;
 use pages::installationtype::{
-    InstallationTypePage, InstallationTypePageMsg, InstallationTypePageOutput,
+    InstallationTypePage, InstallationTypePageOutput,
 };
 use pages::welcome::WelcomePageOutput;
 use pages::{destination::DestinationPage, welcome::WelcomePage};
 use relm4::{
-    Component, ComponentController, ComponentParts, ComponentSender, ContainerChild, Controller,
-    RelmApp, RelmSetChildExt, RelmWidgetExt, SharedState, SimpleComponent,
+    Component, ComponentController, ComponentParts, ComponentSender, Controller,
+    RelmApp, SharedState, SimpleComponent,
 };
 
 use crate::pages::confirmation::ConfirmationPageOutput;
@@ -108,7 +108,7 @@ impl SimpleComponent for AppModel {
 
     // Initialize the UI.
     fn init(
-        counter: Self::Init,
+        _counter: Self::Init,
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
@@ -192,5 +192,6 @@ fn main() -> Result<()> {
         .build();
 
     let app = RelmApp::from_app(app);
-    Ok(app.run::<AppModel>(0))
+    app.run::<AppModel>(0);
+    Ok(())
 }

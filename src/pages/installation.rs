@@ -50,7 +50,7 @@ impl SimpleComponent for InstallationPage {
     }
 
     fn init(
-        init: Self::Init, // TODO: use selection state saved in root
+        _init: Self::Init, // TODO: use selection state saved in root
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {

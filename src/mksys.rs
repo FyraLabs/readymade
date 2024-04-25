@@ -23,7 +23,7 @@ pub fn unsquash_copy(
     for (i, node) in arcfs.files().enumerate() {
         callback(i - threads.len(), num_files);
         // Strip `/` else join() will output the arg (to root) directly
-        let path = destroot.join(&node.fullpath.strip_prefix("/")?);
+        let path = destroot.join(node.fullpath.strip_prefix("/")?);
         let span = trace_span!("Processing file in squashfs image", ?path);
         let _guard = span.enter();
         match &node.inner {

@@ -3,7 +3,7 @@ use gtk::prelude::*;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
-use super::destination::DiskInit;
+
 
 pub struct InstallationTypePage {}
 
@@ -106,7 +106,7 @@ impl SimpleComponent for InstallationTypePage {
     }
 
     fn init(
-        init: Self::Init,
+        _init: Self::Init,
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {

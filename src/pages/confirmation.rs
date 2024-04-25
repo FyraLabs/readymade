@@ -3,7 +3,7 @@ use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 use crate::{
-    pages::installationtype::InstallationTypePageMsg, NavigationAction, INSTALLATION_STATE,
+    NavigationAction, INSTALLATION_STATE,
 };
 
 pub struct ConfirmationPage {}
@@ -114,7 +114,7 @@ impl SimpleComponent for ConfirmationPage {
     }
 
     fn init(
-        init: Self::Init, // TODO: use selection state saved in root
+        _init: Self::Init, // TODO: use selection state saved in root
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
