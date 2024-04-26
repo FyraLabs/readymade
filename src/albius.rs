@@ -104,11 +104,8 @@ pub struct PostInstallation {
     pub params: Vec<Parameter>,
 }
 
-
-
 #[test]
 fn test_param() {
-
     let param = Parameter::Array(vec![
         Parameter::String("hello".to_string()),
         Parameter::Array(vec![
@@ -125,8 +122,18 @@ fn test_param() {
 
     // convert to json
 
-    let serialized = serde_json::to_string_pretty(&param).unwrap();
+    let assert_val = r#"
+    [
+        "hello",
+        [
+          "world",
+          "foo"
+        ]
+    ]
+    "#;
 
-    println!("serialized json = {}", serialized);
-    
+    let ser = serde_json::from_str::<serde_json::Value>(&serialized).unwrap();
+    let assert_ser = serde_json::from_str::<serde_json::Value>(assert_val).unwrap();
+
+    assert_eq!(ser, assert_ser);
 }
