@@ -4,6 +4,7 @@ use color_eyre::{
     eyre::{eyre, OptionExt},
     Report, Result, Section,
 };
+use serde_json::Value;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, trace};
 
@@ -15,7 +16,7 @@ macro_rules! instr {
             $vec.push($crate::albius::DiskOperation {
                 disk: $disk.clone(),
                 operation: $crate::albius::DiskOperationType::$op,
-                params: vec![$(format!("{}", $arg)),+],
+                params: vec![$(Value::from($arg)),+],
             });
         )+
     } }
@@ -32,7 +33,9 @@ pub fn clean_install(diskpath: &Path) -> Result<Vec<DiskOperation>> {
 
     // erase all partitions
     info!(?partns, "Will erase partitions");
-    partns.into_iter().for_each(|n| instr!(ops: disk Rm n));
+    partns
+        .into_iter()
+        .for_each(|n| instr!(ops: disk Rm n.to_string()));
 
     instr!(ops:
         disk Label "gpt";
