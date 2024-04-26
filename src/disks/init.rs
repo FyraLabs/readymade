@@ -138,8 +138,7 @@ pub fn chromebook_clean_install(diskpath: &Path) -> Result<Vec<DiskOperation>> {
 #[must_use]
 pub fn _get_disk_partns_disksize(diskpath: &Path) -> Result<(PathBuf, Vec<u8>, u64)> {
     let disks = rs_drivelist::drive_list().map_err(|e| eyre!(e))?;
-    let disk = (disks.into_iter())
-        .find(|d| (d.devicePath.as_ref()).map_or(false, |p| PathBuf::from(p) == diskpath));
+    let disk = (disks.into_iter()).find(|d| PathBuf::from(&d.device) == diskpath);
     let diskobj = disk.ok_or_eyre(Report::msg("Cannot find disk"))?;
     let disk = diskpath.to_path_buf();
     let sdiskpath = diskpath.display().to_string();

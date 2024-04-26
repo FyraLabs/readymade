@@ -2,12 +2,13 @@ use gtk::prelude::*;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
-use crate::{NavigationAction, INSTALLATION_STATE};
+use crate::{NavigationAction, Page, INSTALLATION_STATE};
 
 pub struct ConfirmationPage {}
 
 #[derive(Debug)]
 pub enum ConfirmationPageMsg {
+    StartInstallation,
     #[doc(hidden)]
     Navigate(NavigationAction),
     Update,
@@ -15,6 +16,7 @@ pub enum ConfirmationPageMsg {
 
 #[derive(Debug)]
 pub enum ConfirmationPageOutput {
+    StartInstallation,
     Navigate(NavigationAction),
 }
 
@@ -104,7 +106,7 @@ impl SimpleComponent for ConfirmationPage {
                     libhelium::PillButton {
                         set_label: "Install",
                         inline_css: "padding-left: 48px; padding-right: 48px",
-                        connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Installation))
+                        connect_clicked => ConfirmationPageMsg::StartInstallation
                     },
                 }
             }
@@ -127,6 +129,17 @@ impl SimpleComponent for ConfirmationPage {
 
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
+            ConfirmationPageMsg::StartInstallation => {
+                sender
+                    .output(ConfirmationPageOutput::StartInstallation)
+                    .unwrap();
+
+                sender
+                    .output(ConfirmationPageOutput::Navigate(NavigationAction::GoTo(
+                        Page::Installation,
+                    )))
+                    .unwrap()
+            }
             ConfirmationPageMsg::Navigate(action) => sender
                 .output(ConfirmationPageOutput::Navigate(action))
                 .unwrap(),

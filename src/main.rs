@@ -13,7 +13,7 @@ use gtk::prelude::GtkWindowExt;
 use libhelium::prelude::*;
 use pages::confirmation::ConfirmationPage;
 use pages::destination::{DestinationPageOutput, DiskInit};
-use pages::installation::InstallationPage;
+use pages::installation::{InstallationPage, InstallationPageMsg};
 use pages::installationtype::{InstallationTypePage, InstallationTypePageOutput};
 use pages::welcome::WelcomePageOutput;
 use pages::{destination::DestinationPage, welcome::WelcomePage};
@@ -78,6 +78,7 @@ struct AppModel {
 
 #[derive(Debug)]
 enum AppMsg {
+    StartInstallation,
     Navigate(NavigationAction),
 }
 
@@ -138,6 +139,7 @@ impl SimpleComponent for AppModel {
             confirmation_page: ConfirmationPage::builder().launch(()).forward(
                 sender.input_sender(),
                 |msg| match msg {
+                    ConfirmationPageOutput::StartInstallation => AppMsg::StartInstallation,
                     ConfirmationPageOutput::Navigate(action) => AppMsg::Navigate(action),
                 },
             ),
@@ -157,6 +159,9 @@ impl SimpleComponent for AppModel {
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
+            AppMsg::StartInstallation => self
+                .installation_page
+                .emit(InstallationPageMsg::StartInstallation),
             AppMsg::Navigate(NavigationAction::GoTo(page)) => {
                 self.page = page;
             }
@@ -168,7 +173,7 @@ impl SimpleComponent for AppModel {
 fn main() -> Result<()> {
     color_eyre::install()?;
     tracing_subscriber::fmt()
-        .with_env_filter("info")
+        .with_env_filter("debug")
         .with_ansi(true)
         .pretty()
         .init();

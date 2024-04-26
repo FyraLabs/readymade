@@ -1,4 +1,6 @@
-use crate::{NavigationAction, INSTALLATION_STATE};
+use std::path::Path;
+
+use crate::{disks::init::clean_install, NavigationAction, INSTALLATION_STATE};
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
@@ -6,6 +8,7 @@ pub struct InstallationPage {}
 
 #[derive(Debug)]
 pub enum InstallationPageMsg {
+    StartInstallation,
     #[doc(hidden)]
     Navigate(NavigationAction),
     Update,
@@ -65,6 +68,14 @@ impl SimpleComponent for InstallationPage {
 
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
+            InstallationPageMsg::StartInstallation => sender.command(|out, shutdown| {
+                shutdown
+                    .register(async move {
+                        let owo = clean_install(Path::new("/dev/sda")).unwrap();
+                        println!("{:?}", owo);
+                    })
+                    .drop_on_shutdown()
+            }),
             InstallationPageMsg::Navigate(action) => sender
                 .output(InstallationPageOutput::Navigate(action))
                 .unwrap(),

@@ -35,6 +35,7 @@ pub fn detect_os() -> Vec<DiskInit> {
 }
 
 fn _drive_list_filter(d: rs_drivelist::device::DeviceDescriptor) -> Option<(PathBuf, String)> {
+    println!("{:?}", d.devicePath);
     let devpath = PathBuf::from(&d.device);
     if devpath.exists() && devpath.file_name().expect("Device is not file") != "zram" {
         Some((devpath, d.description))
