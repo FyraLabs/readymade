@@ -5,6 +5,7 @@ mod disks;
 mod mksys;
 mod pages;
 mod util;
+mod setup;
 
 use color_eyre::Result;
 use gtk::gio::ApplicationFlags;

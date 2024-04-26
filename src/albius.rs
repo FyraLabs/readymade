@@ -90,8 +90,43 @@ pub enum PostInstallationOperation {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Parameter {
+    String(String),
+    Array(Vec<Parameter>),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PostInstallation {
     pub chroot: bool,
     pub operation: PostInstallationOperation,
-    pub params: Vec<String>,
+    // allow nested arrays for params
+    pub params: Vec<Parameter>,
+}
+
+
+
+#[test]
+fn test_param() {
+
+    let param = Parameter::Array(vec![
+        Parameter::String("hello".to_string()),
+        Parameter::Array(vec![
+            Parameter::String("world".to_string()),
+            Parameter::String("foo".to_string()),
+        ]),
+    ]);
+
+    let serialized = serde_json::to_string(&param).unwrap();
+    println!("serialized = {}", serialized);
+
+    let deserialized: Parameter = serde_json::from_str(&serialized).unwrap();
+    println!("deserialized = {:?}", deserialized);
+
+    // convert to json
+
+    let serialized = serde_json::to_string_pretty(&param).unwrap();
+
+    println!("serialized json = {}", serialized);
+    
 }
