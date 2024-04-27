@@ -4,8 +4,8 @@ mod albius;
 mod disks;
 mod mksys;
 mod pages;
-mod util;
 mod setup;
+mod util;
 
 use color_eyre::Result;
 use gtk::gio::ApplicationFlags;

@@ -10,15 +10,15 @@ pub struct User {
     pub password: Option<String>,
 }
 
-impl Into<PostInstallation> for User {
-    fn into(self) -> PostInstallation {
+impl From<User> for PostInstallation {
+    fn from(val: User) -> Self {
         let mut params = vec![
-            Value::String(self.username),
-            Value::String(self.display_name),
-            Value::Array(self.groups.into_iter().map(Value::String).collect()),
+            Value::String(val.username),
+            Value::String(val.display_name),
+            Value::Array(val.groups.into_iter().map(Value::String).collect()),
         ];
 
-        if let Some(password) = self.password {
+        if let Some(password) = val.password {
             params.push(Value::String(password));
         }
         PostInstallation {

@@ -69,7 +69,7 @@ impl SimpleComponent for InstallationPage {
 
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
-            InstallationPageMsg::StartInstallation => sender.command(|out, shutdown| {
+            InstallationPageMsg::StartInstallation => sender.command(|_out, shutdown| {
                 shutdown
                     .register(async move {
                         let owo = clean_install(Path::new("/dev/sda")).unwrap();
