@@ -7,8 +7,8 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-04-27 17:21+0000\n"
-"PO-Revision-Date: 2024-04-27 23:33+0000\n"
-"Last-Translator: Matteo <matteo@raffl.net>\n"
+"PO-Revision-Date: 2024-04-27 23:45+0000\n"
+"Last-Translator: Ingo Reitz <ninelore@protonmail.com>\n"
 "Language-Team: German <https://weblate.fyralabs.com/projects/tauOS/readymade/"
 "de/>\n"
 "Language: de\n"
@@ -60,7 +60,7 @@ msgstr "Dual Boot"
 
 #: src/pages/installationtype.rs:83
 msgid "Custom"
-msgstr ""
+msgstr "Benutzerdefiniert"
 
 #: src/pages/welcome.rs:45
 msgid "Welcome to %s"
