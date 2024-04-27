@@ -1,8 +1,6 @@
-<<<<<<< HEAD
 use std::path::Path;
 
 use crate::{disks::init::clean_install, NavigationAction, INSTALLATION_STATE};
-use crate::{NavigationAction, INSTALLATION_STATE};
 use gettextrs::gettext;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};

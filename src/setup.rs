@@ -1,5 +1,6 @@
-use crate::albius::{Parameter, PostInstallation};
+use crate::albius::PostInstallation;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
@@ -12,13 +13,13 @@ pub struct User {
 impl Into<PostInstallation> for User {
     fn into(self) -> PostInstallation {
         let mut params = vec![
-            Parameter::String(self.username),
-            Parameter::String(self.display_name),
-            Parameter::Array(self.groups.into_iter().map(Parameter::String).collect()),
+            Value::String(self.username),
+            Value::String(self.display_name),
+            Value::Array(self.groups.into_iter().map(Value::String).collect()),
         ];
 
         if let Some(password) = self.password {
-            params.push(Parameter::String(password));
+            params.push(Value::String(password));
         }
         PostInstallation {
             chroot: true,
