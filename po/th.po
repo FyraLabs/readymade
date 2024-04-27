@@ -7,49 +7,52 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-04-27 17:21+0000\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2024-04-27 18:27+0000\n"
+"Last-Translator: Cappy <cappy@cappuchino.xyz>\n"
+"Language-Team: Thai <https://weblate.fyralabs.com/projects/tauOS/readymade/"
+"th/>\n"
 "Language: th\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 5.4.2\n"
 
 #: src/pages/confirmation.rs:30
 msgid "Confirmation"
-msgstr ""
+msgstr "ยืนยัน"
 
 #: src/pages/confirmation.rs:97 src/pages/destination.rs:108 src/pages/installationtype.rs:95
 msgid "Previous"
-msgstr ""
+msgstr "ก่อนหน้า"
 
 #: src/pages/confirmation.rs:106 src/pages/welcome.rs:68
 msgid "Install"
-msgstr ""
+msgstr "ติดตั้ง"
 
 #: src/pages/destination.rs:84
 msgid "Destination"
-msgstr ""
+msgstr "ตำแหน่งที่ติดตั้ง"
 
 #: src/pages/destination.rs:117
 msgid "Next"
-msgstr ""
+msgstr "ต่อไป"
 
 #: src/pages/installation.rs:28
 msgid "Installation"
-msgstr ""
+msgstr "การติดตั้ง"
 
 #: src/pages/installation.rs:44
 msgid "Installing base system..."
-msgstr ""
+msgstr "กำลังติดตั้งระบบหลัก..."
 
 #: src/pages/installationtype.rs:30
 msgid "Installation Type"
-msgstr ""
+msgstr "ประเภทการติดตั้ง"
 
 #: src/pages/installationtype.rs:73
 msgid "Entire Disk"
-msgstr ""
+msgstr "ใช้ทั้งดิสก์"
 
 #: src/pages/installationtype.rs:78
 msgid "Dual Boot"
@@ -57,16 +60,18 @@ msgstr ""
 
 #: src/pages/installationtype.rs:83
 msgid "Custom"
-msgstr ""
+msgstr "กำหนดเอง"
 
 #: src/pages/welcome.rs:45
 msgid "Welcome to %s"
-msgstr ""
+msgstr "ยินดีต้อนรับสู่ %s"
 
 #: src/pages/welcome.rs:50
 msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
+"ลองใช้ %s จากโปรแกรมติดตั้ง หรือเริ่มการติดตั้งทันที "
+"คุณสามารถกลับมาที่หน้าจอนี้ได้ตลอดเวลาโดยเลือก \"ติดตั้ง\" ในเมนู"
 
 #: src/pages/welcome.rs:62
 msgid "Try"
-msgstr ""
+msgstr "ทดลองใช้"
