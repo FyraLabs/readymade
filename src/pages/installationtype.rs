@@ -1,4 +1,5 @@
 use crate::{InstallationType, NavigationAction, Page, INSTALLATION_STATE};
+use gettextrs::gettext;
 use gtk::prelude::*;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
@@ -26,7 +27,7 @@ impl SimpleComponent for InstallationTypePage {
 
     view! {
         libhelium::ViewMono {
-            set_title: "Installation Type",
+            set_title: &gettext("Installation Type"),
             set_vexpand: true,
 
             add = &gtk::Box {
@@ -69,17 +70,17 @@ impl SimpleComponent for InstallationTypePage {
                         set_valign: gtk::Align::End,
                         set_homogeneous: true,
                         libhelium::PillButton {
-                            set_label: "Entire Disk",
+                            set_label: &gettext("Entire Disk"),
                             inline_css: "padding-left: 48px; padding-right: 48px",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
                         },
                         libhelium::PillButton {
-                            set_label: "Dual Boot",
+                            set_label: &gettext("Dual Boot"),
                             inline_css: "padding-left: 48px; padding-right: 48px",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot)
                         },
                         libhelium::PillButton {
-                            set_label: "Custom",
+                            set_label: &gettext("Custom"),
                             inline_css: "padding-left: 48px; padding-right: 48px",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
                         }
@@ -91,7 +92,7 @@ impl SimpleComponent for InstallationTypePage {
                     set_spacing: 4,
 
                     libhelium::TextButton {
-                        set_label: "Previous",
+                        set_label: &gettext("Previous"),
                         connect_clicked => InstallationTypePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
                     },
 

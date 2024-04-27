@@ -1,6 +1,9 @@
+<<<<<<< HEAD
 use std::path::Path;
 
 use crate::{disks::init::clean_install, NavigationAction, INSTALLATION_STATE};
+use crate::{NavigationAction, INSTALLATION_STATE};
+use gettextrs::gettext;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
@@ -27,7 +30,7 @@ impl SimpleComponent for InstallationPage {
 
     view! {
         libhelium::ViewMono {
-            set_title: "Installation",
+            set_title: &*gettext("Installation"),
             set_vexpand: true,
 
             add = &gtk::Box {
@@ -43,7 +46,7 @@ impl SimpleComponent for InstallationPage {
                 },
 
                 gtk::Label {
-                  set_label: "Installing base system..."
+                  set_label: &*gettext("Installing base system...")
                 },
 
                 libhelium::ProgressBar {

@@ -1,3 +1,4 @@
+use gettextrs::gettext;
 use gtk::prelude::*;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
@@ -28,7 +29,7 @@ impl SimpleComponent for ConfirmationPage {
 
     view! {
         libhelium::ViewMono {
-            set_title: "Confirmation",
+            set_title: &gettext("Confirmation"),
             set_vexpand: true,
             add = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -95,7 +96,7 @@ impl SimpleComponent for ConfirmationPage {
                     set_spacing: 4,
 
                     libhelium::TextButton {
-                        set_label: "Previous",
+                        set_label: &gettext("Previous"),
                         connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallationType))
                     },
 
@@ -104,7 +105,7 @@ impl SimpleComponent for ConfirmationPage {
                     },
 
                     libhelium::PillButton {
-                        set_label: "Install",
+                        set_label: &gettext("Install"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
                         connect_clicked => ConfirmationPageMsg::StartInstallation
                     },

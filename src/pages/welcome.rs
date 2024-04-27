@@ -1,12 +1,9 @@
 use crate::NavigationAction;
+use gettextrs::gettext;
 use gtk::prelude::*;
 use relm4::{gtk, ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 pub const DISTRO: &str = "Ultramarine Linux";
-const WELCOME_TEXT: &str = const_format::formatcp!("Welcome to {DISTRO}");
-const WELCOME_DESC: &str = const_format::formatcp!(
-    r#"Either test {DISTRO} from this installer or start the installation now. You can always return to this screen by selecting "Installer" in the menu."#
-);
 
 pub struct WelcomePage {}
 
@@ -45,12 +42,12 @@ impl SimpleComponent for WelcomePage {
                 },
 
                 gtk::Label {
-                    set_label: WELCOME_TEXT,
+                    set_label: &*gettext("Welcome to %s").replace("%s", DISTRO),
                     inline_css: "font-weight: bold; font-size: 1.75rem",
                 },
 
                 gtk::Label {
-                    set_label: WELCOME_DESC,
+                    set_label: &*gettext(r#"Either test %s from this installer or start the installation now. You can always return to this screen by selecting "Installer" in the menu."#).replace("%s", DISTRO),
                     // set_justify: gtk::Justification::Center,
                     set_max_width_chars: 30,
                     set_wrap: true
@@ -62,13 +59,13 @@ impl SimpleComponent for WelcomePage {
                 set_halign: gtk::Align::Center,
 
                 libhelium::PillButton {
-                    set_label: "Try",
+                    set_label: &gettext("Try"),
                     inline_css: "padding-left: 48px; padding-right: 48px",
                     connect_clicked => WelcomePageMsg::Navigate(NavigationAction::Quit)
                 },
 
                 libhelium::PillButton {
-                    set_label: "Install",
+                    set_label: &gettext("Install"),
                     inline_css: "padding-left: 48px; padding-right: 48px",
                     connect_clicked => WelcomePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
                 }

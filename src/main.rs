@@ -184,6 +184,9 @@ fn main() -> Result<()> {
         version = env!("CARGO_PKG_VERSION")
     );
 
+    gettextrs::textdomain(APPID)?;
+    gettextrs::bind_textdomain_codeset(APPID, "UTF-8")?;
+
     let app = libhelium::Application::builder()
         .application_id(APPID)
         .flags(ApplicationFlags::default())
