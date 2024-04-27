@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-04-27 17:21+0000\n"
-"PO-Revision-Date: 2024-04-27 23:45+0000\n"
+"PO-Revision-Date: 2024-04-28 00:15+0000\n"
 "Last-Translator: Alicja Michalska <ahplka19@gmail.com>\n"
 "Language-Team: Polish <https://weblate.fyralabs.com/projects/tauOS/readymade/"
 "pl/>\n"
@@ -25,7 +25,7 @@ msgstr "Potwierdzenie"
 
 #: src/pages/confirmation.rs:97 src/pages/destination.rs:108 src/pages/installationtype.rs:95
 msgid "Previous"
-msgstr "Powrót"
+msgstr "Wróć"
 
 #: src/pages/confirmation.rs:106 src/pages/welcome.rs:68
 msgid "Install"
@@ -33,44 +33,46 @@ msgstr "Zainstaluj"
 
 #: src/pages/destination.rs:84
 msgid "Destination"
-msgstr ""
+msgstr "Wolumen docelowy"
 
 #: src/pages/destination.rs:117
 msgid "Next"
-msgstr ""
+msgstr "Idź"
 
 #: src/pages/installation.rs:28
 msgid "Installation"
-msgstr ""
+msgstr "Instalacja"
 
 #: src/pages/installation.rs:44
 msgid "Installing base system..."
-msgstr ""
+msgstr "Instalowanie podstawowych komponentów systemu..."
 
 #: src/pages/installationtype.rs:30
 msgid "Installation Type"
-msgstr ""
+msgstr "Typ instalacji"
 
 #: src/pages/installationtype.rs:73
 msgid "Entire Disk"
-msgstr ""
+msgstr "Cały dysk"
 
 #: src/pages/installationtype.rs:78
 msgid "Dual Boot"
-msgstr ""
+msgstr "Dual-boot"
 
 #: src/pages/installationtype.rs:83
 msgid "Custom"
-msgstr ""
+msgstr "Ręczna"
 
 #: src/pages/welcome.rs:45
 msgid "Welcome to %s"
-msgstr ""
+msgstr "Witamy w %s"
 
 #: src/pages/welcome.rs:50
 msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
+"Przetestuj %s bez wprowadzania zmian lub rozpocznij instalację. Możesz "
+"wrócić do tego okna wybierając \"Instalator\" z menu."
 
 #: src/pages/welcome.rs:62
 msgid "Try"
-msgstr ""
+msgstr "Wypróbuj"
