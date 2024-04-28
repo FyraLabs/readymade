@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-04-27 17:21+0000\n"
-"PO-Revision-Date: 2024-04-28 00:15+0000\n"
+"PO-Revision-Date: 2024-04-28 14:05+0000\n"
 "Last-Translator: Alany Benavides <janitogamer21@gmail.com>\n"
 "Language-Team: Spanish <https://weblate.fyralabs.com/projects/tauOS/"
 "readymade/es/>\n"
@@ -52,7 +52,7 @@ msgstr "Tipo de Instalación"
 
 #: src/pages/installationtype.rs:73
 msgid "Entire Disk"
-msgstr "Disco Entero"
+msgstr "Disco Completo"
 
 #: src/pages/installationtype.rs:78
 msgid "Dual Boot"
