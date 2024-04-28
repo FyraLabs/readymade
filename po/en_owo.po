@@ -8,7 +8,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-04-27 17:21+0000\n"
 "PO-Revision-Date: 2024-04-28 00:15+0000\n"
-"Last-Translator: Oliver Anderson <oliver.anderson4435@gmail.com>\n"
+"Last-Translator: Jaiden Riordan <jade@e.email>\n"
 "Language-Team: English <https://weblate.fyralabs.com/projects/tauOS/"
 "readymade/en_owo/>\n"
 "Language: en_owo\n"
@@ -20,7 +20,7 @@ msgstr ""
 
 #: src/pages/confirmation.rs:30
 msgid "Confirmation"
-msgstr "Cownfiwmation"
+msgstr "Confiwmation"
 
 #: src/pages/confirmation.rs:97 src/pages/destination.rs:108 src/pages/installationtype.rs:95
 msgid "Previous"
@@ -28,7 +28,7 @@ msgstr "Pwevious"
 
 #: src/pages/confirmation.rs:106 src/pages/welcome.rs:68
 msgid "Install"
-msgstr "Instaww~"
+msgstr "Instaww"
 
 #: src/pages/destination.rs:84
 msgid "Destination"
@@ -44,7 +44,7 @@ msgstr "Instawwation"
 
 #: src/pages/installation.rs:44
 msgid "Installing base system..."
-msgstr "Instawwing base system..."
+msgstr "Instawwing base systyem..."
 
 #: src/pages/installationtype.rs:30
 msgid "Installation Type"
