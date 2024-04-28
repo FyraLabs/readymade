@@ -48,11 +48,11 @@ msgstr "Instawwing base system..."
 
 #: src/pages/installationtype.rs:30
 msgid "Installation Type"
-msgstr ""
+msgstr "Instawwation Type"
 
 #: src/pages/installationtype.rs:73
 msgid "Entire Disk"
-msgstr ""
+msgstr "Entiwe Disk"
 
 #: src/pages/installationtype.rs:78
 msgid "Dual Boot"
