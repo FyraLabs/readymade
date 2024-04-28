@@ -7,66 +7,72 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-04-27 17:21+0000\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2024-04-28 14:05+0000\n"
+"Last-Translator: Petrus Claviger <clearcreekcarter@gmail.com>\n"
+"Language-Team: Italian <https://weblate.fyralabs.com/projects/tauOS/"
+"readymade/it/>\n"
 "Language: it\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 5.4.2\n"
 
 #: src/pages/confirmation.rs:30
 msgid "Confirmation"
-msgstr ""
+msgstr "Confermare"
 
 #: src/pages/confirmation.rs:97 src/pages/destination.rs:108 src/pages/installationtype.rs:95
 msgid "Previous"
-msgstr ""
+msgstr "Precedente"
 
 #: src/pages/confirmation.rs:106 src/pages/welcome.rs:68
 msgid "Install"
-msgstr ""
+msgstr "Installare"
 
 #: src/pages/destination.rs:84
 msgid "Destination"
-msgstr ""
+msgstr "Destinazione"
 
 #: src/pages/destination.rs:117
 msgid "Next"
-msgstr ""
+msgstr "Prossimo"
 
 #: src/pages/installation.rs:28
 msgid "Installation"
-msgstr ""
+msgstr "Installazione"
 
 #: src/pages/installation.rs:44
 msgid "Installing base system..."
-msgstr ""
+msgstr "Installando il sistema di base..."
 
 #: src/pages/installationtype.rs:30
 msgid "Installation Type"
-msgstr ""
+msgstr "Tipo di installazione"
 
 #: src/pages/installationtype.rs:73
 msgid "Entire Disk"
-msgstr ""
+msgstr "Intero Disco"
 
 #: src/pages/installationtype.rs:78
 msgid "Dual Boot"
-msgstr ""
+msgstr "Doppio avvio"
 
 #: src/pages/installationtype.rs:83
 msgid "Custom"
-msgstr ""
+msgstr "Personalizzato"
 
 #: src/pages/welcome.rs:45
 msgid "Welcome to %s"
-msgstr ""
+msgstr "Benvenuto a %s"
 
 #: src/pages/welcome.rs:50
 msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
+"Sia provare %s da questa installatrice or cominciare l'installazione ora. "
+"Puoi sempre ritornare a questo schermo selezionando \"Installatrice\" nel "
+"menu."
 
 #: src/pages/welcome.rs:62
 msgid "Try"
-msgstr ""
+msgstr "Provare"
