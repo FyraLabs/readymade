@@ -8,7 +8,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-04-27 17:21+0000\n"
 "PO-Revision-Date: 2024-04-28 00:18+0000\n"
-"Last-Translator: Oliver Anderson <oliver.anderson4435@gmail.com>\n"
+"Last-Translator: Jaiden Riordan <jade@e.email>\n"
 "Language-Team: English <https://weblate.fyralabs.com/projects/tauOS/"
 "readymade/en_owo/>\n"
 "Language: en_owo\n"
@@ -64,12 +64,14 @@ msgstr "Custowm"
 
 #: src/pages/welcome.rs:45
 msgid "Welcome to %s"
-msgstr ""
+msgstr "Hewwo! Welcome to %s!"
 
 #: src/pages/welcome.rs:50
 msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
+"Eithew test %s fwom this instawwer or stawt the instawwation now. You can "
+"awways weturn to this scween by sewecting \"Instawwer\" in the menu."
 
 #: src/pages/welcome.rs:62
 msgid "Try"
-msgstr ""
+msgstr "Twy"
