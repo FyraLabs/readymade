@@ -179,6 +179,11 @@ fn main() -> Result<()> {
         .pretty()
         .init();
 
+    // we probably want to escalate the process to root on release builds
+
+    #[cfg(not(debug_assertions))]
+    karen::builder().wrapper("pkexec").escalate_if_needed()?;
+
     tracing::info!(
         "Readymade Installer {version}",
         version = env!("CARGO_PKG_VERSION")

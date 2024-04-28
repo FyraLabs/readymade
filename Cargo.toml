@@ -26,6 +26,7 @@ backhand = "0.15.0"
 itertools = "0.12.1"
 thiserror = "1.0.59"
 gettext-rs = "0.7.0"
+karen = "0.1.0"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"
