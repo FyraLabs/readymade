@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-04-27 17:21+0000\n"
-"PO-Revision-Date: 2024-04-28 00:16+0000\n"
+"PO-Revision-Date: 2024-04-28 00:18+0000\n"
 "Last-Translator: Oliver Anderson <oliver.anderson4435@gmail.com>\n"
 "Language-Team: English <https://weblate.fyralabs.com/projects/tauOS/"
 "readymade/en_owo/>\n"
@@ -60,7 +60,7 @@ msgstr "Duaw Boot"
 
 #: src/pages/installationtype.rs:83
 msgid "Custom"
-msgstr ""
+msgstr "Custowm"
 
 #: src/pages/welcome.rs:45
 msgid "Welcome to %s"
