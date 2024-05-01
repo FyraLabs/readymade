@@ -6,6 +6,7 @@ mod mksys;
 mod pages;
 mod setup;
 mod util;
+mod install;
 
 use color_eyre::Result;
 use gtk::gio::ApplicationFlags;
@@ -178,6 +179,11 @@ fn main() -> Result<()> {
         .with_ansi(true)
         .pretty()
         .init();
+
+    // we probably want to escalate the process to root on release builds
+
+    #[cfg(not(debug_assertions))]
+    karen::builder().wrapper("pkexec").escalate_if_needed()?;
 
     tracing::info!(
         "Readymade Installer {version}",

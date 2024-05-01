@@ -1,0 +1,77 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the Readymade package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+msgid ""
+msgstr ""
+"Project-Id-Version: Readymade 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-04-27 17:21+0000\n"
+"PO-Revision-Date: 2024-04-28 14:05+0000\n"
+"Last-Translator: Oliver Anderson <oliver.anderson4435@gmail.com>\n"
+"Language-Team: English <https://weblate.fyralabs.com/projects/tauOS/"
+"readymade/en_owo/>\n"
+"Language: en_owo\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 5.4.2\n"
+
+#: src/pages/confirmation.rs:30
+msgid "Confirmation"
+msgstr "Confiwmation"
+
+#: src/pages/confirmation.rs:97 src/pages/destination.rs:108 src/pages/installationtype.rs:95
+msgid "Previous"
+msgstr "Pwevious"
+
+#: src/pages/confirmation.rs:106 src/pages/welcome.rs:68
+msgid "Install"
+msgstr "Instaww"
+
+#: src/pages/destination.rs:84
+msgid "Destination"
+msgstr "Destinyation"
+
+#: src/pages/destination.rs:117
+msgid "Next"
+msgstr "Nyext"
+
+#: src/pages/installation.rs:28
+msgid "Installation"
+msgstr "Instawwation"
+
+#: src/pages/installation.rs:44
+msgid "Installing base system..."
+msgstr "Instawwing base systyem..."
+
+#: src/pages/installationtype.rs:30
+msgid "Installation Type"
+msgstr "Instawwation Type"
+
+#: src/pages/installationtype.rs:73
+msgid "Entire Disk"
+msgstr "Entiwe Disk"
+
+#: src/pages/installationtype.rs:78
+msgid "Dual Boot"
+msgstr "Duaw Boot"
+
+#: src/pages/installationtype.rs:83
+msgid "Custom"
+msgstr "Custowm"
+
+#: src/pages/welcome.rs:45
+msgid "Welcome to %s"
+msgstr "Hewwo! Welcome to %s! >w<"
+
+#: src/pages/welcome.rs:50
+msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
+msgstr ""
+"Eithew test %s fwom this instawwer or stawt the instawwation now. You can "
+"awways weturn to this scween by sewecting \"Instawwer\" in the menu."
+
+#: src/pages/welcome.rs:62
+msgid "Try"
+msgstr "Twy"

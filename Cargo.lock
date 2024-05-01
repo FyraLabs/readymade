@@ -1275,6 +1275,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd"
 
 [[package]]
+name = "karen"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "218b00890261ef5b938def0bd536c419b76a72367ddd8bb1dd76d97c7a1e78ea"
+dependencies = [
+ "libc",
+ "log",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1825,6 +1835,7 @@ dependencies = [
  "gettext-rs",
  "gtk4",
  "itertools",
+ "karen",
  "libhelium",
  "os-detect",
  "relm4",
