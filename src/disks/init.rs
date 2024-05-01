@@ -22,6 +22,13 @@ macro_rules! instr {
     } }
 }
 
+
+pub struct DiskLayout {
+    pub ops: Vec<DiskOperation>,
+    pub 
+}
+
+
 /// Erase the current partition table, make 3 partitions:
 /// - /boot/efi   512 MiB
 /// - /boot         1 GiB
