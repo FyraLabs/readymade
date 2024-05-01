@@ -3,6 +3,8 @@ use color_eyre::{Result, Section};
 use std::path::Path;
 use tracing::{trace, trace_span};
 
+// NOTE: We might not need this for *now*, but it's a surprise tool that will help us later.
+
 // TODO: somehow track progress of unsquash
 /// Copy contents of a squashimg into a directory `destroot`.
 /// Normally param `squashfs` should be [crate::util::DEFAULT_SQUASH_LOCATION].
