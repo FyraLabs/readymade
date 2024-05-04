@@ -27,6 +27,7 @@ itertools = "0.12.1"
 thiserror = "1.0.59"
 gettext-rs = {version = "0.7.0", features = ["gettext-system"]}
 karen = "0.1.0"
+gnome-desktop = "0.4.2"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"
