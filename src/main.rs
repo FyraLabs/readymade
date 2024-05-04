@@ -1,12 +1,12 @@
 #[warn(clippy::nursery)]
 #[warn(clippy::pedantic)]
 mod albius;
+mod backend;
 mod disks;
-mod mksys;
+mod install;
 mod pages;
 mod setup;
 mod util;
-mod install;
 
 use color_eyre::Result;
 use gtk::gio::ApplicationFlags;
