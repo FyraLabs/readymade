@@ -7,66 +7,73 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-04-27 17:21+0000\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2024-04-29 14:31+0000\n"
+"Last-Translator: Rico <rvzelst7@gmail.com>\n"
+"Language-Team: Dutch <https://weblate.fyralabs.com/projects/tauOS/readymade/"
+"nl/>\n"
 "Language: nl\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 5.5\n"
 
 #: src/pages/confirmation.rs:30
 msgid "Confirmation"
-msgstr ""
+msgstr "Bevestiging"
 
 #: src/pages/confirmation.rs:97 src/pages/destination.rs:108 src/pages/installationtype.rs:95
 msgid "Previous"
-msgstr ""
+msgstr "Vorige"
 
 #: src/pages/confirmation.rs:106 src/pages/welcome.rs:68
 msgid "Install"
-msgstr ""
+msgstr "Installeer"
 
 #: src/pages/destination.rs:84
 msgid "Destination"
-msgstr ""
+msgstr "Locatie"
 
 #: src/pages/destination.rs:117
 msgid "Next"
-msgstr ""
+msgstr "Volgende"
 
 #: src/pages/installation.rs:28
 msgid "Installation"
-msgstr ""
+msgstr "Installatie"
 
 #: src/pages/installation.rs:44
 msgid "Installing base system..."
-msgstr ""
+msgstr "Basissysteem aan het installeren..."
 
 #: src/pages/installationtype.rs:30
 msgid "Installation Type"
-msgstr ""
+msgstr "Installatie Type"
 
 #: src/pages/installationtype.rs:73
 msgid "Entire Disk"
-msgstr ""
+msgstr "Volledige Schijf"
 
 #: src/pages/installationtype.rs:78
+#, fuzzy
 msgid "Dual Boot"
-msgstr ""
+msgstr "Dubbel boot"
 
 #: src/pages/installationtype.rs:83
 msgid "Custom"
-msgstr ""
+msgstr "Aangepast"
 
 #: src/pages/welcome.rs:45
 msgid "Welcome to %s"
-msgstr ""
+msgstr "Welkom bij"
 
 #: src/pages/welcome.rs:50
 msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
+"Test %s vanuit dit programma of start de installatie nu. Je kunt altijd nog "
+"terug naar dit scherm door \"Installatieprogramma\" te openen vanuit het "
+"menu."
 
 #: src/pages/welcome.rs:62
 msgid "Try"
-msgstr ""
+msgstr "Probeer"
