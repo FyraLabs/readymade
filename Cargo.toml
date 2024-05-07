@@ -28,6 +28,7 @@ thiserror = "1.0.59"
 gettext-rs = {version = "0.7.0", features = ["gettext-system"]}
 karen = "0.1.0"
 gnome-desktop = "0.4.2"
+chrono-tz = "0.9.0"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"

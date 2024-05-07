@@ -62,11 +62,17 @@ pub fn list_langs() -> HashMap<String, String> {
     _list(get_lang_from_locale)
 }
 
+pub fn list_timezones() -> Vec<&'static str> {
+    chrono_tz::TZ_VARIANTS.iter().map(|tz| tz.name()).collect()
+}
+
 #[test]
 fn test_list_locales() {
     let locales = list_locales();
     println!("{:?}", locales);
     assert!(!locales.is_empty());
+    assert_eq!(list_regions().len(), locales.len());
+    assert_eq!(list_langs().len(), locales.len());
 }
 
 #[test]
