@@ -75,18 +75,21 @@ impl SimpleComponent for RegionPage {
             add = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
-                #[local_ref]
-                btnbox -> gtk::FlowBox {
-                    set_selection_mode: gtk::SelectionMode::Single,
-                    set_orientation: gtk::Orientation::Vertical,
-                    set_vexpand: true,
-                    set_hexpand: true,
-                    set_valign: gtk::Align::Center,
-                    set_halign: gtk::Align::Center,
-                    set_min_children_per_line: 7,
-                    set_column_spacing: 4,
-                    set_row_spacing: 4,
-                    connect_selected_children_changed => RegionPageMsg::SelectionChanged,
+                gtk::ScrolledWindow {
+                    #[local_ref]
+                    btnbox -> gtk::FlowBox {
+                        set_selection_mode: gtk::SelectionMode::Single,
+                        set_orientation: gtk::Orientation::Horizontal,
+                        set_vexpand: true,
+                        set_hexpand: true,
+                        set_valign: gtk::Align::Center,
+                        set_halign: gtk::Align::Center,
+                        set_min_children_per_line: 7,
+                        set_max_children_per_line: 7,
+                        set_column_spacing: 4,
+                        set_row_spacing: 4,
+                        connect_selected_children_changed => RegionPageMsg::SelectionChanged,
+                    }
                 },
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
@@ -104,7 +107,7 @@ impl SimpleComponent for RegionPage {
                     libhelium::PillButton {
                         set_label: &gettext("Next"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
-                        connect_clicked => RegionPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Language)), // FIXME
+                        connect_clicked => RegionPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Language)),
                         #[watch]
                         set_sensitive: crate::INSTALLATION_STATE.read().timezone.is_some()
                     }

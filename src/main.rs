@@ -132,7 +132,7 @@ impl SimpleComponent for AppModel {
         settings.set_gtk_icon_theme_name(Some("Hydrogen"));
 
         let model = AppModel {
-            page: Page::Welcome,
+            page: Page::Region, // first screen
             region_page: RegionPage::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {
