@@ -7,66 +7,71 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-04-27 17:21+0000\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2024-04-29 14:31+0000\n"
+"Last-Translator: madomado <madonuko@outlook.com>\n"
+"Language-Team: Japanese <https://weblate.fyralabs.com/projects/tauOS/"
+"readymade/ja/>\n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 5.5\n"
 
 #: src/pages/confirmation.rs:30
 msgid "Confirmation"
-msgstr ""
+msgstr "確認"
 
 #: src/pages/confirmation.rs:97 src/pages/destination.rs:108 src/pages/installationtype.rs:95
 msgid "Previous"
-msgstr ""
+msgstr "前へ"
 
 #: src/pages/confirmation.rs:106 src/pages/welcome.rs:68
 msgid "Install"
-msgstr ""
+msgstr "インストールする"
 
 #: src/pages/destination.rs:84
 msgid "Destination"
-msgstr ""
+msgstr "インストール目的地"
 
 #: src/pages/destination.rs:117
 msgid "Next"
-msgstr ""
+msgstr "次へ"
 
 #: src/pages/installation.rs:28
 msgid "Installation"
-msgstr ""
+msgstr "インストール"
 
 #: src/pages/installation.rs:44
 msgid "Installing base system..."
-msgstr ""
+msgstr "ベースシステム書き込め中…"
 
 #: src/pages/installationtype.rs:30
 msgid "Installation Type"
-msgstr ""
+msgstr "インストールタイプ"
 
 #: src/pages/installationtype.rs:73
 msgid "Entire Disk"
-msgstr ""
+msgstr "ディスク"
 
 #: src/pages/installationtype.rs:78
 msgid "Dual Boot"
-msgstr ""
+msgstr "デュアルブート"
 
 #: src/pages/installationtype.rs:83
 msgid "Custom"
-msgstr ""
+msgstr "カスタム"
 
 #: src/pages/welcome.rs:45
 msgid "Welcome to %s"
-msgstr ""
+msgstr "%s へようこそ"
 
 #: src/pages/welcome.rs:50
 msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
+"%s はここからインストールできます。システムを使ってみたら後からインストールす"
+"る場合は、メニューから再度このインストーラーを起動してください。"
 
 #: src/pages/welcome.rs:62
 msgid "Try"
-msgstr ""
+msgstr "システムを使ってみる"
