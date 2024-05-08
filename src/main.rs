@@ -13,17 +13,13 @@ use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
 use gtk::prelude::GtkWindowExt;
 use libhelium::prelude::*;
-use pages::confirmation::ConfirmationPage;
 use pages::destination::{DestinationPageOutput, DiskInit};
-use pages::installation::{InstallationPage, InstallationPageMsg};
-use pages::installationtype::{InstallationTypePage, InstallationTypePageOutput};
-use pages::language::LanguagePage;
-use pages::region::RegionPage;
+use pages::installation::InstallationPageMsg;
+use pages::installationtype::InstallationTypePageOutput;
 use pages::welcome::WelcomePageOutput;
-use pages::{destination::DestinationPage, welcome::WelcomePage};
 use relm4::{
-    Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmApp,
-    SharedState, SimpleComponent,
+    Component, ComponentController, ComponentParts, ComponentSender, RelmApp, SharedState,
+    SimpleComponent,
 };
 
 use crate::pages::confirmation::ConfirmationPageOutput;
@@ -31,6 +27,7 @@ use crate::pages::installation::InstallationPageOutput;
 use crate::pages::language::LanguagePageOutput;
 use crate::pages::region::RegionPageOutput;
 
+// TODO: move this to somewhere else in backend
 #[derive(Debug)]
 enum InstallationType {
     WholeDisk,
@@ -59,8 +56,46 @@ static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
 
 const APPID: &str = "com.fyralabs.Readymade";
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Page {
+macro_rules! generate_pages {
+    ($Page:ident $AppModel:ident: $($page:ident),+$(,)?) => {paste::paste!{
+        use pages::{$([<$page:lower>]::[<$page:camel Page>]),+};
+
+
+        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+        pub enum $Page {
+            $([< $page:camel >]),+
+        }
+
+        struct $AppModel {
+            page: $Page,
+            $(
+                [<$page:snake _page>]: relm4::Controller<[<$page:camel Page>]>,
+            )+
+        }
+
+        // FIXME: this doesn't work. See the match statement in `impl SimpleComponent  for AppModel`.
+        //
+        // macro_rules! model_page_mapping {
+        //     ($model:ident) => {{
+        //         match $model.page {$(
+        //             $Page::[<$page:camel>] => *$model.[<$page:snake _page>].widget(),
+        //         )+}
+        //     }};
+        // }
+    }};
+}
+
+macro_rules! make_page_init {
+    ($Page:ident, $sender:ident, $AppMsg:ident) => {{
+        $Page::builder()
+            .launch(())
+            .forward($sender.input_sender(), |msg| match msg {
+                paste::paste! {[<$Page Output>]::Navigate(action)} => $AppMsg::Navigate(action),
+            })
+    }};
+}
+
+generate_pages!(Page AppModel:
     Region,
     Language,
     Welcome,
@@ -68,24 +103,12 @@ pub enum Page {
     InstallationType,
     Confirmation,
     Installation,
-}
+);
 
 #[derive(Debug)]
 pub enum NavigationAction {
     GoTo(Page),
     Quit,
-}
-
-struct AppModel {
-    page: Page,
-
-    region_page: Controller<RegionPage>,
-    language_page: Controller<LanguagePage>,
-    welcome_page: Controller<WelcomePage>,
-    destination_page: Controller<DestinationPage>,
-    installation_type_page: Controller<InstallationTypePage>,
-    confirmation_page: Controller<ConfirmationPage>,
-    installation_page: Controller<InstallationPage>,
 }
 
 #[derive(Debug)]
@@ -133,34 +156,11 @@ impl SimpleComponent for AppModel {
 
         let model = AppModel {
             page: Page::Region, // first screen
-            region_page: RegionPage::builder()
-                .launch(())
-                .forward(sender.input_sender(), |msg| match msg {
-                    RegionPageOutput::Navigate(action) => AppMsg::Navigate(action),
-                }),
-            language_page: LanguagePage::builder().launch(()).forward(
-                sender.input_sender(),
-                |msg| match msg {
-                    LanguagePageOutput::Navigate(action) => AppMsg::Navigate(action),
-                },
-            ),
-            welcome_page: WelcomePage::builder()
-                .launch(())
-                .forward(sender.input_sender(), |msg| match msg {
-                    WelcomePageOutput::Navigate(action) => AppMsg::Navigate(action),
-                }),
-            destination_page: DestinationPage::builder().launch(()).forward(
-                sender.input_sender(),
-                |msg| match msg {
-                    DestinationPageOutput::Navigate(action) => AppMsg::Navigate(action),
-                },
-            ),
-            installation_type_page: InstallationTypePage::builder().launch(()).forward(
-                sender.input_sender(),
-                |msg| match msg {
-                    InstallationTypePageOutput::Navigate(action) => AppMsg::Navigate(action),
-                },
-            ),
+            region_page: make_page_init!(RegionPage, sender, AppMsg),
+            language_page: make_page_init!(LanguagePage, sender, AppMsg),
+            welcome_page: make_page_init!(WelcomePage, sender, AppMsg),
+            destination_page: make_page_init!(DestinationPage, sender, AppMsg),
+            installation_type_page: make_page_init!(InstallationTypePage, sender, AppMsg),
             confirmation_page: ConfirmationPage::builder().launch(()).forward(
                 sender.input_sender(),
                 |msg| match msg {
@@ -168,12 +168,7 @@ impl SimpleComponent for AppModel {
                     ConfirmationPageOutput::Navigate(action) => AppMsg::Navigate(action),
                 },
             ),
-            installation_page: InstallationPage::builder().launch(()).forward(
-                sender.input_sender(),
-                |msg| match msg {
-                    InstallationPageOutput::Navigate(action) => AppMsg::Navigate(action),
-                },
-            ),
+            installation_page: make_page_init!(InstallationPage, sender, AppMsg),
         };
 
         // Insert the macro code generation here
