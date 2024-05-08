@@ -17,6 +17,8 @@ use pages::confirmation::ConfirmationPage;
 use pages::destination::{DestinationPageOutput, DiskInit};
 use pages::installation::{InstallationPage, InstallationPageMsg};
 use pages::installationtype::{InstallationTypePage, InstallationTypePageOutput};
+use pages::language::LanguagePage;
+use pages::region::RegionPage;
 use pages::welcome::WelcomePageOutput;
 use pages::{destination::DestinationPage, welcome::WelcomePage};
 use relm4::{
@@ -26,6 +28,8 @@ use relm4::{
 
 use crate::pages::confirmation::ConfirmationPageOutput;
 use crate::pages::installation::InstallationPageOutput;
+use crate::pages::language::LanguagePageOutput;
+use crate::pages::region::RegionPageOutput;
 
 #[derive(Debug)]
 enum InstallationType {
@@ -36,6 +40,8 @@ enum InstallationType {
 
 #[derive(Debug, Default)]
 struct InstallationState {
+    pub timezone: Option<&'static str>,
+    pub langlocale: Option<String>,
     pub destination_disk: Option<DiskInit>,
     pub installation_type: Option<InstallationType>,
 }
@@ -55,6 +61,8 @@ const APPID: &str = "com.fyralabs.Readymade";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Page {
+    Region,
+    Language,
     Welcome,
     Destination,
     InstallationType,
@@ -71,6 +79,8 @@ pub enum NavigationAction {
 struct AppModel {
     page: Page,
 
+    region_page: Controller<RegionPage>,
+    language_page: Controller<LanguagePage>,
     welcome_page: Controller<WelcomePage>,
     destination_page: Controller<DestinationPage>,
     installation_type_page: Controller<InstallationTypePage>,
@@ -100,6 +110,8 @@ impl SimpleComponent for AppModel {
             #[wrap(Some)]
             #[transition = "SlideLeftRight"]
             set_child = match model.page {
+                Page::Region => *model.region_page.widget(),
+                Page::Language => *model.language_page.widget(),
                 Page::Welcome => *model.welcome_page.widget(),
                 Page::Destination => *model.destination_page.widget(),
                 Page::InstallationType => *model.installation_type_page.widget(),
@@ -121,6 +133,17 @@ impl SimpleComponent for AppModel {
 
         let model = AppModel {
             page: Page::Welcome,
+            region_page: RegionPage::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    RegionPageOutput::Navigate(action) => AppMsg::Navigate(action),
+                }),
+            language_page: LanguagePage::builder().launch(()).forward(
+                sender.input_sender(),
+                |msg| match msg {
+                    LanguagePageOutput::Navigate(action) => AppMsg::Navigate(action),
+                },
+            ),
             welcome_page: WelcomePage::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| match msg {

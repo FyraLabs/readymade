@@ -6,21 +6,23 @@ use relm4::{ComponentParts, RelmWidgetExt, SimpleComponent};
 use crate::NavigationAction;
 
 #[derive(Debug)]
-struct RegionButton {
-    timezone_name: &'static str,
+struct LanguageButton {
+    locale: String,
+    name: String,
 }
 
-impl From<&'static str> for RegionButton {
-    fn from(value: &'static str) -> Self {
+impl From<(String, String)> for LanguageButton {
+    fn from(value: (String, String)) -> Self {
         Self {
-            timezone_name: value,
+            locale: value.0,
+            name: value.1,
         }
     }
 }
 
 #[relm4::factory]
-impl relm4::factory::FactoryComponent for RegionButton {
-    type Init = &'static str;
+impl relm4::factory::FactoryComponent for LanguageButton {
+    type Init = (String, String);
     type Input = ();
     type Output = ();
     type CommandOutput = ();
@@ -29,7 +31,7 @@ impl relm4::factory::FactoryComponent for RegionButton {
     view! {
         #[root]
         gtk::Button {
-            set_label: self.timezone_name,
+            set_label: &self.name,
         }
     }
 
@@ -38,19 +40,17 @@ impl relm4::factory::FactoryComponent for RegionButton {
         _index: &relm4::factory::DynamicIndex,
         _sender: relm4::FactorySender<Self>,
     ) -> Self {
-        Self {
-            timezone_name: value,
-        }
+        Self::from(value)
     }
 }
 
 // Model
-pub struct RegionPage {
-    btnfactory: relm4::factory::FactoryVecDeque<RegionButton>,
+pub struct LanguagePage {
+    btnfactory: relm4::factory::FactoryVecDeque<LanguageButton>,
 }
 
 #[derive(Debug)]
-pub enum RegionPageMsg {
+pub enum LanguagePageMsg {
     #[doc(hidden)]
     Navigate(NavigationAction),
     // Selected(relm4::factory::DynamicIndex),
@@ -58,19 +58,19 @@ pub enum RegionPageMsg {
 }
 
 #[derive(Debug)]
-pub enum RegionPageOutput {
+pub enum LanguagePageOutput {
     Navigate(NavigationAction),
 }
 
 #[relm4::component(pub)]
-impl SimpleComponent for RegionPage {
-    type Input = RegionPageMsg;
-    type Output = RegionPageOutput;
+impl SimpleComponent for LanguagePage {
+    type Input = LanguagePageMsg;
+    type Output = LanguagePageOutput;
     type Init = ();
 
     view! {
         libhelium::ViewMono {
-            set_title: &gettext("Region"),
+            set_title: &gettext("Language"),
             set_vexpand: true,
             add = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -86,16 +86,16 @@ impl SimpleComponent for RegionPage {
                     set_min_children_per_line: 7,
                     set_column_spacing: 4,
                     set_row_spacing: 4,
-                    connect_selected_children_changed => RegionPageMsg::SelectionChanged,
+                    connect_selected_children_changed => LanguagePageMsg::SelectionChanged,
                 },
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_spacing: 4,
 
-                    // libhelium::TextButton {
-                    //     set_label: &gettext("Previous"),
-                    //     connect_clicked => RegionPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome)),
-                    // },
+                    libhelium::TextButton {
+                        set_label: &gettext("Previous"),
+                        connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Region)),
+                    },
 
                     gtk::Box {
                         set_hexpand: true,
@@ -104,7 +104,7 @@ impl SimpleComponent for RegionPage {
                     libhelium::PillButton {
                         set_label: &gettext("Next"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
-                        connect_clicked => RegionPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Language)), // FIXME
+                        connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome)),
                         #[watch]
                         set_sensitive: crate::INSTALLATION_STATE.read().timezone.is_some()
                     }
@@ -123,12 +123,12 @@ impl SimpleComponent for RegionPage {
             .forward(sender.input_sender(), |_output| todo!());
 
         let mut btns = btnfactory.guard();
-        crate::backend::l10n::list_timezones()
+        crate::backend::l10n::list_langs()
             .into_iter()
-            .for_each(|tz| _ = btns.push_front(tz.into()));
+            .for_each(|x| _ = btns.push_front(x));
         drop(btns);
 
-        let model = RegionPage { btnfactory };
+        let model = LanguagePage { btnfactory };
         let btnbox = model.btnfactory.widget();
         let widgets = view_output!();
 
@@ -137,14 +137,14 @@ impl SimpleComponent for RegionPage {
 
     fn update(&mut self, message: Self::Input, sender: relm4::prelude::ComponentSender<Self>) {
         match message {
-            RegionPageMsg::Navigate(action) => {
-                sender.output(RegionPageOutput::Navigate(action)).unwrap()
+            LanguagePageMsg::Navigate(action) => {
+                sender.output(LanguagePageOutput::Navigate(action)).unwrap()
             }
-            RegionPageMsg::SelectionChanged => {
-                let regions = self.btnfactory.widget().selected_children();
-                let i = regions.first().unwrap().index().try_into().unwrap();
-                let region = self.btnfactory.get(i).unwrap();
-                crate::INSTALLATION_STATE.write().timezone = Some(region.timezone_name);
+            LanguagePageMsg::SelectionChanged => {
+                let languages = self.btnfactory.widget().selected_children();
+                let i = languages.first().unwrap().index().try_into().unwrap();
+                let language = self.btnfactory.get(i).unwrap();
+                crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.to_string());
             }
         }
     }
