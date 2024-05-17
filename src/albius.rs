@@ -55,6 +55,15 @@ pub struct Mountpoint {
     pub mountpoint: PathBuf,
 }
 
+impl From<(PathBuf, &str)> for Mountpoint {
+    fn from(value: (PathBuf, &str)) -> Self {
+        Self {
+            partition: PathBuf::from(value.0),
+            mountpoint: PathBuf::from(value.1),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Method {

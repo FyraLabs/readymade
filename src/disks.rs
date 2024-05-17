@@ -5,6 +5,7 @@
 pub mod init;
 mod osprobe;
 
+use color_eyre::eyre::OptionExt;
 use osprobe::OSProbe;
 use std::path::PathBuf;
 
@@ -61,6 +62,29 @@ fn _to_diskinit(
 
         DiskInit { disk_name, os_name }
     }
+}
+
+pub fn partition(dev: &std::path::Path, n: u8) -> PathBuf {
+    let s = dev.display();
+    if dev.starts_with("/dev/sd") {
+        PathBuf::from(format!("{s}{n}"))
+    } else if dev.starts_with("/dev/nvme") {
+        PathBuf::from(format!("{s}p{n}"))
+    } else {
+        unimplemented!() // TODO: parse other kinds of devices?
+    }
+}
+
+pub fn last_part(diskpath: &std::path::Path) -> color_eyre::Result<String> {
+    let sdiskpath = diskpath.display().to_string();
+    let lsblk = cmd_lib::run_fun!(lsblk -o path)?;
+    // assume all dev paths start with /
+
+    (lsblk.split('\n').skip(1))
+        .filter(|l| l.starts_with(&sdiskpath))
+        .last() // last one is the one with max partn
+        .map(|s| s.to_string())
+        .ok_or_eyre(color_eyre::Report::msg("lsblk has no output"))
 }
 
 #[test]

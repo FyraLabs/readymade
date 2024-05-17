@@ -2,6 +2,8 @@
 //! This module contains the code to generate a `albius::Recipe` object that can be fed into the `albius` binary.
 //! So we can actually install something with Readymade.
 
+use crate::albius::PostInstallationOperation;
+use crate::disks::partition;
 use crate::{
     albius::{
         DiskOperation, DiskOperationType, Installation, Method, Mountpoint, PostInstallation,
@@ -14,11 +16,38 @@ use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
-use crate::albius::PostInstallationOperation;
 pub enum InstallationType {
     WholeDisk,
     DualBoot(u64),
     ChromebookInstall,
+}
+
+fn determine_mountpoints(inst_type: InstallationType, disk: &Path) -> Result<Vec<Mountpoint>> {
+    Ok(match inst_type {
+        InstallationType::WholeDisk => vec![
+            (partition(disk, 1), "/boot/efi").into(),
+            (partition(disk, 2), "/boot/").into(),
+            (partition(disk, 3), "/").into(),
+        ],
+        InstallationType::DualBoot(_) => {
+            let sdisk = format!("{}", disk.display());
+            let last_partition = crate::disks::last_part(disk)?;
+            let partn: u8 = last_partition
+                .strip_suffix(|c: char| c.is_numeric())
+                .expect("can't parse part number of partition")
+                .parse()?;
+            vec![
+                (partition(disk, 1), "/boot/efi").into(), // FIXME: assumed first part is efi
+                (partition(disk, partn + 1), "/boot").into(),
+                (partition(disk, partn + 2), "/").into(),
+            ]
+        }
+        InstallationType::ChromebookInstall => vec![
+            // first disk is submarine
+            (partition(disk, 2), "/boot/").into(),
+            (partition(disk, 3), "/").into(),
+        ],
+    })
 }
 
 pub fn generate_recipe(inst_type: InstallationType, disk: &Path) -> Result<Recipe> {
@@ -34,9 +63,6 @@ pub fn generate_recipe(inst_type: InstallationType, disk: &Path) -> Result<Recip
         initramfs_post: vec![],
         initramfs_pre: vec![],
     };
-
-    // todo: SOMEHOW FIGURE OUT THE BOOT DISK??
-
 
     let grub_install = {
         if util::check_uefi() {
@@ -63,14 +89,12 @@ pub fn generate_recipe(inst_type: InstallationType, disk: &Path) -> Result<Recip
         }
     };
 
+    // TODO: post_installation: hdl submarine?
 
-    let recipe = Recipe {
+    Ok(Recipe {
         setup: layout,
-        mountpoints: vec![], //TODO
+        mountpoints: determine_mountpoints(inst_type, disk)?, //TODO
         installation,
-        post_installation: vec![],
-    };
-
-    // im so sorry
-    todo!()
+        post_installation: vec![grub_install],
+    })
 }
