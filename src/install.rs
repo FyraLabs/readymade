@@ -50,7 +50,59 @@ fn determine_mountpoints(inst_type: InstallationType, disk: &Path) -> Result<Vec
     })
 }
 
+fn grub_recipe(post_installation: &mut Vec<PostInstallation>, disk_str: &str) {
+    let uefi = util::check_uefi();
+    let mut params = vec![
+        Value::String("/boot/efi".into()),
+        Value::String(disk_str.to_string()),
+        Value::String(if uefi { "efi" } else { "bios" }.into()),
+    ];
+    if uefi {
+        todo!(); // TODO: figure out the boot disk
+                 // append as str to params
+    }
+
+    post_installation.push(PostInstallation {
+        chroot: true,
+        operation: PostInstallationOperation::GrubInstall,
+        params,
+    })
+}
+
+fn submarine_recipe(post_installation: &mut Vec<PostInstallation>, disk: &Path, disk_str: String) {
+    post_installation.push(PostInstallation {
+        chroot: true, // for the submarine image
+        operation: PostInstallationOperation::Shell,
+        params: vec![
+            Value::String("dd".into()),
+            Value::String("if=/usr/share/submarine/submarine-*.kpart".into()),
+            Value::String(format!("of={}", partition(disk, 1).display())),
+        ],
+    });
+    post_installation.push(PostInstallation {
+        chroot: false,
+        operation: PostInstallationOperation::Shell,
+        params: vec![
+            Value::String("cgpt".into()),
+            Value::String("add".into()),
+            Value::String("-i".into()),
+            Value::String("1".into()),
+            Value::String("-t".into()),
+            Value::String("kernel".into()),
+            Value::String("-P".into()),
+            Value::String("15".into()),
+            Value::String("-T".into()),
+            Value::String("1".into()),
+            Value::String("-S".into()),
+            Value::String("1".into()),
+            Value::String(disk_str.to_string()),
+        ],
+    });
+}
+
 pub fn generate_recipe(inst_type: InstallationType, disk: &Path) -> Result<Recipe> {
+    let disk_str = disk.display().to_string();
+
     let layout = match inst_type {
         InstallationType::WholeDisk => clean_install(disk)?,
         InstallationType::DualBoot(resize) => dual_boot(disk, resize)?,
@@ -64,37 +116,17 @@ pub fn generate_recipe(inst_type: InstallationType, disk: &Path) -> Result<Recip
         initramfs_pre: vec![],
     };
 
-    let grub_install = {
-        if util::check_uefi() {
-            PostInstallation {
-                chroot: true,
-                operation: PostInstallationOperation::GrubInstall,
-                params: vec![
-                    Value::String("/boot/efi".into()),
-                    Value::String(disk.to_string_lossy().into_owned()),
-                    Value::String("efi".into()),
-                    // Value::String(), // TODO: figure out the boot disk
-                ],
-            }
-        } else {
-            PostInstallation {
-                chroot: true,
-                operation: PostInstallationOperation::GrubInstall,
-                params: vec![
-                    Value::String("/boot/efi".into()),
-                    Value::String(disk.to_string_lossy().into_owned()),
-                    Value::String("bios".into()),
-                ],
-            }
-        }
-    };
-
-    // TODO: post_installation: hdl submarine?
+    let mut post_installation = vec![];
+    grub_recipe(&mut post_installation, &disk_str);
+    // submarine
+    if let InstallationType::ChromebookInstall = inst_type {
+        submarine_recipe(&mut post_installation, disk, disk_str);
+    }
 
     Ok(Recipe {
         setup: layout,
-        mountpoints: determine_mountpoints(inst_type, disk)?, //TODO
+        mountpoints: determine_mountpoints(inst_type, disk)?,
         installation,
-        post_installation: vec![grub_install],
+        post_installation,
     })
 }
