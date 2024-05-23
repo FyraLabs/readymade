@@ -185,7 +185,13 @@ impl SimpleComponent for AppModel {
             AppMsg::Navigate(NavigationAction::GoTo(page)) => {
                 self.page = page;
             }
-            AppMsg::Navigate(NavigationAction::Quit) => relm4::main_application().quit(),
+            // FIXME: The following code is commented out because it'd trigger relm4 to drop the
+            // RegionPage and LanguagePage, and somehow during quitting, it triggers the signal
+            // `:selected_children_changed` which causes the program to crash upon accessing the
+            // dropped components.
+            //
+            // AppMsg::Navigate(NavigationAction::Quit) => relm4::main_application().quit(),
+            AppMsg::Navigate(NavigationAction::Quit) => std::process::exit(0),
         }
     }
 }
