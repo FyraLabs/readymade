@@ -13,19 +13,12 @@ use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
 use gtk::prelude::GtkWindowExt;
 use libhelium::prelude::*;
-use pages::destination::{DestinationPageOutput, DiskInit};
+use pages::destination::DiskInit;
 use pages::installation::InstallationPageMsg;
-use pages::installationtype::InstallationTypePageOutput;
-use pages::welcome::WelcomePageOutput;
 use relm4::{
     Component, ComponentController, ComponentParts, ComponentSender, RelmApp, SharedState,
     SimpleComponent,
 };
-
-use crate::pages::confirmation::ConfirmationPageOutput;
-use crate::pages::installation::InstallationPageOutput;
-use crate::pages::language::LanguagePageOutput;
-use crate::pages::region::RegionPageOutput;
 
 // TODO: move this to somewhere else in backend
 #[derive(Debug)]
@@ -48,21 +41,17 @@ static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
 
 // todo: lazy_static const variables for the setup params
 
-// todo: GtkStack for paging
-
-// todo: wizard
-
-// the code is non-existent, but the boilerplate is there
-
 const APPID: &str = "com.fyralabs.Readymade";
 
 macro_rules! generate_pages {
-    ($Page:ident $AppModel:ident: $($page:ident),+$(,)?) => {paste::paste!{
+    ($Page:ident $AppModel:ident $AppMsg:ident: $($page:ident),+$(,)?) => {paste::paste!{
         use pages::{$([<$page:lower>]::[<$page:camel Page>]),+};
+        use pages::{$([<$page:lower>]::[<$page:camel PageOutput>]),+};
 
 
-        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+        #[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
         pub enum $Page {
+            #[default]
             $([< $page:camel >]),+
         }
 
@@ -73,29 +62,24 @@ macro_rules! generate_pages {
             )+
         }
 
-        // FIXME: this doesn't work. See the match statement in `impl SimpleComponent  for AppModel`.
-        //
-        // macro_rules! model_page_mapping {
-        //     ($model:ident) => {{
-        //         match $model.page {$(
-        //             $Page::[<$page:camel>] => *$model.[<$page:snake _page>].widget(),
-        //         )+}
-        //     }};
-        // }
+        impl $AppModel {
+            fn _default(sender: ComponentSender<Self>) -> Self {Self {
+                page: $Page::default(),
+                $(
+                    [<$page:snake _page>]: [<$page:camel Page>]::builder()
+                        .launch(())
+                        .forward(sender.input_sender(), |msg| match msg {
+                            [<$page:camel PageOutput>]::Navigate(action) => $AppMsg::Navigate(action),
+                            #[allow(unreachable_patterns)]
+                            _ => unimplemented!("{}PageOutput has unimplemented enum variants", stringify!($page))
+                        }),
+                )+
+            }}
+        }
     }};
 }
 
-macro_rules! make_page_init {
-    ($Page:ident, $sender:ident, $AppMsg:ident) => {{
-        $Page::builder()
-            .launch(())
-            .forward($sender.input_sender(), |msg| match msg {
-                paste::paste! {[<$Page Output>]::Navigate(action)} => $AppMsg::Navigate(action),
-            })
-    }};
-}
-
-generate_pages!(Page AppModel:
+generate_pages!(Page AppModel AppMsg:
     Region,
     Language,
     Welcome,
@@ -119,7 +103,7 @@ enum AppMsg {
 
 #[relm4::component]
 impl SimpleComponent for AppModel {
-    type Init = u8;
+    type Init = ();
 
     type Input = AppMsg;
     type Output = ();
@@ -146,7 +130,7 @@ impl SimpleComponent for AppModel {
 
     // Initialize the UI.
     fn init(
-        _counter: Self::Init,
+        _: Self::Init,
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
@@ -155,12 +139,6 @@ impl SimpleComponent for AppModel {
         settings.set_gtk_icon_theme_name(Some("Hydrogen"));
 
         let model = AppModel {
-            page: Page::Region, // first screen
-            region_page: make_page_init!(RegionPage, sender, AppMsg),
-            language_page: make_page_init!(LanguagePage, sender, AppMsg),
-            welcome_page: make_page_init!(WelcomePage, sender, AppMsg),
-            destination_page: make_page_init!(DestinationPage, sender, AppMsg),
-            installation_type_page: make_page_init!(InstallationTypePage, sender, AppMsg),
             confirmation_page: ConfirmationPage::builder().launch(()).forward(
                 sender.input_sender(),
                 |msg| match msg {
@@ -168,10 +146,9 @@ impl SimpleComponent for AppModel {
                     ConfirmationPageOutput::Navigate(action) => AppMsg::Navigate(action),
                 },
             ),
-            installation_page: make_page_init!(InstallationPage, sender, AppMsg),
+            ..Self::_default(sender)
         };
 
-        // Insert the macro code generation here
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
@@ -230,7 +207,7 @@ fn main() -> Result<()> {
         })
         .build();
 
-    let app = RelmApp::from_app(app);
-    app.run::<AppModel>(0);
+    tracing::debug!("Starting Readymade");
+    RelmApp::from_app(app).run::<AppModel>(());
     Ok(())
 }
