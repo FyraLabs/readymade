@@ -84,8 +84,8 @@ impl SimpleComponent for RegionPage {
                         set_hexpand: true,
                         set_valign: gtk::Align::Center,
                         set_halign: gtk::Align::Center,
-                        set_min_children_per_line: 7,
-                        set_max_children_per_line: 7,
+                        set_min_children_per_line: 1,
+                        set_max_children_per_line: 1,
                         set_column_spacing: 4,
                         set_row_spacing: 4,
                         connect_selected_children_changed => RegionPageMsg::SelectionChanged,
@@ -128,7 +128,7 @@ impl SimpleComponent for RegionPage {
         let mut btns = btnfactory.guard();
         crate::backend::l10n::list_timezones()
             .into_iter()
-            .for_each(|tz| _ = btns.push_front(tz.into()));
+            .for_each(|tz| _ = btns.push_back(tz.into()));
         drop(btns);
 
         let model = RegionPage { btnfactory };
