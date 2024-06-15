@@ -69,21 +69,26 @@ impl SimpleComponent for InstallationTypePage {
                         set_halign: gtk::Align::Center,
                         set_valign: gtk::Align::End,
                         set_homogeneous: true,
+                        // libhelium::PillButton {
+                        //     set_label: &gettext("Entire Disk"),
+                        //     inline_css: "padding-left: 48px; padding-right: 48px",
+                        //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
+                        // },
+                        // libhelium::PillButton {
+                        //     set_label: &gettext("Dual Boot"),
+                        //     inline_css: "padding-left: 48px; padding-right: 48px",
+                        //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot)
+                        // },
+                        // libhelium::PillButton {
+                        //     set_label: &gettext("Custom"),
+                        //     inline_css: "padding-left: 48px; padding-right: 48px",
+                        //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
+                        // },
                         libhelium::PillButton {
-                            set_label: &gettext("Entire Disk"),
+                            set_label: &gettext("Chromebook"),
                             inline_css: "padding-left: 48px; padding-right: 48px",
-                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
+                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::ChromebookInstall)
                         },
-                        libhelium::PillButton {
-                            set_label: &gettext("Dual Boot"),
-                            inline_css: "padding-left: 48px; padding-right: 48px",
-                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot)
-                        },
-                        libhelium::PillButton {
-                            set_label: &gettext("Custom"),
-                            inline_css: "padding-left: 48px; padding-right: 48px",
-                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
-                        }
                     }
                 },
 
@@ -129,8 +134,22 @@ impl SimpleComponent for InstallationTypePage {
                     ))
                     .unwrap()
             }
-            InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot) => {}
-            InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom) => {}
+            InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot(_)) => {
+                todo!()
+            }
+            InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom) => todo!(),
+            InstallationTypePageMsg::InstallationTypeSelected(
+                InstallationType::ChromebookInstall,
+            ) => {
+                let mut installation_state_guard = INSTALLATION_STATE.write();
+                installation_state_guard.installation_type =
+                    Some(InstallationType::ChromebookInstall);
+                sender
+                    .output(InstallationTypePageOutput::Navigate(
+                        NavigationAction::GoTo(Page::Confirmation),
+                    ))
+                    .unwrap()
+            }
             InstallationTypePageMsg::Navigate(action) => sender
                 .output(InstallationTypePageOutput::Navigate(action))
                 .unwrap(),
