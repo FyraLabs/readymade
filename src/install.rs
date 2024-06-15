@@ -5,21 +5,20 @@
 use crate::albius::PostInstallationOperation;
 use crate::disks::partition;
 use crate::{
-    albius::{
-        DiskOperation, DiskOperationType, Installation, Method, Mountpoint, PostInstallation,
-        Recipe,
-    },
+    albius::{Installation, Method, Mountpoint, PostInstallation, Recipe},
     disks::init::{chromebook_clean_install, clean_install, dual_boot},
     util,
 };
 use color_eyre::Result;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+
+#[derive(Debug)]
 pub enum InstallationType {
     WholeDisk,
     DualBoot(u64),
     ChromebookInstall,
+    Custom,
 }
 
 fn determine_mountpoints(inst_type: InstallationType, disk: &Path) -> Result<Vec<Mountpoint>> {
@@ -47,6 +46,7 @@ fn determine_mountpoints(inst_type: InstallationType, disk: &Path) -> Result<Vec
             (partition(disk, 2), "/boot/").into(),
             (partition(disk, 3), "/").into(),
         ],
+        InstallationType::Custom => todo!(),
     })
 }
 
@@ -107,6 +107,7 @@ pub fn generate_recipe(inst_type: InstallationType, disk: &Path) -> Result<Recip
         InstallationType::WholeDisk => clean_install(disk)?,
         InstallationType::DualBoot(resize) => dual_boot(disk, resize)?,
         InstallationType::ChromebookInstall => chromebook_clean_install(disk)?,
+        InstallationType::Custom => todo!(),
     };
 
     let installation = Installation {

@@ -9,9 +9,11 @@ mod setup;
 mod util;
 
 use color_eyre::Result;
+use gettextrs::getters::textdomain_codeset;
 use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
 use gtk::prelude::GtkWindowExt;
+use install::InstallationType;
 use libhelium::prelude::*;
 use pages::destination::DiskInit;
 use pages::installation::InstallationPageMsg;
@@ -19,14 +21,6 @@ use relm4::{
     Component, ComponentController, ComponentParts, ComponentSender, RelmApp, SharedState,
     SimpleComponent,
 };
-
-// TODO: move this to somewhere else in backend
-#[derive(Debug)]
-enum InstallationType {
-    WholeDisk,
-    DualBoot, //??
-    Custom,   // config???
-}
 
 #[derive(Debug, Default)]
 struct InstallationState {
@@ -184,7 +178,10 @@ fn main() -> Result<()> {
     // we probably want to escalate the process to root on release builds
 
     #[cfg(not(debug_assertions))]
-    karen::builder().wrapper("pkexec").escalate_if_needed()?;
+    karen::builder()
+        .wrapper("pkexec")
+        .escalate_if_needed()
+        .unwrap();
 
     tracing::info!(
         "Readymade Installer {version}",
