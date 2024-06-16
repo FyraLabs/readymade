@@ -22,7 +22,7 @@ impl From<&'static str> for RegionButton {
 impl relm4::factory::FactoryComponent for RegionButton {
     type Init = &'static str;
     type Input = ();
-    type Output = ();
+    type Output = relm4::factory::DynamicIndex;
     type CommandOutput = ();
     type ParentWidget = relm4::gtk::FlowBox;
 
@@ -30,6 +30,9 @@ impl relm4::factory::FactoryComponent for RegionButton {
         #[root]
         gtk::Button {
             set_label: self.timezone_name,
+            connect_clicked[sender, index] => move |_| {
+                sender.output(index.clone()).unwrap();
+            }
         }
     }
 
@@ -55,6 +58,8 @@ pub enum RegionPageMsg {
     Navigate(NavigationAction),
     // Selected(relm4::factory::DynamicIndex),
     SelectionChanged,
+    // Mouse clicked
+    Click(relm4::factory::DynamicIndex),
 }
 
 #[derive(Debug)]
@@ -123,7 +128,7 @@ impl SimpleComponent for RegionPage {
     ) -> relm4::prelude::ComponentParts<Self> {
         let mut btnfactory = relm4::factory::FactoryVecDeque::builder()
             .launch(gtk::FlowBox::default())
-            .forward(sender.input_sender(), |_output| todo!());
+            .forward(sender.input_sender(), |output| RegionPageMsg::Click(output));
 
         let mut btns = btnfactory.guard();
         crate::backend::l10n::list_timezones()
@@ -147,7 +152,17 @@ impl SimpleComponent for RegionPage {
                 let regions = self.btnfactory.widget().selected_children();
                 let i = regions.first().unwrap().index().try_into().unwrap();
                 let region = self.btnfactory.get(i).unwrap();
+                tracing::debug!(?region, "RegionPageMsg::SelectionChanged");
                 crate::INSTALLATION_STATE.write().timezone = Some(region.timezone_name);
+            }
+            RegionPageMsg::Click(index) => {
+                self.btnfactory.widget().select_child(
+                    &self
+                        .btnfactory
+                        .widget()
+                        .child_at_index(index.current_index() as i32)
+                        .unwrap(),
+                );
             }
         }
     }

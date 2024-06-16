@@ -24,7 +24,7 @@ impl From<(String, String)> for LanguageButton {
 impl relm4::factory::FactoryComponent for LanguageButton {
     type Init = (String, String);
     type Input = ();
-    type Output = ();
+    type Output = relm4::factory::DynamicIndex;
     type CommandOutput = ();
     type ParentWidget = relm4::gtk::FlowBox;
 
@@ -32,6 +32,9 @@ impl relm4::factory::FactoryComponent for LanguageButton {
         #[root]
         gtk::Button {
             set_label: &self.name,
+            connect_clicked[sender, index] => move |_| {
+                sender.output(index.clone()).unwrap();
+            }
         }
     }
 
@@ -55,6 +58,8 @@ pub enum LanguagePageMsg {
     Navigate(NavigationAction),
     // Selected(relm4::factory::DynamicIndex),
     SelectionChanged,
+    // Mouse clicked
+    Click(relm4::factory::DynamicIndex),
 }
 
 #[derive(Debug)]
@@ -123,7 +128,9 @@ impl SimpleComponent for LanguagePage {
     ) -> relm4::prelude::ComponentParts<Self> {
         let mut btnfactory = relm4::factory::FactoryVecDeque::builder()
             .launch(gtk::FlowBox::default())
-            .forward(sender.input_sender(), |_output| todo!());
+            .forward(sender.input_sender(), |output| {
+                LanguagePageMsg::Click(output)
+            });
 
         let mut btns = btnfactory.guard();
         crate::backend::l10n::list_langs()
@@ -149,6 +156,15 @@ impl SimpleComponent for LanguagePage {
                 let language = self.btnfactory.get(i).unwrap();
                 gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, &*language.locale);
                 crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.to_string());
+            }
+            LanguagePageMsg::Click(index) => {
+                self.btnfactory.widget().select_child(
+                    &self
+                        .btnfactory
+                        .widget()
+                        .child_at_index(index.current_index() as i32)
+                        .unwrap(),
+                );
             }
         }
     }
