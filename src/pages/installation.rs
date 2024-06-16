@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::{disks::init::clean_install, NavigationAction, INSTALLATION_STATE};
+use crate::{disks::init::clean_install, install, NavigationAction, INSTALLATION_STATE};
 use gettextrs::gettext;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
@@ -72,8 +72,23 @@ impl SimpleComponent for InstallationPage {
             InstallationPageMsg::StartInstallation => sender.command(|_out, shutdown| {
                 shutdown
                     .register(async move {
+                        let recipe = install::generate_recipe(
+                            // someone please explain to me why we have two different
+                            // InstallationTypes? - muhdsalm
+                            match INSTALLATION_STATE.read().installation_type {
+                                Some(crate::InstallationType::WholeDisk) => {
+                                    install::InstallationType::WholeDisk
+                                }
+                                Some(crate::InstallationType::DualBoot) => todo!(),
+                                Some(crate::InstallationType::Custom) => todo!(),
+                                None => panic!("No value in installation type when installing"),
+                            },
+                            Path::new("/dev/sda"),
+                        )
+                        .unwrap();
                         let owo = clean_install(Path::new("/dev/sda")).unwrap();
                         println!("{:?}", owo);
+                        println!("Recipe: {:?}", recipe)
                     })
                     .drop_on_shutdown()
             }),
