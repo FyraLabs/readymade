@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::{NavigationAction, INSTALLATION_STATE};
 use gettextrs::gettext;
 use gtk::prelude::*;
@@ -11,11 +13,13 @@ use relm4::{
 pub struct DiskInit {
     pub disk_name: String,
     pub os_name: String,
+    pub devpath: PathBuf,
 }
 
 struct Disk {
     disk_name: String,
     os_name: String,
+    devpath: PathBuf,
 }
 
 #[relm4::factory]
@@ -52,6 +56,7 @@ impl FactoryComponent for Disk {
         Self {
             disk_name: value.disk_name,
             os_name: value.os_name,
+            devpath: value.devpath,
         }
     }
 }
@@ -163,6 +168,7 @@ impl SimpleComponent for DestinationPage {
                     DiskInit {
                         disk_name: disk.disk_name.clone(),
                         os_name: disk.os_name.clone(),
+                        devpath: disk.devpath.clone(),
                     }
                 });
 

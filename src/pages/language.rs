@@ -154,7 +154,7 @@ impl SimpleComponent for LanguagePage {
                 let languages = self.btnfactory.widget().selected_children();
                 let i = languages.first().unwrap().index().try_into().unwrap();
                 let language = self.btnfactory.get(i).unwrap();
-                gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, &*language.locale);
+                gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, &*language.locale).unwrap();
                 crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.to_string());
             }
             LanguagePageMsg::Click(index) => {

@@ -1,11 +1,11 @@
-use std::path::Path;
-
-use crate::{disks::init::clean_install, NavigationAction, INSTALLATION_STATE};
+use crate::{install::run_albius, NavigationAction, INSTALLATION_STATE};
 use gettextrs::gettext;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
-pub struct InstallationPage {}
+pub struct InstallationPage {
+    progress: f64,
+}
 
 #[derive(Debug)]
 pub enum InstallationPageMsg {
@@ -44,10 +44,12 @@ impl SimpleComponent for InstallationPage {
                 },
 
                 gtk::Label {
-                  set_label: &*gettext("Installing base system...")
+                    set_label: &*gettext("Installing base system...")
                 },
 
-                libhelium::ProgressBar {
+                gtk::ProgressBar {
+                    #[watch]
+                    set_fraction: model.progress
                 }
             }
         }
@@ -58,7 +60,7 @@ impl SimpleComponent for InstallationPage {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = Self {};
+        let model = Self { progress: 0.0 };
 
         let widgets = view_output!();
 
@@ -68,12 +70,22 @@ impl SimpleComponent for InstallationPage {
     }
 
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
+        // handle channel logics here
         match message {
             InstallationPageMsg::StartInstallation => sender.command(|_out, shutdown| {
                 shutdown
                     .register(async move {
-                        let owo = clean_install(Path::new("/dev/sda")).unwrap();
-                        println!("{:?}", owo);
+                        let state = INSTALLATION_STATE.read();
+                        let recipe = crate::install::generate_recipe(
+                            state.installation_type.to_owned().unwrap(),
+                            &state.destination_disk.as_ref().unwrap().devpath,
+                        )?;
+
+                        tracing::debug!(?recipe);
+
+                        run_albius(&recipe)?;
+
+                        color_eyre::Result::<_>::Ok(())
                     })
                     .drop_on_shutdown()
             }),

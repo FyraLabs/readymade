@@ -9,12 +9,10 @@ mod setup;
 mod util;
 
 use color_eyre::Result;
-use gettextrs::getters::textdomain_codeset;
 use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
 use gtk::prelude::GtkWindowExt;
 use install::InstallationType;
-use libhelium::prelude::*;
 use pages::destination::DiskInit;
 use pages::installation::InstallationPageMsg;
 use relm4::{
@@ -177,11 +175,15 @@ fn main() -> Result<()> {
 
     // we probably want to escalate the process to root on release builds
 
-    #[cfg(not(debug_assertions))]
+    // #[cfg(not(debug_assertions))]
     karen::builder()
+        // .with_env("DISPLAY")
         .wrapper("pkexec")
-        .escalate_if_needed()
+        .with_env(&[""])
         .unwrap();
+
+    #[cfg(debug_assertions)]
+    tracing::info!("Running in debug mode");
 
     tracing::info!(
         "Readymade Installer {version}",

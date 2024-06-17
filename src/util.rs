@@ -39,3 +39,12 @@ pub fn make_push<T>(mut vector: Vec<T>, elm: T) -> Vec<T> {
     vector.push(elm);
     vector
 }
+
+#[inline]
+pub(crate) fn array_str_to_values<const N: usize>(arr: [&str; N]) -> Vec<serde_json::Value> {
+    arr
+    .into_iter()
+    .map(ToString::to_string)
+    .map(serde_json::Value::String)
+    .collect()
+}

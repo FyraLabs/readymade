@@ -60,15 +60,16 @@ fn _to_diskinit(
         let os_name = (osprobe.get_mut(&devpath).map(std::mem::take))
             .unwrap_or(OSNAME_PLACEHOLDER.to_string());
 
-        DiskInit { disk_name, os_name }
+        DiskInit { disk_name, os_name, devpath }
     }
 }
 
 pub fn partition(dev: &std::path::Path, n: u8) -> PathBuf {
     let s = dev.display();
-    if dev.starts_with("/dev/sd") {
+    let str = s.to_string();
+    if str.starts_with("/dev/sd") || str.starts_with("/dev/hd") || str.starts_with("/dev/vd") {
         PathBuf::from(format!("{s}{n}"))
-    } else if dev.starts_with("/dev/nvme") {
+    } else if str.starts_with("/dev/nvme") || str.starts_with("/dev/mmcblk") || str.starts_with("/dev/loop") {
         PathBuf::from(format!("{s}p{n}"))
     } else {
         unimplemented!() // TODO: parse other kinds of devices?

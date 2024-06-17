@@ -4,16 +4,18 @@
 
 use crate::albius::PostInstallationOperation;
 use crate::disks::partition;
+use crate::util::array_str_to_values;
 use crate::{
     albius::{Installation, Method, Mountpoint, PostInstallation, Recipe},
     disks::init::{chromebook_clean_install, clean_install, dual_boot},
     util,
 };
 use color_eyre::Result;
-use serde_json::Value;
+use serde::Serialize;
+use std::io::Write;
 use std::path::Path;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InstallationType {
     WholeDisk,
     DualBoot(u64),
@@ -29,7 +31,7 @@ fn determine_mountpoints(inst_type: InstallationType, disk: &Path) -> Result<Vec
             (partition(disk, 3), "/").into(),
         ],
         InstallationType::DualBoot(_) => {
-            let sdisk = format!("{}", disk.display());
+            // let sdisk = format!("{}", disk.display());
             let last_partition = crate::disks::last_part(disk)?;
             let partn: u8 = last_partition
                 .strip_suffix(|c: char| c.is_numeric())
@@ -52,11 +54,7 @@ fn determine_mountpoints(inst_type: InstallationType, disk: &Path) -> Result<Vec
 
 fn grub_recipe(post_installation: &mut Vec<PostInstallation>, disk_str: &str) {
     let uefi = util::check_uefi();
-    let mut params = vec![
-        Value::String("/boot/efi".into()),
-        Value::String(disk_str.to_string()),
-        Value::String(if uefi { "efi" } else { "bios" }.into()),
-    ];
+    let params = array_str_to_values(["/boot/efi", disk_str, if uefi { "efi" } else { "bios" }]);
     if uefi {
         todo!(); // TODO: figure out the boot disk
                  // append as str to params
@@ -69,35 +67,33 @@ fn grub_recipe(post_installation: &mut Vec<PostInstallation>, disk_str: &str) {
     })
 }
 
-fn submarine_recipe(post_installation: &mut Vec<PostInstallation>, disk: &Path, disk_str: String) {
+fn submarine_recipe(
+    post_installation: &mut Vec<PostInstallation>,
+    disk: &Path,
+    disk_str: String,
+) -> Result<()> {
+    let submarine_img = glob::glob("/usr/share/submarine/submarine-*.kpart")?
+        .next()
+        .expect("glob returns no results for submarine kparts")?;
+
     post_installation.push(PostInstallation {
         chroot: true, // for the submarine image
         operation: PostInstallationOperation::Shell,
-        params: vec![
-            Value::String("dd".into()),
-            Value::String("if=/usr/share/submarine/submarine-*.kpart".into()),
-            Value::String(format!("of={}", partition(disk, 1).display())),
-        ],
+        params: array_str_to_values([
+            "dd",
+            &format!("if={}", submarine_img.display()),
+            &format!("of={}", partition(disk, 1).display()),
+        ]),
     });
     post_installation.push(PostInstallation {
         chroot: false,
         operation: PostInstallationOperation::Shell,
-        params: vec![
-            Value::String("cgpt".into()),
-            Value::String("add".into()),
-            Value::String("-i".into()),
-            Value::String("1".into()),
-            Value::String("-t".into()),
-            Value::String("kernel".into()),
-            Value::String("-P".into()),
-            Value::String("15".into()),
-            Value::String("-T".into()),
-            Value::String("1".into()),
-            Value::String("-S".into()),
-            Value::String("1".into()),
-            Value::String(disk_str.to_string()),
-        ],
+        params: array_str_to_values([
+            "cgpt", "add", "-i", "1", "-t", "kernel", "-P", "15", "-T", "1", "-S", "1", &disk_str,
+        ]),
     });
+
+    Ok(())
 }
 
 pub fn generate_recipe(inst_type: InstallationType, disk: &Path) -> Result<Recipe> {
@@ -121,7 +117,7 @@ pub fn generate_recipe(inst_type: InstallationType, disk: &Path) -> Result<Recip
     grub_recipe(&mut post_installation, &disk_str);
     // submarine
     if let InstallationType::ChromebookInstall = inst_type {
-        submarine_recipe(&mut post_installation, disk, disk_str);
+        submarine_recipe(&mut post_installation, disk, disk_str)?;
     }
 
     Ok(Recipe {
@@ -130,4 +126,29 @@ pub fn generate_recipe(inst_type: InstallationType, disk: &Path) -> Result<Recip
         installation,
         post_installation,
     })
+}
+
+#[cfg(not(debug_assertions))]
+pub fn run_albius(recipe: &Recipe) -> Result<()> {
+    let recipe_file = tempfile::Builder::new().suffix(".albius.json").tempfile()?;
+    (recipe_file.as_file()).write(serde_json::to_string(recipe)?.as_bytes())?;
+
+    let cmd = std::process::Command::new("albius")
+        .arg(recipe_file.path())
+        .status()?;
+
+    let rc = cmd
+        .code()
+        .ok_or_else(|| color_eyre::eyre::eyre!("Failed to run albius"))?;
+    if rc == 0 {
+        Ok(())
+    } else {
+        Err(color_eyre::eyre::eyre!("Albius failed: exit code {rc}"))
+    }
+}
+
+#[cfg(debug_assertions)]
+pub fn run_albius(recipe: &Recipe) -> Result<()> {
+    println!("{}", serde_json::to_string_pretty(recipe)?);
+    Ok(())
 }
