@@ -149,6 +149,7 @@ pub fn generate_recipe(state: &InstallationState) -> Result<Recipe> {
 
 #[cfg(not(debug_assertions))]
 pub fn run_albius(recipe: &Recipe) -> Result<()> {
+    use std::io::Write;
     let recipe_file = tempfile::Builder::new().suffix(".albius.json").tempfile()?;
     (recipe_file.as_file()).write(serde_json::to_string(recipe)?.as_bytes())?;
 
