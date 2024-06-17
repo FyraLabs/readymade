@@ -179,7 +179,7 @@ fn main() -> Result<()> {
     karen::builder()
         // .with_env("DISPLAY")
         .wrapper("pkexec")
-        .with_env(&[""])
+        .with_env(&["DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS"])
         .unwrap();
 
     #[cfg(debug_assertions)]
