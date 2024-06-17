@@ -4,7 +4,7 @@
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <policyconfig>
 
-  <action id="com.fyralabs.pkexec.readymade">
+  <action id="org.freedesktop.policykit.pkexec.readymade">
     <description>Readymade Installer</description>
     <message>Authentication is required to install the operating system</message>
     <icon_name>com.fyralabs.Readymade</icon_name>

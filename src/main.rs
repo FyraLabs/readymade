@@ -175,11 +175,12 @@ fn main() -> Result<()> {
 
     // we probably want to escalate the process to root on release builds
 
-    // #[cfg(not(debug_assertions))]
+    #[cfg(not(debug_assertions))]
     karen::builder()
         // .with_env("DISPLAY")
         .wrapper("pkexec")
-        .with_env(&["DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS"])
+        // .with_env(&["DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS"])
+        .escalate_if_needed()
         .unwrap();
 
     #[cfg(debug_assertions)]
