@@ -76,10 +76,7 @@ impl SimpleComponent for InstallationPage {
                 shutdown
                     .register(async move {
                         let state = INSTALLATION_STATE.read();
-                        let recipe = crate::install::generate_recipe(
-                            state.installation_type.to_owned().unwrap(),
-                            &state.destination_disk.as_ref().unwrap().devpath,
-                        )?;
+                        let recipe = crate::install::generate_recipe(&state)?;
 
                         tracing::debug!(?recipe);
 

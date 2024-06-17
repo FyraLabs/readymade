@@ -5,14 +5,13 @@
 use crate::albius::PostInstallationOperation;
 use crate::disks::partition;
 use crate::util::array_str_to_values;
+use crate::InstallationState;
 use crate::{
     albius::{Installation, Method, Mountpoint, PostInstallation, Recipe},
     disks::init::{chromebook_clean_install, clean_install, dual_boot},
     util,
 };
 use color_eyre::Result;
-use serde::Serialize;
-use std::io::Write;
 use std::path::Path;
 
 #[derive(Debug, Clone)]
@@ -56,6 +55,8 @@ fn grub_recipe(post_installation: &mut Vec<PostInstallation>, disk_str: &str) {
     let uefi = util::check_uefi();
     let params = array_str_to_values(["/boot/efi", disk_str, if uefi { "efi" } else { "bios" }]);
     if uefi {
+        // assume we're on chromebooks for now
+        // todo: impl this for PC UEFI installs!!
         todo!(); // TODO: figure out the boot disk
                  // append as str to params
     }
@@ -96,12 +97,14 @@ fn submarine_recipe(
     Ok(())
 }
 
-pub fn generate_recipe(inst_type: InstallationType, disk: &Path) -> Result<Recipe> {
+pub fn generate_recipe(state: &InstallationState) -> Result<Recipe> {
+    let inst_type = state.installation_type.as_ref().unwrap();
+    let disk = state.destination_disk.as_ref().unwrap().devpath.as_path();
     let disk_str = disk.display().to_string();
 
     let layout = match inst_type {
         InstallationType::WholeDisk => clean_install(disk)?,
-        InstallationType::DualBoot(resize) => dual_boot(disk, resize)?,
+        InstallationType::DualBoot(resize) => dual_boot(disk, *resize)?,
         InstallationType::ChromebookInstall => chromebook_clean_install(disk)?,
         InstallationType::Custom => todo!(),
     };
@@ -113,7 +116,23 @@ pub fn generate_recipe(inst_type: InstallationType, disk: &Path) -> Result<Recip
         initramfs_pre: vec![],
     };
 
-    let mut post_installation = vec![];
+    let mut post_installation = vec![
+        PostInstallation {
+            chroot: true,
+            operation: PostInstallationOperation::Timezone,
+            params: array_str_to_values([state.timezone.as_ref().unwrap()]),
+        },
+        PostInstallation {
+            chroot: true,
+            operation: PostInstallationOperation::Locale,
+            params: array_str_to_values([state.langlocale.as_ref().unwrap()]),
+        },
+        PostInstallation {
+            chroot: true,
+            operation: PostInstallationOperation::Hostname,
+            params: array_str_to_values(["ultramarine"]), // FIXME
+        },
+    ];
     grub_recipe(&mut post_installation, &disk_str);
     // submarine
     if let InstallationType::ChromebookInstall = inst_type {
@@ -122,7 +141,7 @@ pub fn generate_recipe(inst_type: InstallationType, disk: &Path) -> Result<Recip
 
     Ok(Recipe {
         setup: layout,
-        mountpoints: determine_mountpoints(inst_type, disk)?,
+        mountpoints: determine_mountpoints(inst_type.clone(), disk)?,
         installation,
         post_installation,
     })
