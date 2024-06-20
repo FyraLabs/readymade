@@ -155,11 +155,15 @@ pub fn run_albius(recipe: &Recipe) -> Result<()> {
 
     tracing::debug!(?recipe_file, "Writing recipe to tempfile");
 
+    // todo: Update progress bar to 10%
+
     let cmd = std::process::Command::new("albius")
         .arg(recipe_file.path())
         .status()?;
 
     tracing::debug!(?cmd, "Running albius with recipe");
+
+    // Update progress to 90% if successful, or error out
 
     let rc = cmd
         .code()
