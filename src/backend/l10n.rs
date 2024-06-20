@@ -5,7 +5,7 @@ use std::ffi::CStr;
 
 pub fn list_locales() -> Vec<String> {
     let ptr = unsafe { gnome_desktop::ffi::gnome_get_all_locales() };
-    let mut p = ptr.clone();
+    let mut p = ptr;
     let mut res = vec![];
     while !unsafe { p.read().is_null() } {
         res.push(
