@@ -153,9 +153,13 @@ pub fn run_albius(recipe: &Recipe) -> Result<()> {
     let recipe_file = tempfile::Builder::new().suffix(".albius.json").tempfile()?;
     (recipe_file.as_file()).write(serde_json::to_string(recipe)?.as_bytes())?;
 
+    tracing::debug!(?recipe_file, "Writing recipe to tempfile");
+
     let cmd = std::process::Command::new("albius")
         .arg(recipe_file.path())
         .status()?;
+
+    tracing::debug!(?cmd, "Running albius with recipe");
 
     let rc = cmd
         .code()
