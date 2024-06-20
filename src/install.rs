@@ -147,11 +147,12 @@ pub fn generate_recipe(state: &InstallationState) -> Result<Recipe> {
     })
 }
 
-#[cfg(not(debug_assertions))]
+// #[cfg(not(debug_assertions))]
 pub fn run_albius(recipe: &Recipe) -> Result<()> {
+    // todo: Add a dry run option to the recipe!! Below dry run replacement will be removed for consistent behavior between debug and release builds
     use std::io::Write;
     let recipe_file = tempfile::Builder::new().suffix(".albius.json").tempfile()?;
-    (recipe_file.as_file()).write(serde_json::to_string(recipe)?.as_bytes())?;
+    (recipe_file.as_file()).write_all(serde_json::to_string(recipe)?.as_bytes())?;
 
     tracing::debug!(?recipe_file, "Writing recipe to tempfile");
 
@@ -175,8 +176,8 @@ pub fn run_albius(recipe: &Recipe) -> Result<()> {
     }
 }
 
-#[cfg(debug_assertions)]
-pub fn run_albius(recipe: &Recipe) -> Result<()> {
-    println!("{}", serde_json::to_string_pretty(recipe)?);
-    Ok(())
-}
+// #[cfg(debug_assertions)]
+// pub fn run_albius(recipe: &Recipe) -> Result<()> {
+//     println!("{}", serde_json::to_string_pretty(recipe)?);
+//     Ok(())
+// }
