@@ -58,6 +58,7 @@ pub enum RegionPageMsg {
     Navigate(NavigationAction),
     // Selected(relm4::factory::DynamicIndex),
     SelectionChanged,
+    CitySelectionChanged,
     // Mouse clicked
     Click(relm4::factory::DynamicIndex),
 }
@@ -94,6 +95,22 @@ impl SimpleComponent for RegionPage {
                         set_column_spacing: 4,
                         set_row_spacing: 4,
                         connect_selected_children_changed => RegionPageMsg::SelectionChanged,
+                    }
+                },
+                gtk::ScrolledWindow {
+                    #[local_ref]
+                    citybtnbox -> gtk::FlowBox {
+                        set_selection_mode: gtk::SelectionMode::Single,
+                        set_orientation: gtk::Orientation::Horizontal,
+                        set_vexpand: true,
+                        set_hexpand: true,
+                        set_valign: gtk::Align::Center,
+                        set_halign: gtk::Align::Center,
+                        set_min_children_per_line: 1,
+                        set_max_children_per_line: 1,
+                        set_column_spacing: 4,
+                        set_row_spacing: 4,
+                        connect_selected_children_changed => RegionPageMsg::CitySelectionChanged,
                     }
                 },
                 gtk::Box {
