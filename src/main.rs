@@ -22,7 +22,7 @@ use relm4::{
 
 #[derive(Debug, Default)]
 struct InstallationState {
-    pub timezone: Option<&'static str>,
+    pub timezone: Option<String>,
     pub langlocale: Option<String>,
     pub destination_disk: Option<DiskInit>,
     pub installation_type: Option<InstallationType>,
@@ -167,8 +167,14 @@ impl SimpleComponent for AppModel {
 
 fn main() -> Result<()> {
     color_eyre::install()?;
+
+    // Log to a file for debugging
+    let file_appender = tracing_appender::rolling::never("/tmp", "readymade.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
     tracing_subscriber::fmt()
-        .with_env_filter("debug")
+        .with_writer(non_blocking)
+        .with_env_filter("trace")
         .with_ansi(true)
         .pretty()
         .init();

@@ -66,6 +66,7 @@ pub fn list_timezones() -> Vec<&'static str> {
     chrono_tz::TZ_VARIANTS.iter().map(|tz| tz.name()).collect()
 }
 
+
 #[test]
 fn test_list_locales() {
     let locales = list_locales();

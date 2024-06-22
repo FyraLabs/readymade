@@ -2,6 +2,7 @@
 name = "readymade"
 version = "0.1.6"
 edition = "2021"
+license = "MIT WITH GPL-3.0-or-later"
 description = "The Ado Installer"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -22,6 +23,7 @@ cmd_lib = "1.9.3"
 sys-mount = "3.0.1"
 tracing = { version = "0.1.40", features = ["log"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tracing-appender = "0.2"
 backhand = "0.15.0"
 itertools = "0.12.1"
 thiserror = "1.0.59"
@@ -32,6 +34,7 @@ chrono-tz = "0.9.0"
 paste = "1.0.15"
 tempfile = "3.10.1"
 glob = "0.3.1"
+lsblk = ">=0.1.1"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"

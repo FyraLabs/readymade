@@ -1,0 +1,6 @@
+edition = "2021"
+fn_params_layout = "Tall"
+match_arm_leading_pipes = "Preserve"
+merge_derives = true
+use_small_heuristics = "Default"
+use_try_shorthand = true

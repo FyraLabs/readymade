@@ -7,7 +7,7 @@ mod osprobe;
 
 use color_eyre::eyre::OptionExt;
 use osprobe::OSProbe;
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::pages::destination::DiskInit;
 
@@ -19,19 +19,37 @@ const OSNAME_PLACEHOLDER: &str = "Unknown";
 // to someone who multiboots, please fix this function for me. Thanks. - @korewaChino
 // NOTE: Below system detection might not even work at all, I have no idea since above note.
 pub fn detect_os() -> Vec<DiskInit> {
-    let disks_data = rs_drivelist::drive_list().unwrap();
+    let disks = lsblk::BlockDevice::list().unwrap();
 
-    // let efiparts = find_efi_parts();
-
-    let mut osprobe = OSProbe::scan()
+    let osprobe: HashMap<_, _> = OSProbe::scan()
         .map(|probe| (probe.into_iter().map(|os| (os.part, os.os_name_pretty))).collect())
         .unwrap_or_default();
 
-    tracing::debug!(?osprobe, "OS Probe");
-    tracing::debug!(?disks_data, "Disks Data");
-
-    (disks_data.into_iter().filter_map(_drive_list_filter))
-        .map(_to_diskinit(&mut osprobe))
+    disks
+        .iter()
+        .filter(|disk| disk.is_disk())
+        .map(|disk| {
+            let ret = DiskInit {
+                // id:
+                disk_name: format!(
+                    "{} ({})",
+                    disk.label
+                        .as_deref()
+                        .or(disk.id.as_deref())
+                        .map_or("".into(), |s| format!("{s} ")),
+                    disk.name
+                ),
+                os_name: osprobe
+                    .iter()
+                    .filter_map(|(path, osname)| path.to_str().zip(Some(osname)))
+                    .find(|(path, _)| path.starts_with(&disk.name))
+                    .map(|(_, osname)| osname.to_string())
+                    .unwrap_or(OSNAME_PLACEHOLDER.to_string()),
+                devpath: PathBuf::from(disk.name.clone()),
+            };
+            tracing::debug!(?ret, "Found disk");
+            ret
+        })
         .collect()
 }
 
@@ -60,7 +78,11 @@ fn _to_diskinit(
         let os_name = (osprobe.get_mut(&devpath).map(std::mem::take))
             .unwrap_or(OSNAME_PLACEHOLDER.to_string());
 
-        DiskInit { disk_name, os_name, devpath }
+        DiskInit {
+            disk_name,
+            os_name,
+            devpath,
+        }
     }
 }
 
@@ -69,7 +91,10 @@ pub fn partition(dev: &std::path::Path, n: u8) -> PathBuf {
     let str = s.to_string();
     if str.starts_with("/dev/sd") || str.starts_with("/dev/hd") || str.starts_with("/dev/vd") {
         PathBuf::from(format!("{s}{n}"))
-    } else if str.starts_with("/dev/nvme") || str.starts_with("/dev/mmcblk") || str.starts_with("/dev/loop") {
+    } else if str.starts_with("/dev/nvme")
+        || str.starts_with("/dev/mmcblk")
+        || str.starts_with("/dev/loop")
+    {
         PathBuf::from(format!("{s}p{n}"))
     } else {
         unimplemented!() // TODO: parse other kinds of devices?
@@ -88,7 +113,10 @@ pub fn last_part(diskpath: &std::path::Path) -> color_eyre::Result<String> {
         .ok_or_eyre(color_eyre::Report::msg("lsblk has no output"))
 }
 
+#[cfg(test)]
+#[cfg(target_os = "linux")]
 #[test]
-fn list_disks() {
-    detect_os();
+fn test_lsblk_smoke() {
+    let devices = lsblk::BlockDevice::list();
+    assert!(devices.is_ok());
 }

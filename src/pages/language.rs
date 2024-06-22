@@ -1,4 +1,5 @@
 use gettextrs::gettext;
+use itertools::Itertools;
 use libhelium::prelude::*;
 use relm4::gtk::prelude::ButtonExt;
 use relm4::{ComponentParts, RelmWidgetExt, SimpleComponent};
@@ -135,6 +136,7 @@ impl SimpleComponent for LanguagePage {
         let mut btns = btnfactory.guard();
         crate::backend::l10n::list_langs()
             .into_iter()
+            .sorted_by(|(_, x), (_, y)| x.cmp(&y))
             .for_each(|x| _ = btns.push_back(x));
         drop(btns);
 
