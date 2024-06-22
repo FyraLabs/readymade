@@ -1,11 +1,8 @@
 use crate::util::chain_err;
 use crate::{albius::DiskOperation, pages::welcome::DISTRO};
-use color_eyre::{
-    eyre::{eyre, OptionExt},
-    Report, Result, Section,
-};
+use color_eyre::{eyre::OptionExt, Report, Result, Section};
 use serde_json::Value;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tracing::{debug, info, trace};
 
 const MIB: u64 = 1024 * 1024;
@@ -22,18 +19,14 @@ macro_rules! instr {
     } }
 }
 
-pub struct DiskLayout {
-    pub ops: Vec<DiskOperation>,
-    // pub
-}
-
 /// Erase the current partition table, make 3 partitions:
 /// - /boot/efi   512 MiB
 /// - /boot         1 GiB
 /// - /         remaining
 #[tracing::instrument]
 pub fn clean_install(diskpath: &Path) -> Result<Vec<DiskOperation>> {
-    let (disk, partns, disksize) = _get_disk_partns_disksize(diskpath)?;
+    let (partns, disksize) = _get_disk_partns_disksize(diskpath)?;
+    let disk = diskpath.to_path_buf();
     let mut ops = vec![];
 
     // erase all partitions
@@ -124,7 +117,8 @@ pub fn dual_boot(diskpath: &Path, resize: u64) -> Result<Vec<DiskOperation>> {
 /// - /         remaining
 #[tracing::instrument]
 pub fn chromebook_clean_install(diskpath: &Path) -> Result<Vec<DiskOperation>> {
-    let (disk, partns, disksize) = _get_disk_partns_disksize(diskpath)?;
+    let (partns, disksize) = _get_disk_partns_disksize(diskpath)?;
+    let disk = diskpath.to_path_buf();
     let mut ops = vec![];
 
     // erase all partitions
@@ -144,18 +138,34 @@ pub fn chromebook_clean_install(diskpath: &Path) -> Result<Vec<DiskOperation>> {
 
 /// Returns `disk` (path of disk), `partns` (list of part nums), `disksize` in MiB.
 #[must_use]
-pub fn _get_disk_partns_disksize(diskpath: &Path) -> Result<(PathBuf, Vec<u8>, u64)> {
-    let disks = rs_drivelist::drive_list().map_err(|e| eyre!(e))?;
-    let disk = (disks.into_iter()).find(|d| PathBuf::from(&d.device) == diskpath);
-    let diskobj = disk.ok_or_eyre(Report::msg("Cannot find disk"))?;
-    let disk = diskpath.to_path_buf();
+pub fn _get_disk_partns_disksize(diskpath: &Path) -> Result<(Vec<u8>, u64)> {
     let sdiskpath = diskpath.display().to_string();
-    let disksize = diskobj.size / MIB;
-    let lsblk = cmd_lib::run_fun!(lsblk -o partn,path)?;
+    let lsblk = cmd_lib::run_fun!(lsblk -bo partn,path,size)?;
+    // assume all dev paths start with /
+    let iter = (lsblk.split('\n').skip(1))
+        .filter_map(|l| l.trim_start().split_once(|ch: char| ch.is_whitespace()))
+        .filter(|(left, right)| !left.starts_with('/') && right.starts_with(&sdiskpath)); // things that start with / are path, not partn
+
+    tracing::debug!(?iter);
+    let (_, path_size) = iter
+        .clone()
+        .next()
+        .ok_or_eyre(Report::msg("lsblk has no output")).unwrap();
+    let disksize = (path_size.split_ascii_whitespace())
+        .last()
+        .ok_or_else(|| Report::msg("Cannot get disk size"))?;
+    let mut disksize: u64 =
+        (disksize.trim_start().parse()).map_err(chain_err("Cannot parse size"))?;
+    
+    // 
+    let disksize_bytesize = bytesize::ByteSize::b(disksize);
+    info!(?disksize_bytesize, "Disk size");
+    disksize /= MIB;
+
+
+
     let mut errs = vec![];
-    let partns = (lsblk.split('\n').skip(1))
-        .filter_map(|l| l.trim_start().split_once(' '))
-        .filter(|(left, right)| !left.starts_with('/') && right.starts_with(&sdiskpath)) // things that start with / are path, not partn
+    let partns = iter
         .filter_map(|(n, _)| n.parse().map_err(|e| errs.push(e)).ok())
         .collect::<Vec<u8>>();
     if !errs.is_empty() {
@@ -164,5 +174,5 @@ pub fn _get_disk_partns_disksize(diskpath: &Path) -> Result<(PathBuf, Vec<u8>, u
             |report, err| report.error(err),
         ));
     }
-    Ok((disk, partns, disksize))
+    Ok((partns, disksize))
 }

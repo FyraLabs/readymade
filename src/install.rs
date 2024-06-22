@@ -97,11 +97,14 @@ fn submarine_recipe(
     Ok(())
 }
 
+#[tracing::instrument]
 pub fn generate_recipe(state: &InstallationState) -> Result<Recipe> {
+    tracing::trace!(?state, "Generating recipe");
     let inst_type = state.installation_type.as_ref().unwrap();
     let disk = state.destination_disk.as_ref().unwrap().devpath.as_path();
     let disk_str = disk.display().to_string();
 
+    tracing::trace!("nya");
     let layout = match inst_type {
         InstallationType::WholeDisk => clean_install(disk)?,
         InstallationType::DualBoot(resize) => dual_boot(disk, *resize)?,
@@ -148,6 +151,7 @@ pub fn generate_recipe(state: &InstallationState) -> Result<Recipe> {
 }
 
 // #[cfg(not(debug_assertions))]
+#[tracing::instrument]
 pub fn run_albius(recipe: &Recipe) -> Result<()> {
     // todo: Add a dry run option to the recipe!! Below dry run replacement will be removed for consistent behavior between debug and release builds
     use std::io::Write;
@@ -158,22 +162,23 @@ pub fn run_albius(recipe: &Recipe) -> Result<()> {
 
     // todo: Update progress bar to 10%
 
-    let cmd = std::process::Command::new("albius")
-        .arg(recipe_file.path())
-        .status()?;
+    // let cmd = std::process::Command::new("albius")
+    //     .arg(recipe_file.path())
+    //     .status()?;
 
-    tracing::debug!(?cmd, "Running albius with recipe");
+    // tracing::debug!(?cmd, "Running albius with recipe");
 
-    // Update progress to 90% if successful, or error out
+    // // Update progress to 90% if successful, or error out
 
-    let rc = cmd
-        .code()
-        .ok_or_else(|| color_eyre::eyre::eyre!("Failed to run albius"))?;
-    if rc == 0 {
-        Ok(())
-    } else {
-        Err(color_eyre::eyre::eyre!("Albius failed: exit code {rc}"))
-    }
+    // let rc = cmd
+    //     .code()
+    //     .ok_or_else(|| color_eyre::eyre::eyre!("Failed to run albius"))?;
+    // if rc == 0 {
+    //     Ok(())
+    // } else {
+    //     Err(color_eyre::eyre::eyre!("Albius failed: exit code {rc}"))
+    // }
+    Ok(())
 }
 
 // #[cfg(debug_assertions)]

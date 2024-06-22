@@ -133,10 +133,13 @@ impl SimpleComponent for AppModel {
         let model = AppModel {
             confirmation_page: ConfirmationPage::builder().launch(()).forward(
                 sender.input_sender(),
-                |msg| match msg {
+                |msg| {
+                    tracing::debug!("ConfirmationPage emitted {:?}", msg);
+                    match msg {
                     ConfirmationPageOutput::StartInstallation => AppMsg::StartInstallation,
                     ConfirmationPageOutput::Navigate(action) => AppMsg::Navigate(action),
-                },
+                }
+            },
             ),
             ..Self::_default(sender)
         };
@@ -174,29 +177,34 @@ fn main() -> Result<()> {
 
     tracing_subscriber::fmt()
         .with_writer(non_blocking)
+        .with_writer(std::io::stderr)
         .with_env_filter("trace")
         .with_ansi(true)
         .pretty()
         .init();
 
+    
     // we probably want to escalate the process to root on release builds
-
+    
     #[cfg(not(debug_assertions))]
     karen::builder()
-        // .with_env("DISPLAY")
-        .wrapper("pkexec")
-        // .with_env(&["DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS"])
-        .escalate_if_needed()
-        .unwrap();
+    // .with_env("DISPLAY")
+    .wrapper("pkexec")
+    // .with_env(&["DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS"])
+    .escalate_if_needed()
+    .unwrap();
 
     #[cfg(debug_assertions)]
-    tracing::info!("Running in debug mode");
+    {
+        tracing::info!("Running in debug mode");
+    }
 
     tracing::info!(
         "Readymade Installer {version}",
         version = env!("CARGO_PKG_VERSION")
     );
 
+    tracing::info!("Logging to /tmp/readymade.log");
     gettextrs::textdomain(APPID)?;
     gettextrs::bind_textdomain_codeset(APPID, "UTF-8")?;
 

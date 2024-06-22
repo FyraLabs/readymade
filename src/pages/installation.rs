@@ -3,6 +3,7 @@ use gettextrs::gettext;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
+#[derive(Debug)]
 pub struct InstallationPage {
     progress: f64,
 }
@@ -69,6 +70,7 @@ impl SimpleComponent for InstallationPage {
         ComponentParts { model, widgets }
     }
 
+    #[tracing::instrument]
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         // handle channel logics here
         match message {
@@ -76,6 +78,7 @@ impl SimpleComponent for InstallationPage {
                 shutdown
                     .register(async move {
                         let state = INSTALLATION_STATE.read();
+                        tracing::debug!("Starting installation...");
                         let recipe = crate::install::generate_recipe(&state)?;
 
                         tracing::debug!(?recipe);
