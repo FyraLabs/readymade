@@ -38,6 +38,10 @@ The lyrics themselves can also be a fun comeback to all the popular meme practic
 
 Source: <https://www.lyrical-nonsense.com/global/lyrics/ado/readymade/english/>
 
+## Hacking
+
+Please refer to [HACKING.md](HACKING.md) for more information on how to contribute to Readymade.
+
 ## Licensing
 
 Readymade is generally licensed under the MIT License, but some parts of the codebase and assets may be licensed differently. The non-MIT licensed parts will be clearly marked in the source code and in the assets.
