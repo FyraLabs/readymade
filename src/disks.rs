@@ -86,16 +86,41 @@ fn _to_diskinit(
     }
 }
 
+/// Get partition path for a disk according to what kind of disk it is
+/// 
+/// # Arguments
+/// 
+/// * `dev` - Path to the disk
+/// * `n` - Partition number
+/// 
+/// # Returns
+/// 
+/// * PathBuf - Path to the partition
+/// 
+#[tracing::instrument]
 pub fn partition(dev: &std::path::Path, n: u8) -> PathBuf {
+    tracing::trace!(?dev, ?n, "Concatenating dev path and partition number");
+
+    // NOTE: So turns out we're actually inputting the device name here and not full path to device
+    // so looking for /dev prefix would be wrong?
+    // - @korewaChino
+
+
     let s = dev.display();
+
     let str = s.to_string();
-    if str.starts_with("/dev/sd") || str.starts_with("/dev/hd") || str.starts_with("/dev/vd") {
+    if str.starts_with("sd") || str.starts_with("hd") || str.starts_with("vd") {
         PathBuf::from(format!("{s}{n}"))
-    } else if str.starts_with("/dev/nvme")
-        || str.starts_with("/dev/mmcblk")
-        || str.starts_with("/dev/loop")
+    } else if str.starts_with("nvme")
+        || str.starts_with("mmcblk")
+        || str.starts_with("loop")
     {
-        PathBuf::from(format!("{s}p{n}"))
+        // HACK: add /dev to path
+        // todo, suggestion: Either add /dev prefix to everything that calls this function or figure out a standard method for this! If you pick the first option, remove this comment
+        // and remove the /dev prefix from the return value!!
+
+        // IMPORTANT: This is a hack and should be removed for robustness
+        PathBuf::from(format!("/dev/{s}p{n}"))
     } else {
         unimplemented!() // TODO: parse other kinds of devices?
     }

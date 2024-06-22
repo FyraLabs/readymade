@@ -155,30 +155,35 @@ pub fn generate_recipe(state: &InstallationState) -> Result<Recipe> {
 pub fn run_albius(recipe: &Recipe) -> Result<()> {
     // todo: Add a dry run option to the recipe!! Below dry run replacement will be removed for consistent behavior between debug and release builds
     use std::io::Write;
+    let recipe_json = serde_json::to_string(recipe)?;
+    tracing::trace!(?recipe_json, "Recipe JSON");
     let recipe_file = tempfile::Builder::new().suffix(".albius.json").tempfile()?;
-    (recipe_file.as_file()).write_all(serde_json::to_string(recipe)?.as_bytes())?;
+    (recipe_file.as_file()).write_all(recipe_json.as_bytes())?;
+
+    // Open file handle to tempfile and do not close it until albius is done
 
     tracing::debug!(?recipe_file, "Writing recipe to tempfile");
 
+    // persist file
+
+    // recipe_file.persist(recipe_file_path)?;
+
     // todo: Update progress bar to 10%
 
-    // let cmd = std::process::Command::new("albius")
-    //     .arg(recipe_file.path())
-    //     .status()?;
+    tracing::debug!("Running albius with recipe");
+    let cmd = std::process::Command::new("albius")
+        .arg(recipe_file.path())
+        .status()?;
 
-    // tracing::debug!(?cmd, "Running albius with recipe");
+    tracing::debug!(?cmd, "Albius ran successfully");
 
-    // // Update progress to 90% if successful, or error out
+    // Update progress to 90% if successful, or error out
 
-    // let rc = cmd
-    //     .code()
-    //     .ok_or_else(|| color_eyre::eyre::eyre!("Failed to run albius"))?;
-    // if rc == 0 {
-    //     Ok(())
-    // } else {
-    //     Err(color_eyre::eyre::eyre!("Albius failed: exit code {rc}"))
-    // }
-    Ok(())
+    if cmd.success() {
+        Ok(())
+    } else {
+        Err(color_eyre::eyre::eyre!("Albius failed! Exit Status: {cmd}"))
+    }
 }
 
 // #[cfg(debug_assertions)]

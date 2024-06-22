@@ -137,32 +137,62 @@ pub fn chromebook_clean_install(diskpath: &Path) -> Result<Vec<DiskOperation>> {
 }
 
 /// Returns `disk` (path of disk), `partns` (list of part nums), `disksize` in MiB.
-#[must_use]
+#[tracing::instrument]
 pub fn _get_disk_partns_disksize(diskpath: &Path) -> Result<(Vec<u8>, u64)> {
     let sdiskpath = diskpath.display().to_string();
-    let lsblk = cmd_lib::run_fun!(lsblk -bo partn,path,size)?;
+    tracing::trace!(?sdiskpath, "Disk path");
+    let lsblk = cmd_lib::run_fun!(lsblk --bytes -o partn,path,size)?;
+    tracing::trace!(?lsblk, "lsblk output");
+    eprintln!("{}", lsblk);
     // assume all dev paths start with /
+    // let iter = (lsblk.split('\n').skip(1))
+    //     .filter_map(|l| l.trim_start().split_once(|ch: char| ch.is_whitespace()))
+    //     .filter(|(left, right)| !left.starts_with('/') && right.starts_with(&sdiskpath)); // things that start with / are path, not partn
+
     let iter = (lsblk.split('\n').skip(1))
-        .filter_map(|l| l.trim_start().split_once(|ch: char| ch.is_whitespace()))
-        .filter(|(left, right)| !left.starts_with('/') && right.starts_with(&sdiskpath)); // things that start with / are path, not partn
+        .map(|l| l.split_whitespace())
+        .filter_map(|mut l| {
+            let partn = l.next()?;
+            let path = l.next()?;
+            let size = l.next()?;
+            Some((partn, (path, size)))
+        });
 
     tracing::debug!(?iter);
+
+    let (partn, (partpath, size)) = iter
+        .clone()
+        .next()
+        .ok_or_eyre(Report::msg("lsblk has no output!? Output says: (=>note)").note(lsblk.clone()))
+        .unwrap();
+
+    tracing::debug!(?partn, ?partpath, ?size, "First partn");
+
+    // let iter = iter.filter(|())
+    // Filter by partpath if starts with diskpath
+    let iter = iter.filter(|(_, (path, _))| path.contains(&sdiskpath));
     let (_, path_size) = iter
         .clone()
         .next()
-        .ok_or_eyre(Report::msg("lsblk has no output")).unwrap();
-    let disksize = (path_size.split_ascii_whitespace())
-        .last()
-        .ok_or_else(|| Report::msg("Cannot get disk size"))?;
+        .ok_or_eyre(
+            Report::msg("Cannot find disk in lsblk output!? We are literally querying: (=>note)")
+                .note(sdiskpath.clone()),
+        )
+        .unwrap();
+
+    // tracing::debug!(?path_size, "First partn");
+
+    let (_path, disksize) = path_size;
+
     let mut disksize: u64 =
         (disksize.trim_start().parse()).map_err(chain_err("Cannot parse size"))?;
-    
-    // 
+
+    //
     let disksize_bytesize = bytesize::ByteSize::b(disksize);
     info!(?disksize_bytesize, "Disk size");
     disksize /= MIB;
 
-
+    info!(?disksize, "Disk size in MiB");
 
     let mut errs = vec![];
     let partns = iter
