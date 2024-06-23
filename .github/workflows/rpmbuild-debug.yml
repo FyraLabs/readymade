@@ -21,9 +21,9 @@ jobs:
             git_sha=${{ github.sha }}
             git_short=${git_sha:0:7}
             rpmdev-setuptree
-            rpmbuild -ba ci/readymade.spec --define "gitcommit $git_sha" --define "shortcommit $git_short" --define "_rpmdir $PWD" --define "_disable_source_fetch 0"
+            rpmbuild -ba ci/readymade.spec --define "gitcommit $git_sha" --define "shortcommit $git_short" --define "_rpmdir $PWD/build" --define "_disable_source_fetch 0"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          path: "*.rpm"
+          path: build/**/*.rpm
