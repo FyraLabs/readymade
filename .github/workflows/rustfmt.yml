@@ -1,0 +1,21 @@
+on: push
+
+name: Rustfmt
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    container:
+        image: ghcr.io/terrapkg/builder:f40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: dnf builddep -y ci/readymade.spec
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: mbrobbel/rustfmt-check@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}

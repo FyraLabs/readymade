@@ -38,7 +38,9 @@ pub fn detect_os() -> Vec<DiskInit> {
                         .or(disk.id.as_deref())
                         .map_or("".into(), |s| format!("{s} ")),
                     disk.name
-                ),
+                )
+                .trim()
+                .to_string(),
                 os_name: osprobe
                     .iter()
                     .filter_map(|(path, osname)| path.to_str().zip(Some(osname)))
