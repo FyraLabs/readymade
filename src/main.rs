@@ -173,7 +173,8 @@ fn main() -> Result<()> {
     color_eyre::install()?;
 
     // Log to a file for debugging
-    let file_appender = tracing_appender::rolling::never("/tmp", "readymade.log");
+    let tempdir = tempfile::Builder::new().prefix("readymade").tempdir()?;
+    let file_appender = tracing_appender::rolling::never(tempdir.path(), "readymade.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
         
@@ -198,12 +199,12 @@ fn main() -> Result<()> {
     
     // we probably want to escalate the process to root on release builds
     
-    #[cfg(not(debug_assertions))]
+    // #[cfg(not(debug_assertions))]
     karen::builder()
     // .with_env("DISPLAY")
     .wrapper("pkexec")
-    // .with_env(&["DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS"])
-    .escalate_if_needed()
+    .with_env(&[])
+    // .escalate_if_needed()
     .unwrap();
 
     #[cfg(debug_assertions)]
@@ -216,7 +217,7 @@ fn main() -> Result<()> {
         version = env!("CARGO_PKG_VERSION")
     );
 
-    tracing::info!("Logging to /tmp/readymade.log");
+    tracing::info!("Logging to {tempdir}/readymade.log", tempdir = tempdir.path().display());
     gettextrs::textdomain(APPID)?;
     gettextrs::bind_textdomain_codeset(APPID, "UTF-8")?;
 

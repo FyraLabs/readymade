@@ -1,6 +1,6 @@
 [package]
 name = "readymade"
-version = "0.1.8"
+version = "0.1.9"
 edition = "2021"
 license = "MIT WITH GPL-3.0-or-later"
 description = "The Ado Installer"
@@ -27,7 +27,7 @@ backhand = "0.15.0"
 itertools = "0.12.1"
 thiserror = "1.0.59"
 gettext-rs = {version = "0.7.0", features = ["gettext-system"]}
-karen = ">=0.1.1"
+karen = ">=0.1.2"
 gnome-desktop = "0.4.2"
 chrono-tz = "0.9.0"
 paste = "1.0.15"
