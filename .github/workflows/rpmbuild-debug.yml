@@ -4,7 +4,7 @@ name: Build RPM snapshot package
 
 
 jobs:
-  format:
+  build:
     runs-on: ubuntu-latest
     container:
         image: ghcr.io/terrapkg/builder:f40
