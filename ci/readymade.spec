@@ -1,7 +1,7 @@
 # todo: CI RPM packages xd
 
-%global shortcommit %(c=%{gitcommit}; echo ${c:0:7})
-
+# %global shortcommit %(c=%{gitcommit}; echo ${c:0:7})
+# %global gitcommit %(git rev-parse --short=12 HEAD)
 Name:           readymade
 Version:        git-%{shortcommit}
 Release:        1%?dist
