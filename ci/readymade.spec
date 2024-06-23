@@ -1,7 +1,7 @@
 # todo: CI RPM packages xd
 
 Name:           readymade
-Version:        git.%{shortcommit}
+Version:        git~%{shortcommit}
 Release:        1%?dist
 Summary:        Install ready-made distribution images
 License:        MIT
