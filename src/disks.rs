@@ -87,16 +87,16 @@ fn _to_diskinit(
 }
 
 /// Get partition path for a disk according to what kind of disk it is
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `dev` - Path to the disk
 /// * `n` - Partition number
-/// 
+///
 /// # Returns
-/// 
+///
 /// * PathBuf - Path to the partition
-/// 
+///
 #[tracing::instrument]
 pub fn partition(dev: &std::path::Path, n: u8) -> PathBuf {
     tracing::trace!(?dev, ?n, "Concatenating dev path and partition number");
@@ -105,16 +105,12 @@ pub fn partition(dev: &std::path::Path, n: u8) -> PathBuf {
     // so looking for /dev prefix would be wrong?
     // - @korewaChino
 
-
     let s = dev.display();
 
     let str = s.to_string();
     if str.starts_with("sd") || str.starts_with("hd") || str.starts_with("vd") {
         PathBuf::from(format!("{s}{n}"))
-    } else if str.starts_with("nvme")
-        || str.starts_with("mmcblk")
-        || str.starts_with("loop")
-    {
+    } else if str.starts_with("nvme") || str.starts_with("mmcblk") || str.starts_with("loop") {
         // HACK: add /dev to path
         // todo, suggestion: Either add /dev prefix to everything that calls this function or figure out a standard method for this! If you pick the first option, remove this comment
         // and remove the /dev prefix from the return value!!

@@ -19,9 +19,9 @@ pub fn check_uefi() -> bool {
 
 #[cfg(target_os = "linux")]
 /// Run a command with elevated privileges if not already root.
-/// 
+///
 /// This function relies upon the `pkexec` command to elevate privileges.
-/// 
+///
 /// If the current user is not root, the command will be run with `pkexec`.
 pub fn run_as_root(cmd: &str) -> Result<String, std::io::Error> {
     if !cmd_lib::run_fun!("whoami").unwrap().contains("root") {

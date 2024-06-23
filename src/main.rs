@@ -137,10 +137,10 @@ impl SimpleComponent for AppModel {
                 |msg| {
                     tracing::debug!("ConfirmationPage emitted {:?}", msg);
                     match msg {
-                    ConfirmationPageOutput::StartInstallation => AppMsg::StartInstallation,
-                    ConfirmationPageOutput::Navigate(action) => AppMsg::Navigate(action),
-                }
-            },
+                        ConfirmationPageOutput::StartInstallation => AppMsg::StartInstallation,
+                        ConfirmationPageOutput::Navigate(action) => AppMsg::Navigate(action),
+                    }
+                },
             ),
             ..Self::_default(sender)
         };
@@ -177,8 +177,6 @@ fn main() -> Result<()> {
     let file_appender = tracing_appender::rolling::never(tempdir.path(), "readymade.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
-        
-
     let sub_builder = tracing_subscriber::fmt()
         // .with_writer(non_blocking)
         // .with_writer(std::io::stderr)
@@ -196,9 +194,8 @@ fn main() -> Result<()> {
 
     tracing::subscriber::set_global_default(sub_builder).expect("unable to set global subscriber");
 
-    
     // we probably want to escalate the process to root on release builds
-    
+
     // #[cfg(not(debug_assertions))]
     karen::builder()
     // .with_env("DISPLAY")
@@ -217,7 +214,10 @@ fn main() -> Result<()> {
         version = env!("CARGO_PKG_VERSION")
     );
 
-    tracing::info!("Logging to {tempdir}/readymade.log", tempdir = tempdir.path().display());
+    tracing::info!(
+        "Logging to {tempdir}/readymade.log",
+        tempdir = tempdir.path().display()
+    );
     gettextrs::textdomain(APPID)?;
     gettextrs::bind_textdomain_codeset(APPID, "UTF-8")?;
 
