@@ -12,7 +12,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: dnf builddep -y ci/readymade.spec
+        run: |
+            dnf builddep -y ci/readymade.spec
+            dnf in -y rpmdevtools git rpm-build
 
       - name: run rpmbuild
         run: |
