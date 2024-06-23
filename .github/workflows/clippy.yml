@@ -10,9 +10,15 @@ jobs:
       contents: read
       security-events: write
       actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+    container:
+        image: ghcr.io/terrapkg/builder:f40
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: dnf builddep -y ci/readymade.spec
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af #@v1

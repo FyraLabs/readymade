@@ -1,0 +1,34 @@
+# todo: CI RPM packages xd
+
+%global shortcommit %(c=%{gitcommit}; echo ${c:0:7})
+
+Name:           readymade
+Version:        git-%{shortcommit}
+Release:        1%?dist
+Summary:        Install ready-made distribution images!
+License:        MIT
+URL:            https://github.com/FyraLabs/readymade
+Source0:        %{url}/archive/%{gitcommit}.tar.gz
+BuildRequires:	anda-srpm-macros rust-packaging
+BuildRequires:  pkgconfig(libhelium-1)
+BuildRequires:  pkgconfig(gnome-desktop-4)
+BuildRequires:  clang-devel
+
+%description
+Readymade is a Linux Distribution installer based on the great distinst library by System76.
+
+It is created as a replacement to Red Hat's Anaconda installer for Ultramarine Linux and tauOS after we have heard many complaints about the poor UX design of Anaconda, and the lack of working alternative installers for RPM-based distributions.
+
+%prep
+%autosetup -n %{name}-%{gitcommit}
+%cargo_prep_online
+
+%build
+
+%install
+%cargo_install
+install -Dpm644 com.fyralabs.pkexec.readymade.policy %buildroot%_datadir/polkit-1/actions/com.fyralabs.pkexec.readymade.policy
+
+%files
+%_bindir/readymade
+%_datadir/polkit-1/actions/com.fyralabs.pkexec.readymade.policy
