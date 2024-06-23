@@ -1,11 +1,9 @@
 # todo: CI RPM packages xd
 
-# %global shortcommit %(c=%{gitcommit}; echo ${c:0:7})
-# %global gitcommit %(git rev-parse --short=12 HEAD)
 Name:           readymade
 Version:        git-%{shortcommit}
 Release:        1%?dist
-Summary:        Install ready-made distribution images!
+Summary:        Install ready-made distribution images
 License:        MIT
 URL:            https://github.com/FyraLabs/readymade
 Source0:        %{url}/archive/%{gitcommit}.tar.gz
