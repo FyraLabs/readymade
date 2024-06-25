@@ -1275,9 +1275,9 @@ dependencies = [
 
 [[package]]
 name = "lsblk"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44aa09bed66a16f00134e4bef4285709524e33a0e1995319bea750e0f5504dc3"
+checksum = "1757d98c6c4b1a1b2bf98c740f2e2bfd9cae9504ff2bec4e0ebe8e48b8677e28"
 dependencies = [
  "thiserror",
 ]
