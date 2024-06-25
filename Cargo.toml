@@ -34,6 +34,11 @@ glob = "0.3.1"
 lsblk = "0.2.1"
 serde_ini = "0.2.0"
 serde-enum-str = "0.4.0"
+const_format = "0.2.32"
+validator = { version = "0.18.1", features = ["derive"] }
+either = { version = "1.12.0", features = ["serde"] }
+uuid = { version = "1.9.1", features = ["serde"] }
+serde_with = "3.8.1"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"
