@@ -168,7 +168,14 @@ pub fn _get_disk_partns_disksize(diskpath: &Path) -> Result<(Vec<u8>, u64)> {
 
     tracing::debug!(?partn, ?partpath, ?size, "First partn");
 
-    // let iter = iter.filter(|())
+    let iter = (lsblk.split('\n').skip(1))
+        .map(|l| l.split_whitespace())
+        .filter_map(|mut l| {
+            let partn = l.next()?;
+            let path = l.next()?;
+            let size = l.next()?;
+            Some((partn, (path, size)))
+        });
     // Filter by partpath if starts with diskpath
     let iter = iter.filter(|(_, (path, _))| path.contains(&sdiskpath));
     let (_, path_size) = iter
