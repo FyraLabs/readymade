@@ -53,11 +53,11 @@ fn _list(f: impl Fn(&str) -> Option<String>) -> HashMap<String, String> {
         .map(|(lang, locale)| (locale, lang))
         .collect() // かなりえぐっ
 }
-/// A list of locale_id -> name of region
+/// A list of `locale_id` -> name of region
 pub fn list_regions() -> HashMap<String, String> {
     _list(get_region_from_locale)
 }
-/// A list of locale_id -> name of language in English
+/// A list of `locale_id` -> name of language in English
 pub fn list_langs() -> HashMap<String, String> {
     _list(get_lang_from_locale)
 }
@@ -69,7 +69,7 @@ pub fn list_timezones() -> Vec<&'static str> {
 #[test]
 fn test_list_locales() {
     let locales = list_locales();
-    println!("{:?}", locales);
+    println!("{locales:?}");
     assert!(!locales.is_empty());
     assert_eq!(list_regions().len(), locales.len());
     assert_eq!(list_langs().len(), locales.len());

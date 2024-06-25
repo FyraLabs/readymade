@@ -205,7 +205,7 @@ impl SimpleComponent for RegionPage {
                     // the region contains cities ⇒ repopulate citybtnbox
                     let mut citybtns = self.cityfactory.guard();
                     citybtns.clear();
-                    cities.into_iter().for_each(|city| {
+                    cities.iter().for_each(|city| {
                         let (_, city) = city.split_once('/').take().unwrap();
                         let city = city.replace('_', " ");
                         _ = citybtns.push_back(city)

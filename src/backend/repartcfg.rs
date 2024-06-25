@@ -3,7 +3,7 @@ use serde_with::{
     formats::{ColonSeparator, SemicolonSeparator, SpaceSeparator},
     serde_as, StringWithSeparator,
 };
-use std::{env::consts::ARCH, path::PathBuf};
+use std::env::consts::ARCH;
 
 use crate::ini_enum;
 
@@ -230,7 +230,6 @@ ini_enum! {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
 
     use super::{Partition, RepartConfig};
 
