@@ -1,11 +1,9 @@
 #[warn(clippy::nursery)]
 #[warn(clippy::pedantic)]
-mod albius;
 mod backend;
 mod disks;
 mod install;
 mod pages;
-mod setup;
 mod util;
 
 use color_eyre::Result;

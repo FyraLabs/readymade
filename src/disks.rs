@@ -2,7 +2,6 @@
 
 // todo: figure out a way to find installed OS on disks and its partitions
 
-pub mod init;
 mod osprobe;
 
 use color_eyre::eyre::OptionExt;

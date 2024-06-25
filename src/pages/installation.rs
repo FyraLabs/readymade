@@ -1,4 +1,4 @@
-use crate::{install::run_albius, NavigationAction, INSTALLATION_STATE};
+use crate::{NavigationAction, INSTALLATION_STATE};
 use gettextrs::gettext;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
@@ -79,11 +79,7 @@ impl SimpleComponent for InstallationPage {
                     .register(async move {
                         let state = INSTALLATION_STATE.read();
                         tracing::debug!("Starting installation...");
-                        let recipe = crate::install::generate_recipe(&state)?;
-
-                        tracing::debug!(?recipe);
-
-                        run_albius(&recipe)?;
+                        // let recipe = crate::install::generate_recipe(&state)?;
 
                         color_eyre::Result::<_>::Ok(())
                     })
