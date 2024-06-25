@@ -58,7 +58,9 @@ pub struct Partition {
     padding_min_bytes: Size,
     #[serde(default)]
     padding_max_bytes: Size,
-    copy_blocks: Option<either::Either<PathBuf, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    copy_blocks: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     format: Option<FileSystem>,
     #[serde(default)]
     #[serde_as(as = "StringWithSeparator::<ColonSeparator, String>")]
@@ -82,9 +84,10 @@ pub struct Partition {
     #[serde(default)]
     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
     subvolumes: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     default_subvolume: Option<String>,
     #[serde(default)]
-    encrypt: either::Either<bool, EncryptOption>,
+    encrypt: EncryptOption,
     #[serde(default)]
     verity: Verity,
 
@@ -247,7 +250,7 @@ mod tests {
                 },
                 padding_min_bytes: super::Size::default(),
                 padding_max_bytes: super::Size::default(),
-                copy_blocks: Some(either::Left(PathBuf::from("hai"))),
+                copy_blocks: Some("hai".to_string()),
                 format: Some(super::FileSystem::Ext4),
                 copy_files: vec![],
                 exclude_files: vec![],
@@ -255,7 +258,7 @@ mod tests {
                 make_directories: vec![],
                 subvolumes: vec![],
                 default_subvolume: None,
-                encrypt: either::Either::Left(false),
+                encrypt: crate::backend::repartcfg::EncryptOption::Off,
                 verity: super::Verity::Off,
                 factory_reset: false,
                 mount_point: "idk".to_string(),
