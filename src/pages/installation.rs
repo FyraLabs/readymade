@@ -79,7 +79,7 @@ impl SimpleComponent for InstallationPage {
                     .register(async move {
                         let state = INSTALLATION_STATE.read();
                         tracing::debug!("Starting installation...");
-                        // let recipe = crate::install::generate_recipe(&state)?;
+                        state.installation_type.as_ref().unwrap().install(&state)?;
 
                         color_eyre::Result::<_>::Ok(())
                     })
