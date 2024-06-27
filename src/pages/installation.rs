@@ -3,9 +3,9 @@ use gettextrs::gettext;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct InstallationPage {
-    progress: f64,
+    progress_bar: gtk::ProgressBar,
 }
 
 #[derive(Debug)]
@@ -48,9 +48,8 @@ impl SimpleComponent for InstallationPage {
                     set_label: &*gettext("Installing base system...")
                 },
 
-                gtk::ProgressBar {
-                    #[watch]
-                    set_fraction: model.progress
+                #[local_ref]
+                progress_bar -> gtk::ProgressBar {
                 }
             }
         }
@@ -61,7 +60,8 @@ impl SimpleComponent for InstallationPage {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = Self { progress: 0.0 };
+        let model = Self::default();
+        let progress_bar = &model.progress_bar;
 
         let widgets = view_output!();
 
@@ -72,6 +72,7 @@ impl SimpleComponent for InstallationPage {
 
     #[tracing::instrument]
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
+        self.progress_bar.pulse();
         // handle channel logics here
         match message {
             InstallationPageMsg::StartInstallation => sender.command(|_out, shutdown| {
@@ -79,6 +80,7 @@ impl SimpleComponent for InstallationPage {
                     .register(async move {
                         let state = INSTALLATION_STATE.read();
                         tracing::debug!("Starting installation...");
+                        // FIXME: all errors are ignored due to shutdown.register() not handling results
                         state.installation_type.as_ref().unwrap().install(&state)?;
 
                         color_eyre::Result::<_>::Ok(())
