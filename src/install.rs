@@ -39,7 +39,8 @@ impl InstallationType {
                 --dry-run=$dry_run
                 --definitions=$cfgdir
                 $blockdev
-        ).map_err(|e| color_eyre::eyre::eyre!("systemd-repart failed").wrap_err(e))?;
+        )
+        .map_err(|e| color_eyre::eyre::eyre!("systemd-repart failed").wrap_err(e))?;
 
         tracing::debug!("systemd-repart finished");
         Ok(())
