@@ -6,6 +6,7 @@ use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 #[derive(Debug, Default)]
 pub struct InstallationPage {
     progress_bar: gtk::ProgressBar,
+    thread: Option<std::thread::JoinHandle<color_eyre::Result<()>>>,
 }
 
 #[derive(Debug)]
@@ -49,8 +50,7 @@ impl SimpleComponent for InstallationPage {
                 },
 
                 #[local_ref]
-                progress_bar -> gtk::ProgressBar {
-                }
+                progress_bar -> gtk::ProgressBar {}
             }
         }
     }
@@ -72,21 +72,27 @@ impl SimpleComponent for InstallationPage {
 
     #[tracing::instrument]
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
-        self.progress_bar.pulse();
+        if let Some(th) = &self.thread {
+            self.progress_bar.pulse();
+            if th.is_finished() {
+                let th = self.thread.take().unwrap();
+                let res = th.join().expect("Cannot join thread");
+                if let Err(e) = res {
+                    tracing::error!("Installation failed: {e:?}");
+                }
+                self.progress_bar.set_fraction(1.0);
+            }
+        }
         // handle channel logics here
         match message {
-            InstallationPageMsg::StartInstallation => sender.command(|_out, shutdown| {
-                shutdown
-                    .register(async move {
-                        let state = INSTALLATION_STATE.read();
-                        tracing::debug!("Starting installation...");
-                        // FIXME: all errors are ignored due to shutdown.register() not handling results
-                        state.installation_type.as_ref().unwrap().install(&state)?;
-
-                        color_eyre::Result::<_>::Ok(())
-                    })
-                    .drop_on_shutdown()
-            }),
+            InstallationPageMsg::StartInstallation => {
+                self.thread = Some(std::thread::spawn(|| {
+                    let state = INSTALLATION_STATE.read();
+                    tracing::debug!(?state, "Starting installation...");
+                    state.installation_type.as_ref().unwrap().install(&state)?;
+                    Ok(())
+                }));
+            }
             InstallationPageMsg::Navigate(action) => sender
                 .output(InstallationPageOutput::Navigate(action))
                 .unwrap(),
