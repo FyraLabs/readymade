@@ -1,8 +1,8 @@
 //! QoL Utilities for Readymade
-use bytesize::ByteSize;
+// use bytesize::ByteSize;
 use color_eyre::Section as _;
 
-pub const MAX_EFI_SIZE: ByteSize = ByteSize::gb(1);
+// pub const MAX_EFI_SIZE: ByteSize = ByteSize::gb(1);
 pub const DEFAULT_SQUASH_LOCATION: &str = "/run/initramfs/live/LiveOS/squashfs.img";
 
 #[cfg(target_os = "linux")]
@@ -47,15 +47,6 @@ pub fn chain_err<E: std::error::Error + Send + Sync + 'static>(
 pub fn make_push<T>(mut vector: Vec<T>, elem: T) -> Vec<T> {
     vector.push(elem);
     vector
-}
-
-/// Internal function to convert an array of `&str` to an array of `serde_json::Value`.
-#[inline]
-pub(crate) fn array_str_to_values<const N: usize>(arr: [&str; N]) -> Vec<serde_json::Value> {
-    arr.into_iter()
-        .map(ToString::to_string)
-        .map(serde_json::Value::String)
-        .collect()
 }
 
 /// Check if the current running system is a Chromebook device.
