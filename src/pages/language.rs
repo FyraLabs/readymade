@@ -101,10 +101,10 @@ impl SimpleComponent for LanguagePage {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_spacing: 4,
 
-                    libhelium::TextButton {
-                        set_label: &gettext("Previous"),
-                        connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Region)),
-                    },
+                    // libhelium::TextButton {
+                    //     set_label: &gettext("Previous"),
+                    //     connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Region)),
+                    // },
 
                     gtk::Box {
                         set_hexpand: true,
@@ -115,7 +115,7 @@ impl SimpleComponent for LanguagePage {
                         inline_css: "padding-left: 48px; padding-right: 48px",
                         connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome)),
                         #[watch]
-                        set_sensitive: crate::INSTALLATION_STATE.read().timezone.is_some()
+                        set_sensitive: crate::INSTALLATION_STATE.read().langlocale.is_some()
                     }
                 }
             }
