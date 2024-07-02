@@ -71,7 +71,6 @@ macro_rules! generate_pages {
 }
 
 generate_pages!(Page AppModel AppMsg:
-    Region,
     Language,
     Welcome,
     Destination,
@@ -108,7 +107,6 @@ impl SimpleComponent for AppModel {
             #[wrap(Some)]
             #[transition = "SlideLeftRight"]
             set_child = match model.page {
-                Page::Region => *model.region_page.widget(),
                 Page::Language => *model.language_page.widget(),
                 Page::Welcome => *model.welcome_page.widget(),
                 Page::Destination => *model.destination_page.widget(),

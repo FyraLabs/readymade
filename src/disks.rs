@@ -20,6 +20,8 @@ const OSNAME_PLACEHOLDER: &str = "Unknown";
 pub fn detect_os() -> Vec<DiskInit> {
     let disks = lsblk::BlockDevice::list().unwrap();
 
+    println!("{:?}", disks);
+
     let osprobe: HashMap<_, _> = OSProbe::scan()
         .map(|probe| (probe.into_iter().map(|os| (os.part, os.os_name_pretty))).collect())
         .unwrap_or_default();
