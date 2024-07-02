@@ -8,11 +8,4 @@ jobs:
   rust:
     uses: FyraLabs/actions/.github/workflows/rust.yml@main
     with:
-      test-container: '{"image": "registry.fedoraproject.org/fedora-minimal:40"}'
-      test-pre: |
-        dnf5 up -y
-        dnf5 install -y --repofrompath 'terra,https://repos.fyralabs.com/terra40' --setopt='terra.gpgkey=https://repos.fyralabs.com/terra40/key.asc' terra-release
-        dnf5 install -y libhelium-devel tar rustup gcc clang-devel 'pkgconfig(gnome-desktop-4)' glibc-all-langpacks
-         # I'm not sure why setting up Fedora's rustup makes it work, but it does
-        rustup-init -y
-        echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+      test-container: '{"image": "ghcr.io/tau-os/builder:main"}'
