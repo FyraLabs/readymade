@@ -1,7 +1,7 @@
 use color_eyre::Result;
 use gtk::gdk::Monitor;
-use sys_mount::Unmount;
 use std::path::{Path, PathBuf};
+use sys_mount::Unmount;
 
 const REPART_DIR: &str = "/usr/share/readymade/repart-cfgs/";
 
@@ -29,7 +29,9 @@ impl InstallationType {
     }
     fn mount_squashimg() -> std::io::Result<sys_mount::Mount> {
         std::fs::create_dir_all("/mnt/squash")?;
-        sys_mount::Mount::builder().fstype("squashfs").mount(crate::util::DEFAULT_SQUASH_LOCATION, "/mnt/squash")
+        sys_mount::Mount::builder()
+            .fstype("squashfs")
+            .mount(crate::util::DEFAULT_SQUASH_LOCATION, "/mnt/squash")
     }
     fn cfgdir(&self) -> PathBuf {
         match self {
