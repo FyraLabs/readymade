@@ -1910,6 +1910,7 @@ dependencies = [
  "serde_ini",
  "serde_json",
  "serde_with",
+ "sys-mount",
  "tempfile",
  "thiserror",
  "tracing",
