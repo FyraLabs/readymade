@@ -1,5 +1,7 @@
 use color_eyre::Result;
+use gtk::gdk::Monitor;
 use std::path::{Path, PathBuf};
+use sys_mount::Unmount;
 
 const REPART_DIR: &str = "/usr/share/readymade/repart-cfgs/";
 
@@ -16,12 +18,20 @@ impl InstallationType {
     pub fn install(&self, state: &crate::InstallationState) -> Result<()> {
         let blockdev = &state.destination_disk.as_ref().unwrap().devpath;
         let cfgdir = self.cfgdir();
+        let sqsh = Self::mount_squashimg()?;
+        sqsh.unmount(sys_mount::UnmountFlags::empty())?;
         Self::systemd_repart(blockdev, &cfgdir)?;
         if let Self::ChromebookInstall = self {
             Self::set_cgpt_flags(blockdev)?;
         }
         tracing::info!("install() finished");
         Ok(())
+    }
+    fn mount_squashimg() -> std::io::Result<sys_mount::Mount> {
+        std::fs::create_dir_all("/mnt/squash")?;
+        sys_mount::Mount::builder()
+            .fstype("squashfs")
+            .mount(crate::util::DEFAULT_SQUASH_LOCATION, "/mnt/squash")
     }
     fn cfgdir(&self) -> PathBuf {
         match self {
@@ -38,6 +48,8 @@ impl InstallationType {
             pkexec systemd-repart
                 --dry-run=$dry_run
                 --definitions=$cfgdir
+                --factory-reset=yes
+                --generate-fstab=/etc/fstab
                 $blockdev
         )
         .map_err(|e| color_eyre::eyre::eyre!("systemd-repart failed").wrap_err(e))?;
