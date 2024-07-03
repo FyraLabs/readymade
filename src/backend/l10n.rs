@@ -1,22 +1,27 @@
 extern crate alloc;
 use alloc::ffi::CString;
+use itertools::Itertools;
 use std::collections::HashMap;
 use std::ffi::CStr;
 
 pub fn list_locales() -> Vec<String> {
-    let ptr = unsafe { gnome_desktop::ffi::gnome_get_all_locales() };
-    let mut p = ptr;
-    let mut res = vec![];
-    while !unsafe { p.read().is_null() } {
-        res.push(
-            unsafe { CStr::from_ptr(p.read()) }
-                .to_string_lossy()
-                .to_string(),
-        );
-        p = unsafe { p.add(1) };
-    }
-    unsafe { gtk::glib::ffi::g_strfreev(ptr) };
-    res
+    gnome_desktop::all_locales()
+        .iter()
+        .map(|gs| gs.to_string())
+        .collect_vec()
+    // let ptr = unsafe { gnome_desktop::ffi::gnome_get_all_locales() };
+    // let mut p = ptr;
+    // let mut res = vec![];
+    // while !unsafe { p.read().is_null() } {
+    //     res.push(
+    //         unsafe { CStr::from_ptr(p.read()) }
+    //             .to_string_lossy()
+    //             .to_string(),
+    //     );
+    //     p = unsafe { p.add(1) };
+    // }
+    // unsafe { gtk::glib::ffi::g_strfreev(ptr) };
+    // res
 }
 
 #[inline]
@@ -30,24 +35,33 @@ unsafe fn _get_ffi(locale: &str, f: impl Fn(*const i8, *const i8) -> *mut i8) ->
     .into_string()
     .ok()
 }
-pub fn get_lang_from_locale(locale: &str) -> Option<String> {
-    // this is as simple as how it can be, there's no way to further refactor it
-    // blame rust for lack of something like `impl unsafe Fn()`?
-    unsafe {
-        _get_ffi(locale, |x, y| {
-            gnome_desktop::ffi::gnome_get_language_from_locale(x, y)
-        })
+pub fn get_lang_from_locale(locale: &str) -> Option<(String, String)> {
+    if let (Some(lang), Some(native_lang)) = (
+        gnome_desktop::language_from_locale(locale, None),
+        gnome_desktop::language_from_locale(locale, Some(locale)),
+    ) {
+        Some((lang.to_string(), native_lang.to_string()))
+    } else {
+        None
     }
+    // // this is as simple as how it can be, there's no way to further refactor it
+    // // blame rust for lack of something like `impl unsafe Fn()`?
+    // unsafe {
+    //     _get_ffi(locale, |x, y| {
+    //         gnome_desktop::ffi::gnome_get_language_from_locale(x, y)
+    //     })
+    // }
 }
 pub fn get_region_from_locale(locale: &str) -> Option<String> {
-    unsafe {
-        _get_ffi(locale, |x, y| {
-            gnome_desktop::ffi::gnome_get_country_from_locale(x, y)
-        })
-    }
+    gnome_desktop::country_from_locale(locale, None).map(|gs| gs.to_string())
+    // unsafe {
+    //     _get_ffi(locale, |x, y| {
+    //         gnome_desktop::ffi::gnome_get_country_from_locale(x, y)
+    //     })
+    // }
 }
 
-fn _list(f: impl Fn(&str) -> Option<String>) -> HashMap<String, String> {
+fn _list(f: impl Fn(&str) -> Option<(String, String)>) -> HashMap<String, (String, String)> {
     (list_locales().into_iter())
         .filter_map(|s| Some((f(&s)?, s))) // avoid clone ∴ flip here (rust bug?)
         .map(|(lang, locale)| (locale, lang))
@@ -55,10 +69,13 @@ fn _list(f: impl Fn(&str) -> Option<String>) -> HashMap<String, String> {
 }
 /// A list of `locale_id` -> name of region
 pub fn list_regions() -> HashMap<String, String> {
-    _list(get_region_from_locale)
+    (list_locales().into_iter())
+        .filter_map(|s| Some((get_region_from_locale(&s)?, s)))
+        .map(|(lang, locale)| (locale, lang))
+        .collect()
 }
 /// A list of `locale_id` -> name of language in English
-pub fn list_langs() -> HashMap<String, String> {
+pub fn list_langs() -> HashMap<String, (String, String)> {
     _list(get_lang_from_locale)
 }
 

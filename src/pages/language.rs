@@ -10,20 +10,22 @@ use crate::NavigationAction;
 struct LanguageButton {
     locale: String,
     name: String,
+    native_name: String,
 }
 
-impl From<(String, String)> for LanguageButton {
-    fn from(value: (String, String)) -> Self {
+impl From<(String, (String, String))> for LanguageButton {
+    fn from(value: (String, (String, String))) -> Self {
         Self {
             locale: value.0,
-            name: value.1,
+            name: value.1 .0,
+            native_name: value.1 .1,
         }
     }
 }
 
 #[relm4::factory]
 impl relm4::factory::FactoryComponent for LanguageButton {
-    type Init = (String, String);
+    type Init = (String, (String, String));
     type Input = ();
     type Output = relm4::factory::DynamicIndex;
     type CommandOutput = ();
@@ -31,11 +33,15 @@ impl relm4::factory::FactoryComponent for LanguageButton {
 
     view! {
         #[root]
-        gtk::Button {
-            set_label: &self.name,
-            connect_clicked[sender, index] => move |_| {
-                sender.output(index.clone()).unwrap();
-            }
+        libhelium::MiniContentBlock {
+            set_title: &self.name,
+            set_subtitle: &self.native_name,
+            // gtk::Button {
+            //     set_label: &self.name,
+            //     connect_clicked[sender, index] => move |_| {
+            //         sender.output(index.clone()).unwrap();
+            //     }
+            // }
         }
     }
 

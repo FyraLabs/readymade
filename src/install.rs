@@ -35,7 +35,7 @@ impl InstallationType {
         let dry_run = if cfg!(debug_assertions) { "yes" } else { "no" };
         tracing::debug!(?dry_run, "Running systemd-repart");
         cmd_lib::run_cmd!(
-            systemd-repart
+            pkexec systemd-repart
                 --dry-run=$dry_run
                 --definitions=$cfgdir
                 $blockdev
