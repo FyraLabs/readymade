@@ -27,7 +27,7 @@ pub fn detect_os() -> Vec<DiskInit> {
 
     disks
         .iter()
-        .filter(|disk| disk.is_disk() && disk.is_physical())
+        // .filter(|disk| disk.is_disk() && disk.is_physical())
         .map(|disk| {
             let ret = DiskInit {
                 // id:

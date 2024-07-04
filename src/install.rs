@@ -17,10 +17,11 @@ impl InstallationType {
     pub fn install(&self, state: &crate::InstallationState) -> Result<()> {
         let blockdev = &state.destination_disk.as_ref().unwrap().devpath;
         let cfgdir = self.cfgdir();
-        let sqsh = Self::mount_squashimg()?;
-        sqsh.unmount(sys_mount::UnmountFlags::empty())?;
+        // todo: revert the backhand removal, use it to unsquash
+
         Self::systemd_repart(blockdev, &cfgdir)?;
         if let Self::ChromebookInstall = self {
+            // todo: not freeze on error, show error message as err handler?
             Self::set_cgpt_flags(blockdev)?;
         }
         tracing::info!("install() finished");
@@ -47,12 +48,12 @@ impl InstallationType {
             pkexec systemd-repart
                 --dry-run=$dry_run
                 --definitions=$cfgdir
-                --factory-reset=yes
-                --generate-fstab=/etc/fstab
+                --empty=force
                 $blockdev
         )
         .map_err(|e| color_eyre::eyre::eyre!("systemd-repart failed").wrap_err(e))?;
 
+        // todo: wait for systemd 256 or genfstab magic
         tracing::debug!("systemd-repart finished");
         Ok(())
     }
