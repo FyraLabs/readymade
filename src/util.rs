@@ -4,6 +4,7 @@ use color_eyre::Section as _;
 
 // pub const MAX_EFI_SIZE: ByteSize = ByteSize::gb(1);
 pub const DEFAULT_SQUASH_LOCATION: &str = "/run/initramfs/live/LiveOS/squashfs.img";
+pub const LIVE_BASE: &str = "/dev/mapper/live-base";
 
 #[cfg(target_os = "linux")]
 /// Check if the current running system is UEFI or not.
