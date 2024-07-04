@@ -14,16 +14,11 @@ pub struct DiskInit {
     pub disk_name: String,
     pub os_name: String,
     pub devpath: PathBuf,
+    pub size: bytesize::ByteSize,
 }
 
-struct Disk {
-    disk_name: String,
-    os_name: String,
-    devpath: PathBuf,
-}
-
-#[relm4::factory]
-impl FactoryComponent for Disk {
+#[relm4::factory(pub)]
+impl FactoryComponent for DiskInit {
     type Init = DiskInit;
     type Input = ();
     type Output = ();
@@ -53,16 +48,12 @@ impl FactoryComponent for Disk {
     }
 
     fn init_model(value: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
-        Self {
-            disk_name: value.disk_name,
-            os_name: value.os_name,
-            devpath: value.devpath,
-        }
+        value
     }
 }
 
 pub struct DestinationPage {
-    disks: FactoryVecDeque<Disk>,
+    disks: FactoryVecDeque<DiskInit>,
 }
 
 #[derive(Debug)]
@@ -147,7 +138,7 @@ impl SimpleComponent for DestinationPage {
 
         let model = Self { disks };
 
-        let disk_list = model.disks.widget();
+        let disk_list: &gtk::FlowBox = model.disks.widget();
         let widgets = view_output!();
 
         INSTALLATION_STATE.subscribe(sender.input_sender(), |_| DestinationPageMsg::Update);
@@ -163,17 +154,12 @@ impl SimpleComponent for DestinationPage {
             DestinationPageMsg::SelectionChanged => {
                 let disk_list = self.disks.widget();
                 let selected_children = disk_list.selected_children();
-                let selected_disk = selected_children.first().map(|d| {
-                    let disk = self.disks.get(d.index().try_into().unwrap()).unwrap();
-                    DiskInit {
-                        disk_name: disk.disk_name.clone(),
-                        os_name: disk.os_name.clone(),
-                        devpath: disk.devpath.clone(),
-                    }
-                });
+                let selected_disk = selected_children
+                    .first()
+                    .map(|d| self.disks.get(d.index().try_into().unwrap()).unwrap());
 
                 let mut installation_state_guard = INSTALLATION_STATE.write();
-                installation_state_guard.destination_disk = selected_disk;
+                installation_state_guard.destination_disk = selected_disk.cloned();
             }
             DestinationPageMsg::Update => {}
         }
