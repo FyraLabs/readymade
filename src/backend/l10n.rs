@@ -4,7 +4,7 @@ use std::collections::HashMap;
 pub fn list_locales() -> Vec<String> {
     gnome_desktop::all_locales()
         .iter()
-        .map(|gs| gs.to_string())
+        .map(std::string::ToString::to_string)
         .collect_vec()
 }
 

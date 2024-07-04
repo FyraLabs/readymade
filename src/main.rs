@@ -21,7 +21,6 @@ use tracing_subscriber::prelude::*;
 
 #[derive(Debug, Default)]
 struct InstallationState {
-    pub timezone: Option<String>,
     pub langlocale: Option<String>,
     pub destination_disk: Option<DiskInit>,
     pub installation_type: Option<InstallationType>,

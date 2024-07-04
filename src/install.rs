@@ -1,5 +1,4 @@
 use color_eyre::Result;
-use gtk::gdk::Monitor;
 use std::path::{Path, PathBuf};
 use sys_mount::Unmount;
 

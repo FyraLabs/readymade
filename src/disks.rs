@@ -4,7 +4,6 @@
 
 mod osprobe;
 
-use color_eyre::eyre::OptionExt;
 use osprobe::OSProbe;
 use std::{collections::HashMap, path::PathBuf};
 
@@ -48,7 +47,7 @@ pub fn detect_os() -> Vec<DiskInit> {
                     .find(|(path, _)| path.starts_with(&disk.name))
                     .map(|(_, osname)| osname.to_string())
                     .unwrap_or(OSNAME_PLACEHOLDER.to_string()),
-                devpath: PathBuf::from(disk.fullname.clone()),
+                devpath: disk.fullname.clone(),
             };
             tracing::debug!(?ret, "Found disk");
             ret
