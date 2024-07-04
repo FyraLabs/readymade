@@ -155,12 +155,11 @@ pub fn grub_config() -> String {
     // let's search for an xbootldr label
     // because we never know what the device will be
     format!(
-        r#"
-        search --no-floppy --label --set=dev xbootldr
-        set prefix=($dev)/grub2
+        r#"search --no-floppy --label --set=dev xbootldr
+set prefix=($dev)/grub2
 
-        export $prefix
-        configfile $prefix/grub.cfg
-        "#
+export $prefix
+configfile $prefix/grub.cfg
+"#
     )
 }

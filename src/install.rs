@@ -48,7 +48,7 @@ impl InstallationType {
         .into()
     }
     #[tracing::instrument]
-    fn systemd_repart(blockdev: &Path, cfgdir: &Path) -> Result<()> {
+    fn systemd_repart(blockdev: &Path, cfgdir: &Path) -> Result<crate::backend::repart_output::RepartOutput> {
         let copy_source = {
             const FALLBACK: &str = "/mnt/live-base";
             // We'll be using a new feature from systemd 255 (relative repart copy source)
@@ -84,7 +84,7 @@ impl InstallationType {
         };
         let dry_run = if cfg!(debug_assertions) { "yes" } else { "no" };
         tracing::debug!(?dry_run, "Running systemd-repart");
-        cmd_lib::run_cmd!(
+        let out = cmd_lib::run_fun!(
             pkexec systemd-repart
                 --dry-run=$dry_run
                 --definitions=$cfgdir
@@ -97,7 +97,7 @@ impl InstallationType {
 
         // todo: wait for systemd 256 or genfstab magic
         tracing::debug!("systemd-repart finished");
-        Ok(())
+        Ok(serde_json::from_str(&out)?)
     }
     fn set_cgpt_flags(blockdev: &Path) -> Result<()> {
         tracing::debug!("Setting cgpt flags");
