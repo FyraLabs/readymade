@@ -59,7 +59,7 @@ impl InstallationType {
             if let Ok(copy_source) = std::env::var("REPART_COPY_SOURCE") {
                 tracing::info!("Using REPART_COPY_SOURCE override: {}", copy_source);
                 let copy_source = Path::new(&copy_source.trim()).canonicalize()?;
-                
+
                 if copy_source == Path::new("/") {
                     tracing::warn!("REPART_COPY_SOURCE is set to `/`, this is likely a mistake. Copying entire host root filesystem to target disk...");
                 }
