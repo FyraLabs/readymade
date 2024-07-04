@@ -149,3 +149,18 @@ macro_rules! ini_enum {
         }
     }
 }
+/// Generates a generic GRUB config for our use case.
+///
+pub fn grub_config() -> String {
+    // let's search for an xbootldr label
+    // because we never know what the device will be
+    format!(
+        r#"
+        search --no-floppy --label --set=dev xbootldr
+        set prefix=($dev)/grub2
+
+        export $prefix
+        configfile $prefix/grub.cfg
+        "#
+    )
+}
