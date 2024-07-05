@@ -41,6 +41,7 @@ pub fn setup_system(output: RepartOutput) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument]
 fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> {
     if uefi {
         // The reason why we don't do grub2-install here is because for
@@ -69,7 +70,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
 
     stage!("Cleaning up /boot partition..." {
         let boot_dir = Path::new("/boot");
-        for file in std::fs::read_dir(boot_dir)?.map(|entry| entry.unwrap().path()) {
+        for file in std::fs::read_dir(boot_dir)?.flatten().map(|entry| entry.path()) {
             let file_name = file.file_name().unwrap().to_str().unwrap();
             if file_name.starts_with("initramfs") || file_name.starts_with("vmlinuz") {
                 tracing::debug!(?file, "Removing kernel file");
@@ -78,7 +79,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
         }
 
         let bls_dir = Path::new("/boot/loader/entries");
-        for file in std::fs::read_dir(bls_dir)?.map(|entry| entry.unwrap().path()) {
+        for file in std::fs::read_dir(bls_dir)?.flatten().map(|entry| entry.path()) {
             tracing::debug!(?file, "Removing BLS entry");
             std::fs::remove_file(file)?;
         }
@@ -177,7 +178,7 @@ impl InstallationType {
             // environment variable override. This is documented in HACKING.md
 
             if let Ok(copy_source) = std::env::var("REPART_COPY_SOURCE") {
-                tracing::info!("Using REPART_COPY_SOURCE override: {}", copy_source);
+                tracing::info!("Using REPART_COPY_SOURCE override: {copy_source}");
                 let copy_source = Path::new(&copy_source.trim()).canonicalize()?;
 
                 if copy_source == Path::new("/") {

@@ -1,9 +1,6 @@
 //! QoL Utilities for Readymade
-// use bytesize::ByteSize;
 use color_eyre::Section as _;
 
-// pub const MAX_EFI_SIZE: ByteSize = ByteSize::gb(1);
-pub const DEFAULT_SQUASH_LOCATION: &str = "/run/initramfs/live/LiveOS/squashfs.img";
 pub const LIVE_BASE: &str = "/dev/mapper/live-base";
 
 #[cfg(target_os = "linux")]
@@ -37,18 +34,6 @@ pub fn run_as_root(cmd: &str) -> Result<String, std::io::Error> {
 compile_error!(
     "Readymade does not support non-Linux platforms, these functions are Linux-specific."
 );
-/// Chain an error with a custom message.
-pub fn chain_err<E: std::error::Error + Send + Sync + 'static>(
-    msg: &'static str,
-) -> impl FnOnce(E) -> color_eyre::Report {
-    move |e| color_eyre::Report::msg(msg).error(e)
-}
-
-/// Internal function to append an element to a vector.
-pub fn make_push<T>(mut vector: Vec<T>, elem: T) -> Vec<T> {
-    vector.push(elem);
-    vector
-}
 
 /// Check if the current running system is a Chromebook device.
 ///
