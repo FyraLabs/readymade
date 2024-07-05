@@ -132,7 +132,7 @@ pub fn setup_system(output: RepartOutput) -> Result<()> {
             
             
             // Generate /etc/fstab
-            if systemd_version()? >= 256 {
+            if systemd_version()? <= 256 {
                 tracing::info!("Generating /etc/fstab...");
                 let mut fstab = std::fs::File::create("/etc/fstab")?;
                 fstab.write_all(output.into_fstab().as_bytes())?;
