@@ -93,7 +93,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
     // which runs all the necessary hooks to generate the initramfs and install the kernel properly.
     //
     // As a bonus, it also generates the BLS entries for us.
-    {
+    stage!("Reinstalling kernel..." {
         tracing::info!("Reinstalling kernel...");
         // list all kernels in /lib/modules
         // suggestion: Switch to using kernel-install --json=short for parsing
@@ -114,13 +114,13 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
             .arg(format!("/lib/modules/{kver}/vmlinuz"))
             .arg("--verbose")
             .status()?;
-    }
-
+    });
     // Generate /etc/fstab
     if systemd_version()? <= 256 {
-        tracing::info!("Generating /etc/fstab...");
-        let mut fstab = std::fs::File::create("/etc/fstab")?;
-        fstab.write_all(output.into_fstab().as_bytes())?;
+        stage!("Generating /etc/fstab..." {
+            let mut fstab = std::fs::File::create("/etc/fstab")?;
+            fstab.write_all(output.into_fstab().as_bytes())?;
+        });
     }
 
     // todo: restore selinux contexts
