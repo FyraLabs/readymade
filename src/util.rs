@@ -149,16 +149,23 @@ macro_rules! ini_enum {
         }
     }
 }
-/// Generates a generic GRUB config for our use case.
-///
-pub fn grub_config() -> String {
-    // let's search for an xbootldr label
-    // because we never know what the device will be
-    r#"search --no-floppy --label --set=dev xbootldr
+
+// let's search for an xbootldr label
+// because we never know what the device will be
+pub const GRUB_CONFIG: &str = r#"search --no-floppy --label --set=dev xbootldr
 set prefix=($dev)/grub2
 
 export $prefix
 configfile $prefix/grub.cfg
-"#
-    .to_string()
+"#;
+
+#[macro_export]
+macro_rules! stage {
+    ($s:literal $body:block) => {
+        let s = tracing::info_span!($s);
+        {
+            let _guard = s.enter();
+            $body
+        }
+    };
 }
