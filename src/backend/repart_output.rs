@@ -6,7 +6,7 @@ use sys_mount::MountFlags;
 use tiffin::{Container, MountTarget};
 
 /// Gets the systemd version
-pub(crate) fn systemd_version -> color_eyre::Result<usize> {
+pub(crate) fn systemd_version() -> color_eyre::Result<usize> {
     let output = std::process::Command::new("systemd")
         .arg("--version")
         .output()?;
