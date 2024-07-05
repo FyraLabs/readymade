@@ -189,8 +189,7 @@ fn main() -> Result<()> {
     // let subscriber = Registry::default();
 
     tracing::subscriber::set_global_default(sub_builder).expect("unable to set global subscriber");
-    
-    
+
     // if std::env::var("DEBUG_SDA") == Ok("1".to_string())
     // {
     //     karen::escalate_if_needed().unwrap();
@@ -198,10 +197,9 @@ fn main() -> Result<()> {
     //         "backend/repart-out.json"
     //     ))?);
     //     setup_system(repart_out)?;
-        
+
     //     return Ok(());
     // }
-
 
     // we probably want to escalate the process to root on release builds
 

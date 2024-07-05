@@ -11,8 +11,14 @@ pub(crate) fn systemd_version() -> color_eyre::Result<usize> {
         .arg("--version")
         .output()?;
     let version = std::str::from_utf8(&output.stdout)?;
-    let version = version.split_whitespace().nth(1).ok_or_else(|| eyre!("Could not parse systemd version"))?;
-    let version = version.split('.').next().ok_or_else(|| eyre!("Could not parse systemd version"))?;
+    let version = version
+        .split_whitespace()
+        .nth(1)
+        .ok_or_else(|| eyre!("Could not parse systemd version"))?;
+    let version = version
+        .split('.')
+        .next()
+        .ok_or_else(|| eyre!("Could not parse systemd version"))?;
     let version = version.parse()?;
     Ok(version)
 }
@@ -40,20 +46,19 @@ impl RepartOutput {
             .filter_map(|part| part.ddi_mountpoint().map(|mp| (mp, part.node.clone())))
             .collect()
     }
-    
+
     pub fn find_by_node(&self, node: &str) -> Option<&RepartPartition> {
         self.partitions.iter().find(|part| part.node == node)
     }
-    
-    
+
     /// Generate a /etc/fstab file from the DDI partition types
-    /// 
+    ///
     /// This function may be deprecated when systemd 256 hits f40, or when
     /// we rebase to f41
     pub fn into_fstab(&self) -> String {
         let mountpoints = self.mountpoints();
         let mut fstab = String::new();
-        
+
         for (mntpoint, node) in mountpoints {
             let part = self.find_by_node(&node).unwrap();
             let fs_type = part.part_type.as_str();
@@ -61,15 +66,14 @@ impl RepartOutput {
             let options = "defaults";
             let dump = 0;
             let pass = 2;
-            
+
             fstab.push_str(&format!(
                 "UUID={}\t{}\t{}\t{}\t{}\t{}\n",
                 uuid, mntpoint, fs_type, options, dump, pass
             ));
         }
-        
+
         fstab
-        
     }
 
     /// Create `tiffin::Container` from the repartitioning output with the mountpoints
@@ -78,11 +82,8 @@ impl RepartOutput {
         let mountpoints = self.mountpoints();
 
         let temp_dir = tempfile::tempdir()?.into_path();
-        
-        
 
         let mut container = Container::new(temp_dir);
-        
 
         mountpoints.iter().for_each(|(mntpoint, node)| {
             // strip

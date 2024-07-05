@@ -19,14 +19,13 @@ pub enum InstallationType {
     Custom,
 }
 
-
 #[tracing::instrument]
 pub fn setup_system(output: RepartOutput) -> Result<()> {
     let mut container = output.to_container()?;
 
     // note: that nesting is crazy bruh
     // todo: cleanup
-    
+
     // The reason we're checking for UEFI here is because we want to check the current
     // system's boot mode before we install GRUB, not check inside the container
     let uefi = util::check_uefi();
@@ -51,7 +50,8 @@ pub fn setup_system(output: RepartOutput) -> Result<()> {
                     grub_cfg.write_all(crate::util::grub_config().as_bytes())?;
                 }
 
-                let s = tracing::info_span!("Generating stage 2 grub.cfg in /boot/grub2/grub.cfg...");
+                let s =
+                    tracing::info_span!("Generating stage 2 grub.cfg in /boot/grub2/grub.cfg...");
                 {
                     let _guard = s.enter();
                     let _ = std::process::Command::new("grub2-mkconfig")
@@ -75,9 +75,7 @@ pub fn setup_system(output: RepartOutput) -> Result<()> {
 
                     for file in boot_files {
                         let file_name = file.file_name().unwrap().to_str().unwrap();
-                        if file_name.starts_with("initramfs")
-                            || file_name.starts_with("vmlinuz")
-                        {
+                        if file_name.starts_with("initramfs") || file_name.starts_with("vmlinuz") {
                             tracing::debug!(?file, "Removing kernel file");
                             std::fs::remove_file(file)?;
                         }
@@ -100,12 +98,12 @@ pub fn setup_system(output: RepartOutput) -> Result<()> {
             }
 
             // Reinstall kernel
-            // 
+            //
             // Here we're going to reinstall the kernel with an initramfs optimized
             // for the new system configuration. We'll be doing this by using kernel-install
-            // 
+            //
             // which runs all the necessary hooks to generate the initramfs and install the kernel properly.
-            // 
+            //
             // As a bonus, it also generates the BLS entries for us.
             {
                 tracing::info!("Reinstalling kernel...");
@@ -116,12 +114,12 @@ pub fn setup_system(output: RepartOutput) -> Result<()> {
                     .collect::<Vec<_>>();
 
                 tracing::info!(?kernel_vers, "Kernel versions found");
-                
+
                 // We're gonna just install the first kernel we find, so let's do that
                 let kver = kernel_vers.iter().next().unwrap().to_str().unwrap();
-                
+
                 // install kernel
-                
+
                 std::process::Command::new("kernel-install")
                     .arg("add")
                     .arg(kver)
@@ -129,15 +127,14 @@ pub fn setup_system(output: RepartOutput) -> Result<()> {
                     .arg(format!("--verbose"))
                     .status()?;
             }
-            
-            
+
             // Generate /etc/fstab
             if systemd_version()? <= 256 {
                 tracing::info!("Generating /etc/fstab...");
                 let mut fstab = std::fs::File::create("/etc/fstab")?;
                 fstab.write_all(output.into_fstab().as_bytes())?;
             }
-            
+
             // todo: restore selinux contexts
 
             Ok(())
@@ -148,8 +145,6 @@ pub fn setup_system(output: RepartOutput) -> Result<()> {
 }
 
 impl InstallationType {
-
-
     #[tracing::instrument]
     pub fn install(&self, state: &crate::InstallationState) -> Result<()> {
         let blockdev = &state.destination_disk.as_ref().unwrap().devpath;
