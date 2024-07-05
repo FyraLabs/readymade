@@ -34,7 +34,6 @@ pub fn list_langs() -> HashMap<String, (String, String)> {
 #[test]
 fn test_list_locales() {
     let locales = list_locales();
-    println!("{locales:?}");
     assert!(!locales.is_empty());
     assert_eq!(list_langs().len(), locales.len());
 }

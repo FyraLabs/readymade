@@ -7,7 +7,7 @@ use tiffin::{Container, MountTarget};
 
 /// Gets the systemd version
 pub fn systemd_version() -> color_eyre::Result<usize> {
-    let output = std::process::Command::new("systemd")
+    let output = std::process::Command::new("systemctl")
         .arg("--version")
         .output()?;
     let version = std::str::from_utf8(&output.stdout)?;
@@ -167,5 +167,12 @@ mod tests {
         assert_eq!(mountpoints.get("/boot"), Some(&"/dev/sda3".to_string()));
         assert_eq!(mountpoints.get("/boot/efi"), Some(&"/dev/sda1".to_string()));
         assert_eq!(mountpoints.get("/"), Some(&"/dev/sda4".to_string()));
+    }
+
+    #[test]
+    fn get_systemd_version() -> color_eyre::Result<()> {
+        let version = systemd_version()?;
+        println!("{}", version);
+        Ok(())
     }
 }
