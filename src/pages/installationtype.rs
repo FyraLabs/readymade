@@ -32,23 +32,23 @@ impl SimpleComponent for InstallationTypePage {
 
             add = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 4,
+                set_spacing: 6,
 
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
                     set_valign: gtk::Align::Center,
-                    set_spacing: 16,
+                    set_spacing: 18,
 
                     gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
-                        set_spacing: 2,
+                        set_spacing: 6,
                         set_vexpand: true,
                         set_hexpand: true,
                         set_valign: gtk::Align::Center,
                         set_halign: gtk::Align::Center,
 
                         gtk::Image {
-                            set_icon_name: Some("drive-harddisk"),
+                            set_icon_name: Some("drive-harddisk-symbolic"),
                             inline_css: "-gtk-icon-size: 128px"
                         },
 
@@ -65,7 +65,7 @@ impl SimpleComponent for InstallationTypePage {
                     },
 
                     gtk::Box {
-                        set_spacing: 8,
+                        set_spacing: 6,
                         set_halign: gtk::Align::Center,
                         set_valign: gtk::Align::End,
                         set_homogeneous: true,
@@ -94,7 +94,7 @@ impl SimpleComponent for InstallationTypePage {
 
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
-                    set_spacing: 4,
+                    set_spacing: 6,
 
                     libhelium::TextButton {
                         set_label: &gettext("Previous"),
