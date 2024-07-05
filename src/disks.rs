@@ -30,14 +30,13 @@ pub fn detect_os() -> Vec<DiskInit> {
         .filter(lsblk::BlockDevice::is_disk)
         .map(|disk| {
             let ret = DiskInit {
-                // id:
                 disk_name: format!(
                     "{} ({})",
                     disk.label
                         .as_deref()
                         .or(disk.id.as_deref())
                         .map_or("".into(), |s| format!("{s} ")),
-                    disk.name
+                    disk.name,
                 )
                 .trim()
                 .to_string(),
@@ -48,7 +47,7 @@ pub fn detect_os() -> Vec<DiskInit> {
                     .map(|(_, osname)| osname.to_string())
                     .unwrap_or(OSNAME_PLACEHOLDER.to_string()),
                 devpath: disk.fullname.clone(),
-                size: todo!(),
+                size: bytesize::ByteSize::kib(disk.capacity().unwrap().unwrap() >> 1),
             };
             tracing::debug!(?ret, "Found disk");
             ret

@@ -43,6 +43,10 @@ impl FactoryComponent for DiskInit {
 
             gtk::Label {
                 set_label: &self.os_name
+            },
+
+            gtk::Label {
+                set_label: &self.size.to_string()
             }
         }
     }
