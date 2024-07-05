@@ -13,7 +13,7 @@ pub const LIVE_BASE: &str = "/dev/mapper/live-base";
 ///
 /// False negatives are possible if the system is booted in BIOS mode and the UEFI variables are not exposed.
 pub fn check_uefi() -> bool {
-    std::fs::read_to_string("/sys/firmware/efi").is_ok()
+    std::fs::metadata("/sys/firmware/efi").is_ok()
 }
 
 // macro to wrap around cmd_lib::run_fun! to prepend pkexec if not root
@@ -155,12 +155,11 @@ pub fn grub_config() -> String {
     // let's search for an xbootldr label
     // because we never know what the device will be
     format!(
-        r#"
-        search --no-floppy --label --set=dev xbootldr
-        set prefix=($dev)/grub2
+        r#"search --no-floppy --label --set=dev xbootldr
+set prefix=($dev)/grub2
 
-        export $prefix
-        configfile $prefix/grub.cfg
-        "#
+export $prefix
+configfile $prefix/grub.cfg
+"#
     )
 }

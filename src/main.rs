@@ -6,11 +6,12 @@ mod install;
 mod pages;
 mod util;
 
+use backend::repart_output::RepartOutput;
 use color_eyre::Result;
 use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
 use gtk::prelude::GtkWindowExt;
-use install::InstallationType;
+use install::{setup_system, InstallationType};
 use pages::destination::DiskInit;
 use pages::installation::InstallationPageMsg;
 use relm4::{
@@ -188,6 +189,17 @@ fn main() -> Result<()> {
     // let subscriber = Registry::default();
 
     tracing::subscriber::set_global_default(sub_builder).expect("unable to set global subscriber");
+
+    // if std::env::var("DEBUG_SDA") == Ok("1".to_string())
+    // {
+    //     karen::escalate_if_needed().unwrap();
+    //     let repart_out = RepartOutput::from(serde_json::from_str(include_str!(
+    //         "backend/repart-out.json"
+    //     ))?);
+    //     setup_system(repart_out)?;
+
+    //     return Ok(());
+    // }
 
     // we probably want to escalate the process to root on release builds
 

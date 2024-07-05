@@ -1,0 +1,58 @@
+[
+        {
+                "type" : "esp",
+                "label" : "esp",
+                "uuid" : "345aa1d6-d5b0-4782-a5f7-e9f552375ecb",
+                "partno" : 0,
+                "file" : "/home/cappy/Projects/readymade/templates/chromebookinstall/20-efi.conf",
+                "node" : "/dev/sda1",
+                "offset" : 1048576,
+                "old_size" : 0,
+                "raw_size" : 536870912,
+                "old_padding" : 0,
+                "raw_padding" : 0,
+                "activity" : "create"
+        },
+        {
+                "type" : "fe3a2a5d-4f32-41a7-b725-accc3285a309",
+                "label" : "linux",
+                "uuid" : "43539454-2047-4017-996a-72154ec8f0a4",
+                "partno" : 1,
+                "file" : "/home/cappy/Projects/readymade/templates/chromebookinstall/40-submarine.conf",
+                "node" : "/dev/sda2",
+                "offset" : 537919488,
+                "old_size" : 0,
+                "raw_size" : 16777216,
+                "old_padding" : 0,
+                "raw_padding" : 0,
+                "activity" : "create"
+        },
+        {
+                "type" : "xbootldr",
+                "label" : "xbootldr",
+                "uuid" : "f99e04c4-1bf9-4de2-9bbe-82b8cc93d411",
+                "partno" : 2,
+                "file" : "/home/cappy/Projects/readymade/templates/chromebookinstall/45-boot.conf",
+                "node" : "/dev/sda3",
+                "offset" : 554696704,
+                "old_size" : 0,
+                "raw_size" : 2147483648,
+                "old_padding" : 0,
+                "raw_padding" : 0,
+                "activity" : "create"
+        },
+        {
+                "type" : "root-x86-64",
+                "label" : "root-x86-64",
+                "uuid" : "373566ea-83a0-4fd3-b2b8-058a6549c8e4",
+                "partno" : 3,
+                "file" : "/home/cappy/Projects/readymade/templates/chromebookinstall/50-root.conf",
+                "node" : "/dev/sda4",
+                "offset" : 2702180352,
+                "old_size" : 0,
+                "raw_size" : 28290691072,
+                "old_padding" : 0,
+                "raw_padding" : 0,
+                "activity" : "create"
+        }
+]
