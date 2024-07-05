@@ -154,12 +154,11 @@ macro_rules! ini_enum {
 pub fn grub_config() -> String {
     // let's search for an xbootldr label
     // because we never know what the device will be
-    format!(
-        r#"search --no-floppy --label --set=dev xbootldr
+    r#"search --no-floppy --label --set=dev xbootldr
 set prefix=($dev)/grub2
 
 export $prefix
 configfile $prefix/grub.cfg
 "#
-    )
+    .to_string()
 }

@@ -6,12 +6,11 @@ mod install;
 mod pages;
 mod util;
 
-use backend::repart_output::RepartOutput;
 use color_eyre::Result;
 use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
 use gtk::prelude::GtkWindowExt;
-use install::{setup_system, InstallationType};
+use install::InstallationType;
 use pages::destination::DiskInit;
 use pages::installation::InstallationPageMsg;
 use relm4::{

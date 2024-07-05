@@ -6,7 +6,7 @@ use sys_mount::MountFlags;
 use tiffin::{Container, MountTarget};
 
 /// Gets the systemd version
-pub(crate) fn systemd_version() -> color_eyre::Result<usize> {
+pub fn systemd_version() -> color_eyre::Result<usize> {
     let output = std::process::Command::new("systemd")
         .arg("--version")
         .output()?;
@@ -38,7 +38,7 @@ impl RepartOutput {
         self.partitions.iter().find(|part| part.partno == partno)
     }
 
-    /// Generate a BTreeMap of mountpoint -> node name for generating /etc/fstab
+    /// Generate a `BTreeMap` of mountpoint -> node name for generating /etc/fstab
     /// from DDI partition types
     pub fn mountpoints(&self) -> std::collections::BTreeMap<String, String> {
         self.partitions
@@ -68,8 +68,7 @@ impl RepartOutput {
             let pass = 2;
 
             fstab.push_str(&format!(
-                "UUID={}\t{}\t{}\t{}\t{}\t{}\n",
-                uuid, mntpoint, fs_type, options, dump, pass
+                "UUID={uuid}\t{mntpoint}\t{fs_type}\t{options}\t{dump}\t{pass}\n"
             ));
         }
 
@@ -85,7 +84,7 @@ impl RepartOutput {
 
         let mut container = Container::new(temp_dir);
 
-        mountpoints.iter().for_each(|(mntpoint, node)| {
+        for (mntpoint, node) in &mountpoints {
             // strip
             // mntpoint.trim_start_matches('/')
             let mnt_target = MountTarget {
@@ -96,7 +95,7 @@ impl RepartOutput {
             };
 
             container.add_mount(mnt_target, Path::new(node));
-        });
+        }
 
         Ok(container)
     }
@@ -149,7 +148,7 @@ mod tests {
         let val = serde_json::from_str(OUTPUT_EXAMPLE).unwrap();
         // println!("{:#?}", val);
         let output: RepartOutput = val;
-        println!("{:#?}", output);
+        println!("{output:#?}");
         output
     }
 
@@ -163,7 +162,7 @@ mod tests {
     fn test_mountpoints() {
         let output = deserialize();
         let mountpoints = output.mountpoints();
-        println!("{:#?}", mountpoints);
+        println!("{mountpoints:#?}");
         assert_eq!(mountpoints.len(), 3);
         assert_eq!(mountpoints.get("/boot"), Some(&"/dev/sda3".to_string()));
         assert_eq!(mountpoints.get("/boot/efi"), Some(&"/dev/sda1".to_string()));

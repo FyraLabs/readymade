@@ -116,7 +116,7 @@ pub fn setup_system(output: RepartOutput) -> Result<()> {
                 tracing::info!(?kernel_vers, "Kernel versions found");
 
                 // We're gonna just install the first kernel we find, so let's do that
-                let kver = kernel_vers.iter().next().unwrap().to_str().unwrap();
+                let kver = kernel_vers.first().unwrap().to_str().unwrap();
 
                 // install kernel
 
@@ -124,7 +124,7 @@ pub fn setup_system(output: RepartOutput) -> Result<()> {
                     .arg("add")
                     .arg(kver)
                     .arg(format!("/lib/modules/{kver}/vmlinuz"))
-                    .arg(format!("--verbose"))
+                    .arg("--verbose")
                     .status()?;
             }
 
