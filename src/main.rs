@@ -163,7 +163,7 @@ impl SimpleComponent for AppModel {
         }
     }
 }
-
+// todo: non-interactive mode?
 fn main() -> Result<()> {
     color_eyre::install()?;
 

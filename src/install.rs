@@ -93,8 +93,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
     // which runs all the necessary hooks to generate the initramfs and install the kernel properly.
     //
     // As a bonus, it also generates the BLS entries for us.
-    stage!("Reinstalling kernel..." {
-        tracing::info!("Reinstalling kernel...");
+    stage!("Reinstalling kernel" {
         // list all kernels in /lib/modules
         // suggestion: Switch to using kernel-install --json=short for parsing
         let kernel_vers = std::fs::read_dir("/lib/modules")?
@@ -123,7 +122,68 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
         });
     }
 
-    // todo: restore selinux contexts
+    stage!("Initializing system" {
+        _initialize_system()?;
+    });
+
+    stage!("Setting SELinux contexts..." {
+        std::process::Command::new("setfiles")
+            .args(&["-e", "/proc", "-e", "/sys"])
+            .arg("/etc/selinux/targeted/contexts/files/file_contexts")
+            .arg("/")
+            .status()?;
+    });
+
+    Ok(())
+}
+
+/// Initialize the system after installation
+/// This function is moved to a separate function to allow for cleaner code
+#[tracing::instrument]
+fn _initialize_system() -> color_eyre::Result<()> {
+    if std::fs::metadata("/var/lib/systemd/random-seed").is_ok() {
+        std::fs::remove_file("/var/lib/systemd/random-seed")?;
+    }
+
+    if std::fs::metadata("/etc/machine-id").is_ok() {
+        std::fs::remove_file("/etc/machine-id")?;
+    }
+    // We're gonna make an empty machine-id file so that systemd can generate a new one
+    std::fs::File::create("/etc/machine-id")?;
+
+    // wipe NetworkManager state
+    if std::fs::metadata("/etc/NetworkManager/system-connections").is_ok() {
+        for entry in std::fs::read_dir("/etc/NetworkManager/system-connections")? {
+            let entry = entry?;
+            if entry.file_type()?.is_file() {
+                std::fs::remove_file(entry.path())?;
+            }
+        }
+    }
+
+    // todo: Copy over NetworkManager state from current livesys
+
+    // wipe temporary RPM database
+    if std::fs::metadata("/var/lib/rpm").is_ok() {
+        for entry in std::fs::read_dir("/var/lib/rpm")? {
+            let entry = entry?;
+            if entry.file_name().to_string_lossy().starts_with("__db") {
+                std::fs::remove_file(entry.path())?;
+            }
+        }
+    }
+
+    // wipe temporary dnf cache
+    if std::fs::metadata("/var/cache/dnf").is_ok() {
+        for entry in std::fs::read_dir("/var/cache/dnf")? {
+            let entry = entry?;
+            if entry.file_type()?.is_dir() {
+                std::fs::remove_dir_all(entry.path())?;
+            }
+        }
+    }
+    
+    // todo: set locale and timezone from config
 
     Ok(())
 }
@@ -131,26 +191,25 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
 impl InstallationType {
     #[tracing::instrument]
     pub fn install(&self, state: &crate::InstallationState) -> Result<()> {
-        let blockdev = &state.destination_disk.as_ref().unwrap().devpath;
+        // SAFETY: ideally we should never reach this point without a valid destination disk
+        let blockdev = &state
+            .destination_disk
+            .as_ref()
+            .expect("A valid destination device should be set before calling install()")
+            .devpath;
         let cfgdir = self.cfgdir();
 
+        // todo: not freeze on error, show error message as err handler?
         let repart_out = Self::systemd_repart(blockdev, &cfgdir)?;
         tracing::info!("Copying files done, Setting up system...");
         setup_system(repart_out)?;
 
         if let Self::ChromebookInstall = self {
-            // todo: not freeze on error, show error message as err handler?
             Self::set_cgpt_flags(blockdev)?;
         }
         tracing::info!("install() finished");
         Ok(())
     }
-    // fn mount_squashimg() -> std::io::Result<sys_mount::Mount> {
-    //     std::fs::create_dir_all("/mnt/squash")?;
-    //     sys_mount::Mount::builder()
-    //         .fstype("squashfs")
-    //         .mount(crate::util::DEFAULT_SQUASH_LOCATION, "/mnt/squash")
-    // }
 
     /// Mount a device or file to /mnt/live-base
     fn mount_dev(dev: &str) -> std::io::Result<sys_mount::Mount> {
@@ -158,6 +217,7 @@ impl InstallationType {
         std::fs::create_dir_all(MOUNTPOINT)?;
         sys_mount::Mount::builder().mount(dev, MOUNTPOINT)
     }
+
     fn cfgdir(&self) -> PathBuf {
         match self {
             Self::ChromebookInstall => const_format::concatcp!(REPART_DIR, "chromebookinstall"),
@@ -165,6 +225,8 @@ impl InstallationType {
         }
         .into()
     }
+
+    // todo: Generate custom repart partitioning definitions in case the user wants to use a custom partitioning scheme
     #[tracing::instrument]
     fn systemd_repart(
         blockdev: &Path,
@@ -203,6 +265,13 @@ impl InstallationType {
                 }
             }
         };
+
+        let arg = if systemd_version()? >= 256 {
+            "--generate-fstab"
+        } else {
+            ""
+        };
+        
         let dry_run = if cfg!(debug_assertions) { "yes" } else { "no" };
         tracing::debug!(?dry_run, "Running systemd-repart");
         let out = cmd_lib::run_fun!(
@@ -210,6 +279,7 @@ impl InstallationType {
                 --dry-run=$dry_run
                 --definitions=$cfgdir
                 --empty=force
+                $arg
                 --copy-source=$copy_source
                 --json=pretty
                 $blockdev

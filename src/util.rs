@@ -146,6 +146,7 @@ configfile $prefix/grub.cfg
 
 #[macro_export]
 macro_rules! stage {
+    // todo: Export text to global progress text
     ($s:literal $body:block) => {
         let s = tracing::info_span!($s);
         {
