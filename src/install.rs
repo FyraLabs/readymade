@@ -182,7 +182,7 @@ fn _initialize_system() -> color_eyre::Result<()> {
             }
         }
     }
-    
+
     // todo: set locale and timezone from config
 
     Ok(())
@@ -271,7 +271,7 @@ impl InstallationType {
         } else {
             ""
         };
-        
+
         let dry_run = if cfg!(debug_assertions) { "yes" } else { "no" };
         tracing::debug!(?dry_run, "Running systemd-repart");
         let out = cmd_lib::run_fun!(
