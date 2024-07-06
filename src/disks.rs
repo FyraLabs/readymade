@@ -29,13 +29,19 @@ pub fn detect_os() -> Vec<DiskInit> {
         .into_iter()
         .filter(lsblk::BlockDevice::is_disk)
         .map(|disk| {
+            let model = disk
+                .sysfs()
+                .and_then(|p| std::fs::read_to_string(p.join("device").join("model")));
             let ret = DiskInit {
                 disk_name: format!(
                     "{} ({})",
-                    disk.label
-                        .as_deref()
+                    model
+                        .as_ref()
+                        .map(|s| s.trim())
+                        .ok()
+                        .or(disk.label.as_deref())
                         .or(disk.id.as_deref())
-                        .map_or("".into(), |s| format!("{s} ")),
+                        .map_or("".into(), |s| s),
                     disk.name,
                 )
                 .trim()
