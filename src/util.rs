@@ -1,9 +1,7 @@
 //! QoL Utilities for Readymade
-use bytesize::ByteSize;
 use color_eyre::Section as _;
 
-pub const MAX_EFI_SIZE: ByteSize = ByteSize::gb(1);
-pub const DEFAULT_SQUASH_LOCATION: &str = "/run/initramfs/live/LiveOS/squashfs.img";
+pub const LIVE_BASE: &str = "/dev/mapper/live-base";
 
 #[cfg(target_os = "linux")]
 /// Check if the current running system is UEFI or not.
@@ -12,7 +10,7 @@ pub const DEFAULT_SQUASH_LOCATION: &str = "/run/initramfs/live/LiveOS/squashfs.i
 ///
 /// False negatives are possible if the system is booted in BIOS mode and the UEFI variables are not exposed.
 pub fn check_uefi() -> bool {
-    std::fs::read_to_string("/sys/firmware/efi").is_ok()
+    std::fs::metadata("/sys/firmware/efi").is_ok()
 }
 
 // macro to wrap around cmd_lib::run_fun! to prepend pkexec if not root
@@ -36,27 +34,6 @@ pub fn run_as_root(cmd: &str) -> Result<String, std::io::Error> {
 compile_error!(
     "Readymade does not support non-Linux platforms, these functions are Linux-specific."
 );
-/// Chain an error with a custom message.
-pub fn chain_err<E: std::error::Error + Send + Sync + 'static>(
-    msg: &'static str,
-) -> impl FnOnce(E) -> color_eyre::Report {
-    move |e| color_eyre::Report::msg(msg).error(e)
-}
-
-/// Internal function to append an element to a vector.
-pub fn make_push<T>(mut vector: Vec<T>, elem: T) -> Vec<T> {
-    vector.push(elem);
-    vector
-}
-
-/// Internal function to convert an array of `&str` to an array of `serde_json::Value`.
-#[inline]
-pub(crate) fn array_str_to_values<const N: usize>(arr: [&str; N]) -> Vec<serde_json::Value> {
-    arr.into_iter()
-        .map(ToString::to_string)
-        .map(serde_json::Value::String)
-        .collect()
-}
 
 /// Check if the current running system is a Chromebook device.
 ///
@@ -70,4 +47,111 @@ pub(crate) fn array_str_to_values<const N: usize>(arr: [&str; N]) -> Vec<serde_j
 #[cfg(target_os = "linux")]
 pub fn is_chromebook() -> bool {
     std::fs::metadata("/dev/cros_ec").is_ok()
+}
+
+/// Make an enum and impl Serialize
+///
+/// # Examples
+/// ```rs
+/// ini_enum! {
+///     pub enum Idk {
+///         A,
+///         B,
+///         C,
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! ini_enum {
+    (@match $field:ident) => {{
+        stringify!(paste::paste! { [<$field:snake>] }).replace('_', "-")
+    }};
+    (@match $field:ident => $s:literal) => {{
+        $s.to_string()
+    }};
+    (
+        $(#[$outmeta:meta])*
+        $v:vis enum $name:ident {
+            $(
+                $(#[$meta:meta])?
+                $field:ident $(=> $s:literal)?,
+            )*$(,)?
+        }
+    ) => {
+        $(#[$outmeta])*
+        $v enum $name {$(
+            $(#[$meta])?
+            $field,
+        )*}
+        impl serde::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: ::serde::Serializer,
+            {
+                serializer.serialize_str(&match self {$(
+                    Self::$field => ini_enum! { @match $field $(=> $s)? },
+                )*})
+            }
+        }
+    };
+    (
+        $(#[$outmeta1:meta])*
+        $v1:vis enum $name1:ident {
+            $(
+                $(#[$meta1:meta])?
+                $field1:ident $(=> $s1:literal)?,
+            )*$(,)?
+        }
+        $(
+            $(#[$outmeta:meta])*
+            $v:vis enum $name:ident {
+                $(
+                    $(#[$meta:meta])?
+                    $field:ident $(=> $s:literal)?,
+                )*$(,)?
+            }
+        )+
+    ) => {
+        ini_enum! {
+            $(
+                $(#[$outmeta])*
+                $v enum $name {
+                    $(
+                        $(#[$meta])?
+                        $field $(=> $s)?,
+                    )*
+                }
+            )+
+        }
+        ini_enum! {
+            $(#[$outmeta1])*
+            $v1 enum $name1 {
+                $(
+                    $(#[$meta1])?
+                    $field1 $(=> $s1)?,
+                )*
+            }
+        }
+    }
+}
+
+// let's search for an xbootldr label
+// because we never know what the device will be
+pub const GRUB_CONFIG: &str = r#"search --no-floppy --label --set=dev xbootldr
+set prefix=($dev)/grub2
+
+export $prefix
+configfile $prefix/grub.cfg
+"#;
+
+#[macro_export]
+macro_rules! stage {
+    // todo: Export text to global progress text
+    ($s:literal $body:block) => {
+        let s = tracing::info_span!($s);
+        {
+            let _guard = s.enter();
+            $body
+        }
+    };
 }

@@ -1,5 +1,6 @@
-/target
+target/
 sys-mount
 distinst
 test.sqsh
 test-unsquash
+test.img

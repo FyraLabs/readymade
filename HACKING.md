@@ -64,7 +64,14 @@ Readymade logs to stderr and to a file called `/tmp/readymade.log`. The file log
 
 Currently Readymade only supports Chromebook installations, it is recommended you run Readymade on a Chromebook device to test the installer.
 
-Readymade checks for a SquashFS image in `/run/initramfs/live/LiveOS/squashfs.img` as it assumes that it is running on a live environment. You may need to modify the code to point to a different location if you are running Readymade on a different environment or simply symlink the file to the expected location.
+Readymade checks for Dracut's default `live-base` (in `/dev/mapper/live-base`) logical volume for the base filesystem to mount and copy from. This is usually generated with Dracut's live module. It then tries to mount the base filesystem from the logical volume and use the files from there as the source for the installer.
+
+You can however override this by setting the environment variable `REPART_COPY_SOURCE` to the path of the base filesystem to copy from. This makes use of systemd 255's new relative repart source feature. Note that you may need to set this while running Readymade with `sudo` to ensure that the environment variable is passed to the process, instead of the default behavior of Readymade restarting itself as root using `pkexec` which does not pass any environment variables.
+
+```sh
+sudo REPART_COPY_SOURCE=/mnt/rootfs readymade
+```
+
 
 ## Localization
 

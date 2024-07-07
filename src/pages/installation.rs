@@ -1,11 +1,12 @@
-use crate::{install::run_albius, NavigationAction, INSTALLATION_STATE};
+use crate::{NavigationAction, INSTALLATION_STATE};
 use gettextrs::gettext;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct InstallationPage {
-    progress: f64,
+    progress_bar: gtk::ProgressBar,
+    thread: Option<std::thread::JoinHandle<color_eyre::Result<()>>>,
 }
 
 #[derive(Debug)]
@@ -48,10 +49,8 @@ impl SimpleComponent for InstallationPage {
                     set_label: &*gettext("Installing base system...")
                 },
 
-                gtk::ProgressBar {
-                    #[watch]
-                    set_fraction: model.progress
-                }
+                #[local_ref]
+                progress_bar -> gtk::ProgressBar {}
             }
         }
     }
@@ -61,7 +60,8 @@ impl SimpleComponent for InstallationPage {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = Self { progress: 0.0 };
+        let model = Self::default();
+        let progress_bar = &model.progress_bar;
 
         let widgets = view_output!();
 
@@ -72,23 +72,27 @@ impl SimpleComponent for InstallationPage {
 
     #[tracing::instrument]
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
+        if let Some(th) = &self.thread {
+            self.progress_bar.pulse();
+            if th.is_finished() {
+                let th = self.thread.take().unwrap();
+                let res = th.join().expect("Cannot join thread");
+                if let Err(e) = res {
+                    tracing::error!("Installation failed: {e:?}");
+                }
+                self.progress_bar.set_fraction(1.0);
+            }
+        }
         // handle channel logics here
         match message {
-            InstallationPageMsg::StartInstallation => sender.command(|_out, shutdown| {
-                shutdown
-                    .register(async move {
-                        let state = INSTALLATION_STATE.read();
-                        tracing::debug!("Starting installation...");
-                        let recipe = crate::install::generate_recipe(&state)?;
-
-                        tracing::debug!(?recipe);
-
-                        run_albius(&recipe)?;
-
-                        color_eyre::Result::<_>::Ok(())
-                    })
-                    .drop_on_shutdown()
-            }),
+            InstallationPageMsg::StartInstallation => {
+                self.thread = Some(std::thread::spawn(|| {
+                    let state = INSTALLATION_STATE.read();
+                    tracing::debug!(?state, "Starting installation...");
+                    state.installation_type.as_ref().unwrap().install(&state)?;
+                    Ok(())
+                }));
+            }
             InstallationPageMsg::Navigate(action) => sender
                 .output(InstallationPageOutput::Navigate(action))
                 .unwrap(),

@@ -2,12 +2,10 @@
 
 // todo: figure out a way to find installed OS on disks and its partitions
 
-pub mod init;
 mod osprobe;
 
-use color_eyre::eyre::OptionExt;
 use osprobe::OSProbe;
-use std::{collections::HashMap, path::PathBuf};
+use std::collections::HashMap;
 
 use crate::pages::destination::DiskInit;
 
@@ -21,23 +19,30 @@ const OSNAME_PLACEHOLDER: &str = "Unknown";
 pub fn detect_os() -> Vec<DiskInit> {
     let disks = lsblk::BlockDevice::list().unwrap();
 
+    println!("{:?}", disks);
+
     let osprobe: HashMap<_, _> = OSProbe::scan()
         .map(|probe| (probe.into_iter().map(|os| (os.part, os.os_name_pretty))).collect())
         .unwrap_or_default();
 
     disks
-        .iter()
-        .filter(|disk| disk.is_disk())
+        .into_iter()
+        .filter(lsblk::BlockDevice::is_disk)
         .map(|disk| {
+            let model = disk
+                .sysfs()
+                .and_then(|p| std::fs::read_to_string(p.join("device").join("model")));
             let ret = DiskInit {
-                // id:
                 disk_name: format!(
                     "{} ({})",
-                    disk.label
-                        .as_deref()
+                    model
+                        .as_ref()
+                        .map(|s| s.trim())
+                        .ok()
+                        .or(disk.label.as_deref())
                         .or(disk.id.as_deref())
-                        .map_or("".into(), |s| format!("{s} ")),
-                    disk.name
+                        .map_or("".into(), |s| s),
+                    disk.name,
                 )
                 .trim()
                 .to_string(),
@@ -47,62 +52,14 @@ pub fn detect_os() -> Vec<DiskInit> {
                     .find(|(path, _)| path.starts_with(&disk.name))
                     .map(|(_, osname)| osname.to_string())
                     .unwrap_or(OSNAME_PLACEHOLDER.to_string()),
-                devpath: PathBuf::from(disk.name.clone()),
+                devpath: disk.fullname.clone(),
+                size: bytesize::ByteSize::kib(disk.capacity().unwrap().unwrap() >> 1),
             };
             tracing::debug!(?ret, "Found disk");
             ret
         })
         .collect()
 }
-
-/// Get partition path for a disk according to what kind of disk it is
-///
-/// # Arguments
-///
-/// * `dev` - Path to the disk
-/// * `n` - Partition number
-///
-/// # Returns
-///
-/// * PathBuf - Path to the partition
-///
-#[tracing::instrument]
-pub fn partition(dev: &std::path::Path, n: u8) -> PathBuf {
-    tracing::trace!(?dev, ?n, "Concatenating dev path and partition number");
-
-    // NOTE: So turns out we're actually inputting the device name here and not full path to device
-    // so looking for /dev prefix would be wrong?
-    // - @korewaChino
-
-    let s = dev.display();
-
-    let str = s.to_string();
-    if str.starts_with("sd") || str.starts_with("hd") || str.starts_with("vd") {
-        PathBuf::from(format!("{s}{n}"))
-    } else if str.starts_with("nvme") || str.starts_with("mmcblk") || str.starts_with("loop") {
-        // HACK: add /dev to path
-        // todo, suggestion: Either add /dev prefix to everything that calls this function or figure out a standard method for this! If you pick the first option, remove this comment
-        // and remove the /dev prefix from the return value!!
-
-        // IMPORTANT: This is a hack and should be removed for robustness
-        PathBuf::from(format!("/dev/{s}p{n}"))
-    } else {
-        unimplemented!() // TODO: parse other kinds of devices?
-    }
-}
-
-pub fn last_part(diskpath: &std::path::Path) -> color_eyre::Result<String> {
-    let sdiskpath = diskpath.display().to_string();
-    let lsblk = cmd_lib::run_fun!(lsblk -o path)?;
-    // assume all dev paths start with /
-
-    (lsblk.split('\n').skip(1))
-        .filter(|l| l.starts_with(&sdiskpath))
-        .last() // last one is the one with max partn
-        .map(|s| s.to_string())
-        .ok_or_eyre(color_eyre::Report::msg("lsblk has no output"))
-}
-
 #[cfg(test)]
 #[cfg(target_os = "linux")]
 #[test]

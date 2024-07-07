@@ -1,11 +1,9 @@
 #[warn(clippy::nursery)]
 #[warn(clippy::pedantic)]
-mod albius;
 mod backend;
 mod disks;
 mod install;
 mod pages;
-mod setup;
 mod util;
 
 use color_eyre::Result;
@@ -23,7 +21,6 @@ use tracing_subscriber::prelude::*;
 
 #[derive(Debug, Default)]
 struct InstallationState {
-    pub timezone: Option<String>,
     pub langlocale: Option<String>,
     pub destination_disk: Option<DiskInit>,
     pub installation_type: Option<InstallationType>,
@@ -73,7 +70,6 @@ macro_rules! generate_pages {
 }
 
 generate_pages!(Page AppModel AppMsg:
-    Region,
     Language,
     Welcome,
     Destination,
@@ -110,7 +106,6 @@ impl SimpleComponent for AppModel {
             #[wrap(Some)]
             #[transition = "SlideLeftRight"]
             set_child = match model.page {
-                Page::Region => *model.region_page.widget(),
                 Page::Language => *model.language_page.widget(),
                 Page::Welcome => *model.welcome_page.widget(),
                 Page::Destination => *model.destination_page.widget(),
@@ -168,7 +163,7 @@ impl SimpleComponent for AppModel {
         }
     }
 }
-
+// todo: non-interactive mode?
 fn main() -> Result<()> {
     color_eyre::install()?;
 
@@ -193,6 +188,17 @@ fn main() -> Result<()> {
     // let subscriber = Registry::default();
 
     tracing::subscriber::set_global_default(sub_builder).expect("unable to set global subscriber");
+
+    // if std::env::var("DEBUG_SDA") == Ok("1".to_string())
+    // {
+    //     karen::escalate_if_needed().unwrap();
+    //     let repart_out = RepartOutput::from(serde_json::from_str(include_str!(
+    //         "backend/repart-out.json"
+    //     ))?);
+    //     setup_system(repart_out)?;
+
+    //     return Ok(());
+    // }
 
     // we probably want to escalate the process to root on release builds
 

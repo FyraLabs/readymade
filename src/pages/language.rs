@@ -7,34 +7,36 @@ use relm4::{ComponentParts, RelmWidgetExt, SimpleComponent};
 use crate::NavigationAction;
 
 #[derive(Debug)]
-struct LanguageButton {
+struct LanguageRow {
     locale: String,
     name: String,
+    native_name: String,
 }
 
-impl From<(String, String)> for LanguageButton {
-    fn from(value: (String, String)) -> Self {
+impl From<(String, (String, String))> for LanguageRow {
+    fn from(value: (String, (String, String))) -> Self {
         Self {
             locale: value.0,
-            name: value.1,
+            name: value.1 .0,
+            native_name: value.1 .1,
         }
     }
 }
 
 #[relm4::factory]
-impl relm4::factory::FactoryComponent for LanguageButton {
-    type Init = (String, String);
+impl relm4::factory::FactoryComponent for LanguageRow {
+    type Init = (String, (String, String));
     type Input = ();
-    type Output = relm4::factory::DynamicIndex;
+    type Output = ();
     type CommandOutput = ();
-    type ParentWidget = relm4::gtk::FlowBox;
+    type ParentWidget = relm4::gtk::ListBox;
 
     view! {
         #[root]
-        gtk::Button {
-            set_label: &self.name,
-            connect_clicked[sender, index] => move |_| {
-                sender.output(index.clone()).unwrap();
+        gtk::ListBoxRow {
+            libhelium::MiniContentBlock {
+                set_title: &self.name,
+                set_subtitle: &self.native_name,
             }
         }
     }
@@ -50,17 +52,15 @@ impl relm4::factory::FactoryComponent for LanguageButton {
 
 // Model
 pub struct LanguagePage {
-    btnfactory: relm4::factory::FactoryVecDeque<LanguageButton>,
+    btnfactory: relm4::factory::FactoryVecDeque<LanguageRow>,
 }
 
 #[derive(Debug)]
 pub enum LanguagePageMsg {
     #[doc(hidden)]
     Navigate(NavigationAction),
-    // Selected(relm4::factory::DynamicIndex),
-    SelectionChanged,
-    // Mouse clicked
-    Click(relm4::factory::DynamicIndex),
+    #[doc(hidden)]
+    Selected,
 }
 
 #[derive(Debug)]
@@ -83,28 +83,19 @@ impl SimpleComponent for LanguagePage {
                 set_spacing: 4,
                 gtk::ScrolledWindow {
                     #[local_ref]
-                    btnbox -> gtk::FlowBox {
+                    btnbox -> gtk::ListBox {
+                        add_css_class: "content-list",
                         set_selection_mode: gtk::SelectionMode::Single,
-                        set_orientation: gtk::Orientation::Horizontal,
                         set_vexpand: true,
                         set_hexpand: true,
                         set_valign: gtk::Align::Center,
                         set_halign: gtk::Align::Center,
-                        set_min_children_per_line: 1,
-                        set_max_children_per_line: 1,
-                        set_column_spacing: 4,
-                        set_row_spacing: 4,
-                        connect_selected_children_changed => LanguagePageMsg::SelectionChanged,
+                        connect_selected_rows_changed => LanguagePageMsg::Selected,
                     }
                 },
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_spacing: 4,
-
-                    libhelium::TextButton {
-                        set_label: &gettext("Previous"),
-                        connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Region)),
-                    },
 
                     gtk::Box {
                         set_hexpand: true,
@@ -115,7 +106,7 @@ impl SimpleComponent for LanguagePage {
                         inline_css: "padding-left: 48px; padding-right: 48px",
                         connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome)),
                         #[watch]
-                        set_sensitive: crate::INSTALLATION_STATE.read().timezone.is_some()
+                        set_sensitive: crate::INSTALLATION_STATE.read().langlocale.is_some()
                     }
                 }
             }
@@ -128,17 +119,15 @@ impl SimpleComponent for LanguagePage {
         sender: relm4::prelude::ComponentSender<Self>,
     ) -> relm4::prelude::ComponentParts<Self> {
         let mut btnfactory = relm4::factory::FactoryVecDeque::builder()
-            .launch(gtk::FlowBox::default())
-            .forward(sender.input_sender(), |output| {
-                LanguagePageMsg::Click(output)
-            });
+            .launch(gtk::ListBox::default())
+            .detach();
 
         let mut btns = btnfactory.guard();
         crate::backend::l10n::list_langs()
             .into_iter()
-            .sorted_by(|(_, x), (_, y)| x.cmp(&y))
+            .sorted_by(|(_, x), (_, y)| x.cmp(y))
             .for_each(|x| _ = btns.push_back(x));
-        drop(btns);
+        btns.drop();
 
         let model = LanguagePage { btnfactory };
         let btnbox = model.btnfactory.widget();
@@ -152,21 +141,14 @@ impl SimpleComponent for LanguagePage {
             LanguagePageMsg::Navigate(action) => {
                 sender.output(LanguagePageOutput::Navigate(action)).unwrap()
             }
-            LanguagePageMsg::SelectionChanged => {
-                let languages = self.btnfactory.widget().selected_children();
-                let i = languages.first().unwrap().index().try_into().unwrap();
-                let language = self.btnfactory.get(i).unwrap();
-                gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, &*language.locale).unwrap();
-                crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.to_string());
-            }
-            LanguagePageMsg::Click(index) => {
-                self.btnfactory.widget().select_child(
-                    &self
-                        .btnfactory
-                        .widget()
-                        .child_at_index(index.current_index() as i32)
-                        .unwrap(),
-                );
+            LanguagePageMsg::Selected => {
+                if let Some(row) = self.btnfactory.widget().selected_row() {
+                    let language = self.btnfactory.get(row.index() as usize).unwrap();
+                    gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, &*language.locale)
+                        .unwrap();
+                    crate::INSTALLATION_STATE.write().langlocale =
+                        Some(language.locale.to_string());
+                }
             }
         }
     }
