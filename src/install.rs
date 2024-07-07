@@ -1,5 +1,7 @@
 use color_eyre::{eyre::eyre, Result};
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+use std::process::{Command, Stdio};
 use std::{
     io::Write,
     path::{Path, PathBuf},
@@ -7,18 +9,151 @@ use std::{
 
 use crate::{
     backend::repart_output::{systemd_version, RepartOutput},
+    pages::destination::DiskInit,
     stage,
     util::{self, LIVE_BASE},
 };
 
 const REPART_DIR: &str = "/usr/share/readymade/repart-cfgs/";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InstallationType {
     WholeDisk,
     DualBoot(u64),
     ChromebookInstall,
     Custom,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct InstallationState {
+    pub langlocale: Option<String>,
+    pub destination_disk: Option<DiskInit>,
+    pub installation_type: Option<InstallationType>,
+}
+
+impl InstallationState {
+    // todo: move methods from installationstate to here!
+    //
+    pub fn install_using_subprocess(&self) -> Result<()> {
+        let mut command = Command::new("pkexec")
+            .arg(std::env::current_exe()?)
+            .arg("--non-interactive")
+            .stdin(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .spawn()?;
+
+        let mut child_stdin = command.stdin.take().unwrap();
+        child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
+        drop(child_stdin);
+
+        command.wait()?;
+
+        // TODO: handle events or something lol
+
+        Ok(())
+    }
+
+    #[tracing::instrument]
+    pub fn install(&self) -> Result<()> {
+        let inst_type = self
+            .installation_type
+            .as_ref()
+            .expect("A valid installation type should be set before calling install()");
+        // SAFETY: ideally we should never reach this point without a valid destination disk
+        let blockdev = &self
+            .destination_disk
+            .as_ref()
+            .expect("A valid destination device should be set before calling install()")
+            .devpath;
+        let cfgdir = inst_type.cfgdir();
+        let repart_out: RepartOutput;
+        stage!("Creating partitions and copying files" {
+            // todo: not freeze on error, show error message as err handler?
+            repart_out = Self::systemd_repart(blockdev, &cfgdir)?;
+            tracing::info!("Copying files done, Setting up system...");
+        });
+
+        setup_system(repart_out)?;
+
+        if let InstallationType::ChromebookInstall = inst_type {
+            InstallationType::set_cgpt_flags(blockdev)?;
+        }
+        tracing::info!("install() finished");
+        Ok(())
+    }
+
+    /// Mount a device or file to /mnt/live-base
+    fn mount_dev(dev: &str) -> std::io::Result<sys_mount::Mount> {
+        const MOUNTPOINT: &str = "/mnt/live-base";
+        std::fs::create_dir_all(MOUNTPOINT)?;
+        sys_mount::Mount::builder().mount(dev, MOUNTPOINT)
+    }
+
+    // todo: Generate custom repart partitioning definitions in case the user wants to use a custom partitioning scheme
+    #[tracing::instrument]
+    fn systemd_repart(
+        blockdev: &Path,
+        cfgdir: &Path,
+    ) -> Result<crate::backend::repart_output::RepartOutput> {
+        let copy_source = {
+            const FALLBACK: &str = "/mnt/live-base";
+            // We'll be using a new feature from systemd 255 (relative repart copy source)
+            // to copy the repartitioning definitions from the live base to the target disk
+
+            // environment variable override. This is documented in HACKING.md
+
+            if let Ok(copy_source) = std::env::var("REPART_COPY_SOURCE") {
+                tracing::info!("Using REPART_COPY_SOURCE override: {copy_source}");
+                let copy_source = Path::new(&copy_source.trim()).canonicalize()?;
+
+                if copy_source == Path::new("/") {
+                    tracing::warn!("REPART_COPY_SOURCE is set to `/`, this is likely a mistake. Copying entire host root filesystem to target disk...");
+                }
+
+                // convert back to string, may cause performance issues but it's not a big deal
+                copy_source.to_string_lossy().to_string()
+            }
+            // if we can mount /dev/mapper/live-base, we'll use that as the copy source
+            else {
+                match Self::mount_dev(crate::util::LIVE_BASE) {
+                    Ok(mount) => {
+                        let m = mount.target_path().to_string_lossy().to_string();
+                        tracing::info!("Mounted live-base at {m}");
+                        m
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to mount `{LIVE_BASE}`, using `{FALLBACK}` as copy source anyway... ({e})");
+                        FALLBACK.to_string()
+                    }
+                }
+            }
+        };
+
+        let arg = if systemd_version()? >= 256 {
+            "--generate-fstab"
+        } else {
+            ""
+        };
+
+        let dry_run = if cfg!(debug_assertions) { "yes" } else { "no" };
+        tracing::debug!(?dry_run, "Running systemd-repart");
+        let out = cmd_lib::run_fun!(
+            pkexec systemd-repart
+                --dry-run=$dry_run
+                --definitions=$cfgdir
+                --empty=force
+                $arg
+                --copy-source=$copy_source
+                --json=pretty
+                $blockdev
+        )
+        .map_err(|e| color_eyre::eyre::eyre!("systemd-repart failed").wrap_err(e))?;
+
+        // todo: wait for systemd 256 or genfstab magic
+        tracing::debug!("systemd-repart finished");
+        Ok(serde_json::from_str(&out)?)
+    }
 }
 
 #[tracing::instrument]
@@ -189,35 +324,6 @@ fn _initialize_system() -> color_eyre::Result<()> {
 }
 
 impl InstallationType {
-    #[tracing::instrument]
-    pub fn install(&self, state: &crate::InstallationState) -> Result<()> {
-        // SAFETY: ideally we should never reach this point without a valid destination disk
-        let blockdev = &state
-            .destination_disk
-            .as_ref()
-            .expect("A valid destination device should be set before calling install()")
-            .devpath;
-        let cfgdir = self.cfgdir();
-
-        // todo: not freeze on error, show error message as err handler?
-        let repart_out = Self::systemd_repart(blockdev, &cfgdir)?;
-        tracing::info!("Copying files done, Setting up system...");
-        setup_system(repart_out)?;
-
-        if let Self::ChromebookInstall = self {
-            Self::set_cgpt_flags(blockdev)?;
-        }
-        tracing::info!("install() finished");
-        Ok(())
-    }
-
-    /// Mount a device or file to /mnt/live-base
-    fn mount_dev(dev: &str) -> std::io::Result<sys_mount::Mount> {
-        const MOUNTPOINT: &str = "/mnt/live-base";
-        std::fs::create_dir_all(MOUNTPOINT)?;
-        sys_mount::Mount::builder().mount(dev, MOUNTPOINT)
-    }
-
     fn cfgdir(&self) -> PathBuf {
         match self {
             Self::ChromebookInstall => const_format::concatcp!(REPART_DIR, "chromebookinstall"),
@@ -226,70 +332,6 @@ impl InstallationType {
         .into()
     }
 
-    // todo: Generate custom repart partitioning definitions in case the user wants to use a custom partitioning scheme
-    #[tracing::instrument]
-    fn systemd_repart(
-        blockdev: &Path,
-        cfgdir: &Path,
-    ) -> Result<crate::backend::repart_output::RepartOutput> {
-        let copy_source = {
-            const FALLBACK: &str = "/mnt/live-base";
-            // We'll be using a new feature from systemd 255 (relative repart copy source)
-            // to copy the repartitioning definitions from the live base to the target disk
-
-            // environment variable override. This is documented in HACKING.md
-
-            if let Ok(copy_source) = std::env::var("REPART_COPY_SOURCE") {
-                tracing::info!("Using REPART_COPY_SOURCE override: {copy_source}");
-                let copy_source = Path::new(&copy_source.trim()).canonicalize()?;
-
-                if copy_source == Path::new("/") {
-                    tracing::warn!("REPART_COPY_SOURCE is set to `/`, this is likely a mistake. Copying entire host root filesystem to target disk...");
-                }
-
-                // convert back to string, may cause performance issues but it's not a big deal
-                copy_source.to_string_lossy().to_string()
-            }
-            // if we can mount /dev/mapper/live-base, we'll use that as the copy source
-            else {
-                match Self::mount_dev(crate::util::LIVE_BASE) {
-                    Ok(mount) => {
-                        let m = mount.target_path().to_string_lossy().to_string();
-                        tracing::info!("Mounted live-base at {m}");
-                        m
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to mount `{LIVE_BASE}`, using `{FALLBACK}` as copy source anyway... ({e})");
-                        FALLBACK.to_string()
-                    }
-                }
-            }
-        };
-
-        let arg = if systemd_version()? >= 256 {
-            "--generate-fstab"
-        } else {
-            ""
-        };
-
-        let dry_run = if cfg!(debug_assertions) { "yes" } else { "no" };
-        tracing::debug!(?dry_run, "Running systemd-repart");
-        let out = cmd_lib::run_fun!(
-            pkexec systemd-repart
-                --dry-run=$dry_run
-                --definitions=$cfgdir
-                --empty=force
-                $arg
-                --copy-source=$copy_source
-                --json=pretty
-                $blockdev
-        )
-        .map_err(|e| color_eyre::eyre::eyre!("systemd-repart failed").wrap_err(e))?;
-
-        // todo: wait for systemd 256 or genfstab magic
-        tracing::debug!("systemd-repart finished");
-        Ok(serde_json::from_str(&out)?)
-    }
     fn set_cgpt_flags(blockdev: &Path) -> Result<()> {
         tracing::debug!("Setting cgpt flags");
         cmd_lib::run_cmd!(cgpt add -i 1 -t kernel -P 15 -T 1 -S 1 $blockdev)?;

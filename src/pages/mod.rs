@@ -1,3 +1,4 @@
+pub mod completed;
 pub mod confirmation;
 pub mod destination;
 pub mod installation;

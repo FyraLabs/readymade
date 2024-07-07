@@ -9,22 +9,14 @@ mod util;
 use color_eyre::Result;
 use gtk::gio::ApplicationFlags;
 use gtk::glib::translate::FromGlibPtrNone;
-use gtk::prelude::GtkWindowExt;
-use install::InstallationType;
-use pages::destination::DiskInit;
+use gtk::prelude::*;
+use install::{InstallationState, InstallationType};
 use pages::installation::InstallationPageMsg;
 use relm4::{
     Component, ComponentController, ComponentParts, ComponentSender, RelmApp, SharedState,
     SimpleComponent,
 };
 use tracing_subscriber::prelude::*;
-
-#[derive(Debug, Default)]
-struct InstallationState {
-    pub langlocale: Option<String>,
-    pub destination_disk: Option<DiskInit>,
-    pub installation_type: Option<InstallationType>,
-}
 
 /// State related to the user's installation configuration
 static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
@@ -76,6 +68,7 @@ generate_pages!(Page AppModel AppMsg:
     InstallationType,
     Confirmation,
     Installation,
+    Completed,
 );
 
 #[derive(Debug)]
@@ -104,14 +97,21 @@ impl SimpleComponent for AppModel {
             set_default_height: 400,
 
             #[wrap(Some)]
-            #[transition = "SlideLeftRight"]
-            set_child = match model.page {
-                Page::Language => *model.language_page.widget(),
-                Page::Welcome => *model.welcome_page.widget(),
-                Page::Destination => *model.destination_page.widget(),
-                Page::InstallationType => *model.installation_type_page.widget(),
-                Page::Confirmation => *model.confirmation_page.widget(),
-                Page::Installation => *model.installation_page.widget(),
+            set_child = &gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                libhelium::AppBar {
+                },
+                #[transition = "SlideLeftRight"]
+                match model.page {
+                    Page::Language => *model.language_page.widget(),
+                    Page::Welcome => *model.welcome_page.widget(),
+                    Page::Destination => *model.destination_page.widget(),
+                    Page::InstallationType => *model.installation_type_page.widget(),
+                    Page::Confirmation => *model.confirmation_page.widget(),
+                    Page::Installation => *model.installation_page.widget(),
+                    Page::Completed => *model.completed_page.widget(),
+
+                }
             }
         }
     }
@@ -173,42 +173,24 @@ fn main() -> Result<()> {
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
     let sub_builder = tracing_subscriber::fmt()
-        // .with_writer(non_blocking)
-        // .with_writer(std::io::stderr)
         .with_env_filter("trace")
         .with_ansi(true)
-        .pretty().finish()
-        .with(
-            tracing_subscriber::fmt::Layer::default().with_writer(non_blocking)
-        )
-        .with(
-            tracing_subscriber::fmt::Layer::default().with_writer(std::io::stderr)
-        );
-
-    // let subscriber = Registry::default();
+        .pretty()
+        .finish()
+        .with(tracing_subscriber::fmt::Layer::default().with_writer(non_blocking))
+        .with(tracing_subscriber::fmt::Layer::default().with_writer(std::io::stderr));
 
     tracing::subscriber::set_global_default(sub_builder).expect("unable to set global subscriber");
 
-    // if std::env::var("DEBUG_SDA") == Ok("1".to_string())
-    // {
-    //     karen::escalate_if_needed().unwrap();
-    //     let repart_out = RepartOutput::from(serde_json::from_str(include_str!(
-    //         "backend/repart-out.json"
-    //     ))?);
-    //     setup_system(repart_out)?;
+    if std::env::args().any(|arg| arg == "--non-interactive") {
+        // Get installation state from stdin json instead
 
-    //     return Ok(());
-    // }
+        let install_state = InstallationState::from(serde_json::from_reader(std::io::stdin())?);
 
-    // we probably want to escalate the process to root on release builds
+        install_state.install()?;
 
-    #[cfg(not(debug_assertions))]
-    karen::builder()
-    // .with_env("DISPLAY")
-    .wrapper("pkexec")
-    .with_env(&[])
-    // .escalate_if_needed()
-    .unwrap();
+        return Ok(());
+    }
 
     #[cfg(debug_assertions)]
     {

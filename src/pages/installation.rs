@@ -1,12 +1,14 @@
+use std::time::Duration;
+
 use crate::{NavigationAction, INSTALLATION_STATE};
+use color_eyre::Result;
 use gettextrs::gettext;
 use libhelium::prelude::*;
-use relm4::{ComponentParts, ComponentSender, SimpleComponent};
+use relm4::{Component, ComponentParts, ComponentSender};
 
 #[derive(Debug, Default)]
 pub struct InstallationPage {
     progress_bar: gtk::ProgressBar,
-    thread: Option<std::thread::JoinHandle<color_eyre::Result<()>>>,
 }
 
 #[derive(Debug)]
@@ -15,6 +17,13 @@ pub enum InstallationPageMsg {
     #[doc(hidden)]
     Navigate(NavigationAction),
     Update,
+    #[doc(hidden)]
+    Throb,
+}
+
+#[derive(Debug)]
+pub enum InstallationPageCommandMsg {
+    FinishInstallation(Result<()>),
 }
 
 #[derive(Debug)]
@@ -23,10 +32,11 @@ pub enum InstallationPageOutput {
 }
 
 #[relm4::component(pub)]
-impl SimpleComponent for InstallationPage {
+impl Component for InstallationPage {
     type Init = ();
     type Input = InstallationPageMsg;
     type Output = InstallationPageOutput;
+    type CommandOutput = InstallationPageCommandMsg;
 
     view! {
         libhelium::ViewMono {
@@ -67,36 +77,47 @@ impl SimpleComponent for InstallationPage {
 
         INSTALLATION_STATE.subscribe(sender.input_sender(), |_| InstallationPageMsg::Update);
 
+        gtk::glib::timeout_add(Duration::from_secs(1), move || {
+            sender.input(InstallationPageMsg::Throb);
+            gtk::glib::ControlFlow::Continue
+        }); // TODO: cleanup
+
         ComponentParts { model, widgets }
     }
 
     #[tracing::instrument]
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
-        if let Some(th) = &self.thread {
-            self.progress_bar.pulse();
-            if th.is_finished() {
-                let th = self.thread.take().unwrap();
-                let res = th.join().expect("Cannot join thread");
-                if let Err(e) = res {
-                    tracing::error!("Installation failed: {e:?}");
-                }
-                self.progress_bar.set_fraction(1.0);
-            }
-        }
-        // handle channel logics here
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, _: &Self::Root) {
         match message {
             InstallationPageMsg::StartInstallation => {
-                self.thread = Some(std::thread::spawn(|| {
+                sender.spawn_oneshot_command(|| {
                     let state = INSTALLATION_STATE.read();
                     tracing::debug!(?state, "Starting installation...");
-                    state.installation_type.as_ref().unwrap().install(&state)?;
-                    Ok(())
-                }));
+                    // print json as debug data
+
+                    InstallationPageCommandMsg::FinishInstallation(state.install_using_subprocess())
+                });
             }
             InstallationPageMsg::Navigate(action) => sender
                 .output(InstallationPageOutput::Navigate(action))
                 .unwrap(),
             InstallationPageMsg::Update => {}
+            InstallationPageMsg::Throb => self.progress_bar.pulse(),
+        }
+    }
+
+    fn update_cmd(
+        &mut self,
+        message: Self::CommandOutput,
+        _sender: ComponentSender<Self>,
+        _: &Self::Root,
+    ) {
+        match message {
+            InstallationPageCommandMsg::FinishInstallation(res) => {
+                tracing::debug!("Installation complete");
+                if let Err(e) = res {
+                    tracing::error!("Installation failed: {e:?}");
+                }
+            }
         }
     }
 }

@@ -48,7 +48,7 @@ impl SimpleComponent for WelcomePage {
 
                 gtk::Label {
                     set_label: &*gettext(r#"Either test %s from this installer or start the installation now. You can always return to this screen by selecting "Installer" in the menu."#).replace("%s", DISTRO),
-                    // set_justify: gtk::Justification::Center,
+                    set_justify: gtk::Justification::Center,
                     set_max_width_chars: 30,
                     set_wrap: true
                 },

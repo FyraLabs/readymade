@@ -144,11 +144,43 @@ export $prefix
 configfile $prefix/grub.cfg
 "#;
 
+// #[derive(Debug, serde::Serialize, serde::Deserialize)]
+// pub enum InstallStage {
+//     Repart,
+//     Initramfs,
+//     etc...
+// }
+
+
+/// IPC installation message for non-interactive mode
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub enum InstallMessage {
+    Status(String),
+}
+
+impl InstallMessage {
+    pub fn new(s: &str) -> Self {
+        Self::Status(s.to_string())
+    }
+
+    pub fn into_json(self) -> String {
+        serde_json::to_string(&self).unwrap()
+    }
+}
+
 #[macro_export]
 macro_rules! stage {
     // todo: Export text to global progress text
     ($s:literal $body:block) => {
         let s = tracing::info_span!($s);
+
+        if std::env::var("NON_INTERACTIVE_INSTALL").is_ok_and(|v| v == "1") {
+            // Then we are in a non-interactive install, which means we export IPC
+            // to stdout
+            let install_status = crate::util::InstallMessage::new($s);
+            println!("{}", install_status.into_json());
+        }
+
         {
             let _guard = s.enter();
             $body

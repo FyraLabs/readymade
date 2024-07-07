@@ -8,8 +8,9 @@ use relm4::{
     factory::{DynamicIndex, FactoryComponent, FactorySender, FactoryVecDeque},
     ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent,
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiskInit {
     pub disk_name: String,
     pub os_name: String,
