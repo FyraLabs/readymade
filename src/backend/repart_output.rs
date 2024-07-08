@@ -1,5 +1,6 @@
 use bytesize::ByteSize;
 use color_eyre::eyre::eyre;
+use std::fmt::Write;
 // use lsblk::mountpoints;
 use std::path::{Path, PathBuf};
 use sys_mount::MountFlags;
@@ -40,7 +41,7 @@ impl RepartOutput {
 
     /// Generate a `BTreeMap` of mountpoint -> node name for generating /etc/fstab
     /// from DDI partition types
-    pub fn mountpoints(&self) -> std::collections::BTreeMap<String, String> {
+    pub fn mountpoints(&self) -> std::collections::BTreeMap<&'static str, String> {
         self.partitions
             .iter()
             .filter_map(|part| part.ddi_mountpoint().map(|mp| (mp, part.node.clone())))
@@ -55,7 +56,7 @@ impl RepartOutput {
     ///
     /// This function may be deprecated when systemd 256 hits f40, or when
     /// we rebase to f41
-    pub fn into_fstab(&self) -> String {
+    pub fn generate_fstab(&self) -> String {
         let mountpoints = self.mountpoints();
         let mut fstab = String::new();
 
@@ -67,9 +68,11 @@ impl RepartOutput {
             let dump = 0;
             let pass = 2;
 
-            fstab.push_str(&format!(
+            write!(
+                fstab,
                 "UUID={uuid}\t{mntpoint}\t{fs_type}\t{options}\t{dump}\t{pass}\n"
-            ));
+            )
+            .unwrap();
         }
 
         fstab
@@ -129,11 +132,11 @@ pub struct RepartPartition {
 impl RepartPartition {
     /// Returns a Discoverable Disk Image (DDI) mountpoint if defined
     /// by checking the partition type
-    pub fn ddi_mountpoint(&self) -> Option<String> {
+    pub fn ddi_mountpoint(&self) -> Option<&'static str> {
         match self.part_type.as_str() {
-            "xbootldr" => Some("/boot".to_string()),
-            "esp" => Some("/boot/efi".to_string()),
-            x if x.starts_with("root-") => Some("/".to_string()),
+            "xbootldr" => Some("/boot"),
+            "esp" => Some("/boot/efi"),
+            x if x.starts_with("root-") => Some("/"),
             _ => None,
         }
     }

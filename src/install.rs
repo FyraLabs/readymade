@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crate::util::{exist_then, exist_then_read_dir};
 use crate::{
     backend::repart_output::{systemd_version, RepartOutput},
     pages::destination::DiskInit,
@@ -60,20 +61,18 @@ impl InstallationState {
             .installation_type
             .as_ref()
             .expect("A valid installation type should be set before calling install()");
-        // SAFETY: ideally we should never reach this point without a valid destination disk
         let blockdev = &self
             .destination_disk
             .as_ref()
             .expect("A valid destination device should be set before calling install()")
             .devpath;
         let cfgdir = inst_type.cfgdir();
-        let repart_out: RepartOutput;
-        stage!("Creating partitions and copying files" {
+        let repart_out = stage!("Creating partitions and copying files" {
             // todo: not freeze on error, show error message as err handler?
-            repart_out = Self::systemd_repart(blockdev, &cfgdir)?;
-            tracing::info!("Copying files done, Setting up system...");
+            Self::systemd_repart(blockdev, &cfgdir)?
         });
 
+        tracing::info!("Copying files done, Setting up system...");
         setup_system(repart_out)?;
 
         if let InstallationType::ChromebookInstall = inst_type {
@@ -192,7 +191,10 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
 
         stage!("Generating stage 1 grub.cfg in ESP..." {
             let mut grub_cfg = std::fs::File::create("/boot/efi/EFI/fedora/grub.cfg")?;
-            grub_cfg.write_all(crate::util::GRUB_CONFIG.as_bytes())?;
+            // let's search for an xbootldr label
+            // because we never know what the device will be
+            // see the compile time included config file
+            grub_cfg.write_all(include_bytes!("../templates/fedora-grub.cfg"))?;
         });
 
         stage!("Generating stage 2 grub.cfg in /boot/grub2/grub.cfg..." {
@@ -204,8 +206,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
     }
 
     stage!("Cleaning up /boot partition..." {
-        let boot_dir = Path::new("/boot");
-        for file in std::fs::read_dir(boot_dir)?.flatten().map(|entry| entry.path()) {
+        for file in std::fs::read_dir("/boot")?.flatten().map(|entry| entry.path()) {
             let file_name = file.file_name().unwrap().to_str().unwrap();
             if file_name.starts_with("initramfs") || file_name.starts_with("vmlinuz") {
                 tracing::debug!(?file, "Removing kernel file");
@@ -213,8 +214,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
             }
         }
 
-        let bls_dir = Path::new("/boot/loader/entries");
-        for file in std::fs::read_dir(bls_dir)?.flatten().map(|entry| entry.path()) {
+        for file in std::fs::read_dir("/boot/loader/entries")?.flatten().map(|entry| entry.path()) {
             tracing::debug!(?file, "Removing BLS entry");
             std::fs::remove_file(file)?;
         }
@@ -253,7 +253,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
     if systemd_version()? <= 256 {
         stage!("Generating /etc/fstab..." {
             let mut fstab = std::fs::File::create("/etc/fstab")?;
-            fstab.write_all(output.into_fstab().as_bytes())?;
+            fstab.write_all(output.generate_fstab().as_bytes())?;
         });
     }
 
@@ -276,47 +276,26 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
 /// This function is moved to a separate function to allow for cleaner code
 #[tracing::instrument]
 fn _initialize_system() -> color_eyre::Result<()> {
-    if std::fs::metadata("/var/lib/systemd/random-seed").is_ok() {
-        std::fs::remove_file("/var/lib/systemd/random-seed")?;
-    }
-
-    if std::fs::metadata("/etc/machine-id").is_ok() {
-        std::fs::remove_file("/etc/machine-id")?;
-    }
+    exist_then(std::fs::remove_file("/var/lib/systemd/random-seed"))?;
     // We're gonna make an empty machine-id file so that systemd can generate a new one
     std::fs::File::create("/etc/machine-id")?;
 
     // wipe NetworkManager state
-    if std::fs::metadata("/etc/NetworkManager/system-connections").is_ok() {
-        for entry in std::fs::read_dir("/etc/NetworkManager/system-connections")? {
-            let entry = entry?;
-            if entry.file_type()?.is_file() {
-                std::fs::remove_file(entry.path())?;
-            }
-        }
-    }
+    exist_then_read_dir("/etc/NetworkManager/system-connections")?
+        .filter(|entry| entry.file_type().is_ok_and(|t| t.is_file()))
+        .map(|entry| entry.path())
+        .try_for_each(std::fs::remove_file)?;
 
     // todo: Copy over NetworkManager state from current livesys
 
     // wipe temporary RPM database
-    if std::fs::metadata("/var/lib/rpm").is_ok() {
-        for entry in std::fs::read_dir("/var/lib/rpm")? {
-            let entry = entry?;
-            if entry.file_name().to_string_lossy().starts_with("__db") {
-                std::fs::remove_file(entry.path())?;
-            }
-        }
-    }
+    exist_then_read_dir("/var/lib/rpm")?
+        .filter(|entry| entry.file_name().to_string_lossy().starts_with("__db"))
+        .map(|entry| entry.path())
+        .try_for_each(std::fs::remove_file)?;
 
     // wipe temporary dnf cache
-    if std::fs::metadata("/var/cache/dnf").is_ok() {
-        for entry in std::fs::read_dir("/var/cache/dnf")? {
-            let entry = entry?;
-            if entry.file_type()?.is_dir() {
-                std::fs::remove_dir_all(entry.path())?;
-            }
-        }
-    }
+    exist_then(std::fs::remove_dir_all("/var/cache/dnf"))?;
 
     // todo: set locale and timezone from config
 
