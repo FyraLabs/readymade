@@ -150,7 +150,7 @@ impl InstallationState {
         .map_err(|e| color_eyre::eyre::eyre!("systemd-repart failed").wrap_err(e))?;
 
         // todo: wait for systemd 256 or genfstab magic
-        tracing::debug!("systemd-repart finished");
+        tracing::debug!(out, "systemd-repart finished");
         Ok(serde_json::from_str(&out)?)
     }
 }
@@ -281,7 +281,9 @@ fn _initialize_system() -> color_eyre::Result<()> {
     std::fs::File::create("/etc/machine-id")?;
 
     // wipe NetworkManager state
-    exist_then(std::fs::remove_dir_all("/etc/NetworkManager/system-connections"))?;
+    exist_then(std::fs::remove_dir_all(
+        "/etc/NetworkManager/system-connections",
+    ))?;
     std::fs::create_dir_all("/etc/NetworkManager/system-connections")?;
 
     // todo: Copy over NetworkManager state from current livesys
