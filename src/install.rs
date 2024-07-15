@@ -35,7 +35,10 @@ pub struct InstallationState {
 impl InstallationState {
     // todo: move methods from installationstate to here!
     //
-    pub fn install_using_subprocess(&self) -> Result<()> {
+    pub fn install_using_subprocess(
+        &self,
+        sender: relm4::ComponentSender<crate::pages::installation::InstallationPage>,
+    ) -> Result<()> {
         let mut command = Command::new("pkexec")
             .arg(std::env::current_exe()?)
             .arg("--non-interactive")
@@ -48,9 +51,27 @@ impl InstallationState {
         child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
         drop(child_stdin);
 
-        command.wait()?;
-
-        // TODO: handle events or something lol
+        gtk::glib::timeout_add(std::time::Duration::from_millis(200), move || {
+            sender
+                .command_sender()
+                .send(
+                    crate::pages::installation::InstallationPageCommandMsg::FinishInstallation(
+                        match command.try_wait() {
+                            Ok(None) => return gtk::glib::ControlFlow::Continue,
+                            Ok(Some(exit_status)) if exit_status.success() => Ok(()),
+                            Ok(Some(exit_status)) => {
+                                Err(color_eyre::Report::msg(exit_status.to_string()))
+                            }
+                            Err(e) => Err(color_eyre::eyre::eyre!(
+                                "Failed to execute readymade non-interactively"
+                            )
+                            .wrap_err(e)),
+                        },
+                    ),
+                )
+                .unwrap();
+            gtk::glib::ControlFlow::Break
+        });
 
         Ok(())
     }

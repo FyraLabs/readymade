@@ -91,13 +91,13 @@ impl Component for InstallationPage {
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, _: &Self::Root) {
         match message {
             InstallationPageMsg::StartInstallation => {
-                sender.spawn_oneshot_command(|| {
-                    let state = INSTALLATION_STATE.read();
-                    tracing::debug!(?state, "Starting installation...");
-                    // print json as debug data
+                let state = INSTALLATION_STATE.read();
+                tracing::debug!(?state, "Starting installation...");
 
-                    InstallationPageCommandMsg::FinishInstallation(state.install_using_subprocess())
-                });
+                // FIXME: proper error handling
+                state
+                    .install_using_subprocess(sender)
+                    .expect("Cannot install using subprocess");
             }
             InstallationPageMsg::Navigate(action) => sender
                 .output(InstallationPageOutput::Navigate(action))
