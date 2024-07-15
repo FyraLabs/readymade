@@ -29,6 +29,7 @@ impl SimpleComponent for ConfirmationPage {
 
     view! {
         libhelium::ViewMono {
+            #[watch]
             set_title: &gettext("Confirmation"),
             set_vexpand: true,
             add = &gtk::Box {
@@ -85,7 +86,6 @@ impl SimpleComponent for ConfirmationPage {
                         },
 
                         gtk::Label {
-                            #[watch]
                             set_label: "Ultramarine Linux",
                         }
                     }
@@ -96,6 +96,7 @@ impl SimpleComponent for ConfirmationPage {
                     set_spacing: 4,
 
                     libhelium::TextButton {
+                        #[watch]
                         set_label: &gettext("Previous"),
                         connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallationType))
                     },
@@ -105,6 +106,7 @@ impl SimpleComponent for ConfirmationPage {
                     },
 
                     libhelium::PillButton {
+                        #[watch]
                         set_label: &gettext("Install"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
                         connect_clicked => ConfirmationPageMsg::StartInstallation

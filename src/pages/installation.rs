@@ -40,6 +40,7 @@ impl Component for InstallationPage {
 
     view! {
         libhelium::ViewMono {
+            #[watch]
             set_title: &*gettext("Installation"),
             set_vexpand: true,
 
@@ -56,6 +57,7 @@ impl Component for InstallationPage {
                 },
 
                 gtk::Label {
+                    #[watch]
                     set_label: &*gettext("Installing base system...")
                 },
 
@@ -108,7 +110,7 @@ impl Component for InstallationPage {
     fn update_cmd(
         &mut self,
         message: Self::CommandOutput,
-        _sender: ComponentSender<Self>,
+        sender: ComponentSender<Self>,
         _: &Self::Root,
     ) {
         match message {
@@ -116,6 +118,13 @@ impl Component for InstallationPage {
                 tracing::debug!("Installation complete");
                 if let Err(e) = res {
                     tracing::error!("Installation failed: {e:?}");
+                    // TODO: add fail UI?
+                } else {
+                    sender
+                        .output(InstallationPageOutput::Navigate(NavigationAction::GoTo(
+                            crate::Page::Completed,
+                        )))
+                        .unwrap();
                 }
             }
         }
