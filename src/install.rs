@@ -263,7 +263,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
 
     stage!("Setting SELinux contexts..." {
         std::process::Command::new("setfiles")
-            .args(&["-e", "/proc", "-e", "/sys"])
+            .args(["-e", "/proc", "-e", "/sys"])
             .arg("/etc/selinux/targeted/contexts/files/file_contexts")
             .arg("/")
             .status()?;
@@ -281,10 +281,8 @@ fn _initialize_system() -> color_eyre::Result<()> {
     std::fs::File::create("/etc/machine-id")?;
 
     // wipe NetworkManager state
-    exist_then_read_dir("/etc/NetworkManager/system-connections")?
-        .filter(|entry| entry.file_type().is_ok_and(|t| t.is_file()))
-        .map(|entry| entry.path())
-        .try_for_each(std::fs::remove_file)?;
+    exist_then(std::fs::remove_dir_all("/etc/NetworkManager/system-connections"))?;
+    std::fs::create_dir_all("/etc/NetworkManager/system-connections")?;
 
     // todo: Copy over NetworkManager state from current livesys
 
