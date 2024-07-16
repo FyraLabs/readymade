@@ -70,7 +70,7 @@ Readymade will mount this location if possible, and if not, it will attempt to c
 
 You can however override this by setting the environment variable `REPART_COPY_SOURCE` to the path of the base filesystem to copy from. This makes use of systemd 255's new relative repart source feature.
 
-In case you have an alternate root mounted at `/mnt/rootfs`, you can run Readymade with the following command:
+In case you have an alternate root mounted at `/mnt/squash` from an external source (i.e a real filesystem or a mounted SquashFS image, or even an OCI image), add the environment variable `REPART_COPY_SOURCE=/mnt/squash` to the command line when running Readymade.
 
 ```sh
 sudo REPART_COPY_SOURCE=/mnt/rootfs readymade
