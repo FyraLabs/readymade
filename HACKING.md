@@ -64,7 +64,13 @@ Currently Readymade only supports Chromebook installations, it is recommended yo
 
 Readymade checks for Dracut's default `live-base` (in `/dev/mapper/live-base`) logical volume for the base filesystem to mount and copy from. This is usually generated with Dracut's live module. It then tries to mount the base filesystem from the logical volume and use the files from there as the source for the installer.
 
-You can however override this by setting the environment variable `REPART_COPY_SOURCE` to the path of the base filesystem to copy from. This makes use of systemd 255's new relative repart source feature. Note that you may need to set this while running Readymade with `sudo` to ensure that the environment variable is passed to the process, instead of the default behavior of Readymade restarting itself as root using `pkexec` which does not pass any environment variables.
+While you may expect it to mount a SquashFS, the default behaviour is to mount an overlay disk image generated *from* the SquashFS. This is to prevent the SquashFS to be extracted twice, as the live module already mounts the SquashFS and turns it into a Device Mapper device.
+
+Readymade will mount this location if possible, and if not, it will attempt to copy files from `/mnt/live-base` as the source path anyway.
+
+You can however override this by setting the environment variable `REPART_COPY_SOURCE` to the path of the base filesystem to copy from. This makes use of systemd 255's new relative repart source feature.
+
+In case you have an alternate root mounted at `/mnt/rootfs`, you can run Readymade with the following command:
 
 ```sh
 sudo REPART_COPY_SOURCE=/mnt/rootfs readymade
