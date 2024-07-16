@@ -25,8 +25,12 @@ It is created as a replacement to Red Hat's Anaconda installer for Ultramarine L
 
 %install
 %cargo_install
-install -Dpm644 com.fyralabs.pkexec.readymade.policy %buildroot%_datadir/polkit-1/actions/com.fyralabs.pkexec.readymade.policy
+./install.sh %buildroot
 
-%files
+%find_lang com.fyralabs.Readymade
+
+%files -f com.fyralabs.Readymade.lang
 %_bindir/readymade
 %_datadir/polkit-1/actions/com.fyralabs.pkexec.readymade.policy
+%_datadir/readymade
+%_
