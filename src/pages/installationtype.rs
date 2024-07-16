@@ -27,6 +27,7 @@ impl SimpleComponent for InstallationTypePage {
 
     view! {
         libhelium::ViewMono {
+            #[watch]
             set_title: &gettext("Installation Type"),
             set_vexpand: true,
 
@@ -85,6 +86,7 @@ impl SimpleComponent for InstallationTypePage {
                         //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
                         // },
                         libhelium::PillButton {
+                            #[watch]
                             set_label: &gettext("Chromebook"),
                             inline_css: "padding-left: 48px; padding-right: 48px",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::ChromebookInstall)
@@ -97,6 +99,7 @@ impl SimpleComponent for InstallationTypePage {
                     set_spacing: 6,
 
                     libhelium::TextButton {
+                        #[watch]
                         set_label: &gettext("Previous"),
                         connect_clicked => InstallationTypePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
                     },

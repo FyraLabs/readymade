@@ -1,13 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# Copyright (C) YEAR THE Readymade'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the Readymade package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-27 17:21+0000\n"
+"POT-Creation-Date: 2024-07-15 09:29+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,58 +17,58 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/pages/confirmation.rs:30
+#: src/pages/completed.rs:26
+msgid "Completed"
+msgstr ""
+
+#: src/pages/confirmation.rs:33
 msgid "Confirmation"
 msgstr ""
 
-#: src/pages/confirmation.rs:97 src/pages/destination.rs:108 src/pages/installationtype.rs:95
+#: src/pages/confirmation.rs:100 src/pages/destination.rs:111 src/pages/installationtype.rs:103
 msgid "Previous"
 msgstr ""
 
-#: src/pages/confirmation.rs:106 src/pages/welcome.rs:68
+#: src/pages/confirmation.rs:110 src/pages/welcome.rs:87
 msgid "Install"
 msgstr ""
 
-#: src/pages/destination.rs:84
+#: src/pages/destination.rs:86
 msgid "Destination"
 msgstr ""
 
-#: src/pages/destination.rs:117
+#: src/pages/destination.rs:121 src/pages/language.rs:110
 msgid "Next"
 msgstr ""
 
-#: src/pages/installation.rs:28
+#: src/pages/installation.rs:44
 msgid "Installation"
 msgstr ""
 
-#: src/pages/installation.rs:44
+#: src/pages/installation.rs:61
 msgid "Installing base system..."
 msgstr ""
 
-#: src/pages/installationtype.rs:30
+#: src/pages/installationtype.rs:31
 msgid "Installation Type"
 msgstr ""
 
-#: src/pages/installationtype.rs:73
-msgid "Entire Disk"
+#: src/pages/installationtype.rs:90
+msgid "Chromebook"
 msgstr ""
 
-#: src/pages/installationtype.rs:78
-msgid "Dual Boot"
+#: src/pages/language.rs:73
+msgid "Language"
 msgstr ""
 
-#: src/pages/installationtype.rs:83
-msgid "Custom"
-msgstr ""
-
-#: src/pages/welcome.rs:45
-msgid "Welcome to %s"
-msgstr ""
-
-#: src/pages/welcome.rs:50
+#: src/pages/welcome.rs:27 src/pages/welcome.rs:67
 msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
 
-#: src/pages/welcome.rs:62
+#: src/pages/welcome.rs:31 src/pages/welcome.rs:60
+msgid "Welcome to %s"
+msgstr ""
+
+#: src/pages/welcome.rs:80
 msgid "Try"
 msgstr ""

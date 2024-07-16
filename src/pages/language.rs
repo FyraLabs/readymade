@@ -76,6 +76,7 @@ impl SimpleComponent for LanguagePage {
 
     view! {
         libhelium::ViewMono {
+            #[watch]
             set_title: &gettext("Language"),
             set_vexpand: true,
             add = &gtk::Box {
@@ -102,6 +103,7 @@ impl SimpleComponent for LanguagePage {
                     },
 
                     libhelium::PillButton {
+                        #[watch]
                         set_label: &gettext("Next"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
                         connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome)),

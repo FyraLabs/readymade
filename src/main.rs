@@ -26,7 +26,7 @@ static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
 const APPID: &str = "com.fyralabs.Readymade";
 
 macro_rules! generate_pages {
-    ($Page:ident $AppModel:ident $AppMsg:ident: $($page:ident),+$(,)?) => {paste::paste!{
+    ($Page:ident $AppModel:ident $AppMsg:ident: $($page:ident $($forward:expr)?),+$(,)?) => {paste::paste! {
         use pages::{$([<$page:lower>]::[<$page:camel Page>]),+};
         use pages::{$([<$page:lower>]::[<$page:camel PageOutput>]),+};
 
@@ -50,15 +50,17 @@ macro_rules! generate_pages {
                 $(
                     [<$page:snake _page>]: [<$page:camel Page>]::builder()
                         .launch(())
-                        .forward(sender.input_sender(), |msg| match msg {
-                            [<$page:camel PageOutput>]::Navigate(action) => $AppMsg::Navigate(action),
-                            #[allow(unreachable_patterns)]
-                            _ => unimplemented!("{}PageOutput has unimplemented enum variants", stringify!($page))
-                        }),
+                        .forward(sender.input_sender(), generate_pages!(@$page $AppMsg $($forward)?)),
                 )+
             }}
         }
     }};
+    (@$page:ident $AppMsg:ident) => {paste::paste! {
+        |msg| match msg {
+            [<$page:camel PageOutput>]::Navigate(action) => $AppMsg::Navigate(action),
+        }
+    }};
+    (@$page:ident $AppMsg:ident $forward:expr) => { $forward };
 }
 
 generate_pages!(Page AppModel AppMsg:
@@ -66,7 +68,13 @@ generate_pages!(Page AppModel AppMsg:
     Welcome,
     Destination,
     InstallationType,
-    Confirmation,
+    Confirmation |msg| {
+        tracing::debug!("ConfirmationPage emitted {msg:?}");
+        match msg {
+            ConfirmationPageOutput::StartInstallation => AppMsg::StartInstallation,
+            ConfirmationPageOutput::Navigate(action) => AppMsg::Navigate(action),
+        }
+    },
     Installation,
     Completed,
 );
@@ -126,19 +134,7 @@ impl SimpleComponent for AppModel {
         let settings = gtk::Settings::for_display(&gtk::gdk::Display::default().unwrap());
         settings.set_gtk_icon_theme_name(Some("Hydrogen"));
 
-        let model = AppModel {
-            confirmation_page: ConfirmationPage::builder().launch(()).forward(
-                sender.input_sender(),
-                |msg| {
-                    tracing::debug!("ConfirmationPage emitted {:?}", msg);
-                    match msg {
-                        ConfirmationPageOutput::StartInstallation => AppMsg::StartInstallation,
-                        ConfirmationPageOutput::Navigate(action) => AppMsg::Navigate(action),
-                    }
-                },
-            ),
-            ..Self::_default(sender)
-        };
+        let model = Self::_default(sender);
 
         let widgets = view_output!();
 
@@ -152,6 +148,11 @@ impl SimpleComponent for AppModel {
                 .emit(InstallationPageMsg::StartInstallation),
             AppMsg::Navigate(NavigationAction::GoTo(page)) => {
                 self.page = page;
+                // FIXME: welcome page doesn't automatically update under diff language
+                if let Page::Welcome = page {
+                    self.welcome_page
+                        .emit(pages::welcome::WelcomePageMsg::Refresh);
+                }
             }
             // FIXME: The following code is commented out because it'd trigger relm4 to drop the
             // RegionPage and LanguagePage, and somehow during quitting, it triggers the signal

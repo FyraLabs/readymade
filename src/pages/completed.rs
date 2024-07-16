@@ -22,6 +22,7 @@ impl SimpleComponent for CompletedPage {
 
     view! {
         libhelium::ViewMono {
+            #[watch]
             set_title: &gettext("Completed"),
             set_vexpand: true,
 

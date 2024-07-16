@@ -82,6 +82,7 @@ impl SimpleComponent for DestinationPage {
 
     view! {
         libhelium::ViewMono {
+            #[watch]
             set_title: &gettext("Destination"),
             set_vexpand: true,
 
@@ -106,6 +107,7 @@ impl SimpleComponent for DestinationPage {
                     set_spacing: 4,
 
                     libhelium::TextButton {
+                        #[watch]
                         set_label: &gettext("Previous"),
                         connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome))
                     },
@@ -115,6 +117,7 @@ impl SimpleComponent for DestinationPage {
                     },
 
                     libhelium::PillButton {
+                        #[watch]
                         set_label: &gettext("Next"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
                         connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallationType)),

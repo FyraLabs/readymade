@@ -135,22 +135,12 @@ macro_rules! ini_enum {
     }
 }
 
-// let's search for an xbootldr label
-// because we never know what the device will be
-pub const GRUB_CONFIG: &str = r#"search --no-floppy --label --set=dev xbootldr
-set prefix=($dev)/grub2
-
-export $prefix
-configfile $prefix/grub.cfg
-"#;
-
 // #[derive(Debug, serde::Serialize, serde::Deserialize)]
 // pub enum InstallStage {
 //     Repart,
 //     Initramfs,
 //     etc...
 // }
-
 
 /// IPC installation message for non-interactive mode
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -171,7 +161,7 @@ impl InstallMessage {
 #[macro_export]
 macro_rules! stage {
     // todo: Export text to global progress text
-    ($s:literal $body:block) => {
+    ($s:literal $body:block) => {{
         let s = tracing::info_span!($s);
 
         if std::env::var("NON_INTERACTIVE_INSTALL").is_ok_and(|v| v == "1") {
@@ -185,5 +175,25 @@ macro_rules! stage {
             let _guard = s.enter();
             $body
         }
-    };
+    }};
+}
+
+/// Ignore errors about nonexisting files.
+pub fn exist_then<T: Default>(r: std::io::Result<T>) -> std::io::Result<T> {
+    match r {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+        Err(_) => Ok(T::default()),
+        Ok(x) => Ok(x),
+    }
+}
+
+/// Ignore errors about nonexisting files.
+pub fn exist_then_read_dir(
+    p: impl AsRef<std::path::Path>,
+) -> std::io::Result<Box<dyn Iterator<Item = std::fs::DirEntry>>> {
+    match std::fs::read_dir(p) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Box::new(std::iter::empty())),
+        Err(e) => Err(e),
+        Ok(x) => Ok(Box::new(x.flatten())),
+    }
 }

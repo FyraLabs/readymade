@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crate::util::{exist_then, exist_then_read_dir};
 use crate::{
     backend::repart_output::{systemd_version, RepartOutput},
     pages::destination::DiskInit,
@@ -34,7 +35,10 @@ pub struct InstallationState {
 impl InstallationState {
     // todo: move methods from installationstate to here!
     //
-    pub fn install_using_subprocess(&self) -> Result<()> {
+    pub fn install_using_subprocess(
+        &self,
+        sender: relm4::ComponentSender<crate::pages::installation::InstallationPage>,
+    ) -> Result<()> {
         let mut command = Command::new("pkexec")
             .arg(std::env::current_exe()?)
             .arg("--non-interactive")
@@ -47,9 +51,27 @@ impl InstallationState {
         child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
         drop(child_stdin);
 
-        command.wait()?;
-
-        // TODO: handle events or something lol
+        gtk::glib::timeout_add(std::time::Duration::from_millis(200), move || {
+            sender
+                .command_sender()
+                .send(
+                    crate::pages::installation::InstallationPageCommandMsg::FinishInstallation(
+                        match command.try_wait() {
+                            Ok(None) => return gtk::glib::ControlFlow::Continue,
+                            Ok(Some(exit_status)) if exit_status.success() => Ok(()),
+                            Ok(Some(exit_status)) => {
+                                Err(color_eyre::Report::msg(exit_status.to_string()))
+                            }
+                            Err(e) => Err(color_eyre::eyre::eyre!(
+                                "Failed to execute readymade non-interactively"
+                            )
+                            .wrap_err(e)),
+                        },
+                    ),
+                )
+                .unwrap();
+            gtk::glib::ControlFlow::Break
+        });
 
         Ok(())
     }
@@ -60,20 +82,18 @@ impl InstallationState {
             .installation_type
             .as_ref()
             .expect("A valid installation type should be set before calling install()");
-        // SAFETY: ideally we should never reach this point without a valid destination disk
         let blockdev = &self
             .destination_disk
             .as_ref()
             .expect("A valid destination device should be set before calling install()")
             .devpath;
         let cfgdir = inst_type.cfgdir();
-        let repart_out: RepartOutput;
-        stage!("Creating partitions and copying files" {
+        let repart_out = stage!("Creating partitions and copying files" {
             // todo: not freeze on error, show error message as err handler?
-            repart_out = Self::systemd_repart(blockdev, &cfgdir)?;
-            tracing::info!("Copying files done, Setting up system...");
+            Self::systemd_repart(blockdev, &cfgdir)?
         });
 
+        tracing::info!("Copying files done, Setting up system...");
         setup_system(repart_out)?;
 
         if let InstallationType::ChromebookInstall = inst_type {
@@ -151,7 +171,7 @@ impl InstallationState {
         .map_err(|e| color_eyre::eyre::eyre!("systemd-repart failed").wrap_err(e))?;
 
         // todo: wait for systemd 256 or genfstab magic
-        tracing::debug!("systemd-repart finished");
+        tracing::debug!(out, "systemd-repart finished");
         Ok(serde_json::from_str(&out)?)
     }
 }
@@ -192,7 +212,10 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
 
         stage!("Generating stage 1 grub.cfg in ESP..." {
             let mut grub_cfg = std::fs::File::create("/boot/efi/EFI/fedora/grub.cfg")?;
-            grub_cfg.write_all(crate::util::GRUB_CONFIG.as_bytes())?;
+            // let's search for an xbootldr label
+            // because we never know what the device will be
+            // see the compile time included config file
+            grub_cfg.write_all(include_bytes!("../templates/fedora-grub.cfg"))?;
         });
 
         stage!("Generating stage 2 grub.cfg in /boot/grub2/grub.cfg..." {
@@ -204,8 +227,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
     }
 
     stage!("Cleaning up /boot partition..." {
-        let boot_dir = Path::new("/boot");
-        for file in std::fs::read_dir(boot_dir)?.flatten().map(|entry| entry.path()) {
+        for file in std::fs::read_dir("/boot")?.flatten().map(|entry| entry.path()) {
             let file_name = file.file_name().unwrap().to_str().unwrap();
             if file_name.starts_with("initramfs") || file_name.starts_with("vmlinuz") {
                 tracing::debug!(?file, "Removing kernel file");
@@ -213,8 +235,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
             }
         }
 
-        let bls_dir = Path::new("/boot/loader/entries");
-        for file in std::fs::read_dir(bls_dir)?.flatten().map(|entry| entry.path()) {
+        for file in std::fs::read_dir("/boot/loader/entries")?.flatten().map(|entry| entry.path()) {
             tracing::debug!(?file, "Removing BLS entry");
             std::fs::remove_file(file)?;
         }
@@ -253,7 +274,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
     if systemd_version()? <= 256 {
         stage!("Generating /etc/fstab..." {
             let mut fstab = std::fs::File::create("/etc/fstab")?;
-            fstab.write_all(output.into_fstab().as_bytes())?;
+            fstab.write_all(output.generate_fstab().as_bytes())?;
         });
     }
 
@@ -263,7 +284,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
 
     stage!("Setting SELinux contexts..." {
         std::process::Command::new("setfiles")
-            .args(&["-e", "/proc", "-e", "/sys"])
+            .args(["-e", "/proc", "-e", "/sys"])
             .arg("/etc/selinux/targeted/contexts/files/file_contexts")
             .arg("/")
             .status()?;
@@ -276,47 +297,26 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> 
 /// This function is moved to a separate function to allow for cleaner code
 #[tracing::instrument]
 fn _initialize_system() -> color_eyre::Result<()> {
-    if std::fs::metadata("/var/lib/systemd/random-seed").is_ok() {
-        std::fs::remove_file("/var/lib/systemd/random-seed")?;
-    }
-
-    if std::fs::metadata("/etc/machine-id").is_ok() {
-        std::fs::remove_file("/etc/machine-id")?;
-    }
+    exist_then(std::fs::remove_file("/var/lib/systemd/random-seed"))?;
     // We're gonna make an empty machine-id file so that systemd can generate a new one
     std::fs::File::create("/etc/machine-id")?;
 
     // wipe NetworkManager state
-    if std::fs::metadata("/etc/NetworkManager/system-connections").is_ok() {
-        for entry in std::fs::read_dir("/etc/NetworkManager/system-connections")? {
-            let entry = entry?;
-            if entry.file_type()?.is_file() {
-                std::fs::remove_file(entry.path())?;
-            }
-        }
-    }
+    exist_then(std::fs::remove_dir_all(
+        "/etc/NetworkManager/system-connections",
+    ))?;
+    std::fs::create_dir_all("/etc/NetworkManager/system-connections")?;
 
     // todo: Copy over NetworkManager state from current livesys
 
     // wipe temporary RPM database
-    if std::fs::metadata("/var/lib/rpm").is_ok() {
-        for entry in std::fs::read_dir("/var/lib/rpm")? {
-            let entry = entry?;
-            if entry.file_name().to_string_lossy().starts_with("__db") {
-                std::fs::remove_file(entry.path())?;
-            }
-        }
-    }
+    exist_then_read_dir("/var/lib/rpm")?
+        .filter(|entry| entry.file_name().to_string_lossy().starts_with("__db"))
+        .map(|entry| entry.path())
+        .try_for_each(std::fs::remove_file)?;
 
     // wipe temporary dnf cache
-    if std::fs::metadata("/var/cache/dnf").is_ok() {
-        for entry in std::fs::read_dir("/var/cache/dnf")? {
-            let entry = entry?;
-            if entry.file_type()?.is_dir() {
-                std::fs::remove_dir_all(entry.path())?;
-            }
-        }
-    }
+    exist_then(std::fs::remove_dir_all("/var/cache/dnf"))?;
 
     // todo: set locale and timezone from config
 
