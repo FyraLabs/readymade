@@ -33,4 +33,3 @@ It is created as a replacement to Red Hat's Anaconda installer for Ultramarine L
 %_bindir/readymade
 %_datadir/polkit-1/actions/com.fyralabs.pkexec.readymade.policy
 %_datadir/readymade
-%_
