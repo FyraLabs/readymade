@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use crate::pages::destination::DiskInit;
 
-const OSNAME_PLACEHOLDER: &str = "Unknown";
+const OSNAME_PLACEHOLDER: &str = "Unknown OS";
 
 /// Try and scan the system for disks and their installed OS
 // Honestly, this is a mess and I have no idea how to get os_detect to work.
@@ -28,32 +28,23 @@ pub fn detect_os() -> Vec<DiskInit> {
     disks
         .into_iter()
         .filter(lsblk::BlockDevice::is_disk)
-        .map(|disk| {
+        .map(|mut disk| {
             let model = disk
                 .sysfs()
                 .and_then(|p| std::fs::read_to_string(p.join("device").join("model")));
             let ret = DiskInit {
-                disk_name: format!(
-                    "{} ({})",
-                    model
-                        .as_ref()
-                        .map(|s| s.trim())
-                        .ok()
-                        .or(disk.label.as_deref())
-                        .or(disk.id.as_deref())
-                        .map_or("".into(), |s| s),
-                    disk.name,
-                )
-                .trim()
-                .to_string(),
+                disk_name: model
+                    .map(|s| s.trim().to_owned())
+                    .ok()
+                    .or(disk.label.take().or(disk.id.take()))
+                    .map_or_else(|| disk.name.to_owned(), |s| format!("{s} ({})", disk.name)),
                 os_name: osprobe
                     .iter()
                     .filter_map(|(path, osname)| path.to_str().zip(Some(osname)))
-                    .find(|(path, _)| path.starts_with(&disk.name))
-                    .map(|(_, osname)| osname.to_string())
-                    .unwrap_or(OSNAME_PLACEHOLDER.to_string()),
-                devpath: disk.fullname.clone(),
+                    .find_map(|(path, osname)| path.starts_with(&disk.name).then_some(osname))
+                    .map_or(OSNAME_PLACEHOLDER.to_owned(), |osname| osname.to_owned()),
                 size: bytesize::ByteSize::kib(disk.capacity().unwrap().unwrap() >> 1),
+                devpath: disk.fullname,
             };
             tracing::debug!(?ret, "Found disk");
             ret
