@@ -34,15 +34,23 @@ pub struct InstallationState {
 
 impl InstallationState {
     // todo: move methods from installationstate to here!
-    //
     pub fn install_using_subprocess(&self) -> Result<()> {
-        let mut command = Command::new("pkexec")
+        let mut command = Command::new("pkexec");
+        command
             .arg(std::env::current_exe()?)
             .arg("--non-interactive")
             .stdin(Stdio::piped())
             .stderr(Stdio::inherit())
-            .stdout(Stdio::inherit())
-            .spawn()?;
+            .stdout(Stdio::inherit());
+        
+        // pass in REPART_COPY_SOURCE if it's set
+        // This is a bit hacky, I should fix this later
+        if std::env::var("REPART_COPY_SOURCE").is_ok() {
+            command.env("REPART_COPY_SOURCE", std::env::var("REPART_COPY_SOURCE")?);
+        }
+ 
+        
+        let mut command = command.spawn()?;
 
         let mut child_stdin = command.stdin.take().unwrap();
         child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
