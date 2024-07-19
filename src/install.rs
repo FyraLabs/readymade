@@ -42,14 +42,13 @@ impl InstallationState {
             .stdin(Stdio::piped())
             .stderr(Stdio::inherit())
             .stdout(Stdio::inherit());
-        
+
         // pass in REPART_COPY_SOURCE if it's set
         // This is a bit hacky, I should fix this later
         if std::env::var("REPART_COPY_SOURCE").is_ok() {
             command.env("REPART_COPY_SOURCE", std::env::var("REPART_COPY_SOURCE")?);
         }
- 
-        
+
         let mut command = command.spawn()?;
 
         let mut child_stdin = command.stdin.take().unwrap();
