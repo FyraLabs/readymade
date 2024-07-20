@@ -1,5 +1,4 @@
-#[warn(clippy::nursery)]
-#[warn(clippy::pedantic)]
+#![warn(rust_2018_idioms)]
 mod backend;
 mod disks;
 mod install;
@@ -126,7 +125,7 @@ impl SimpleComponent for AppModel {
 
     // Initialize the UI.
     fn init(
-        _: Self::Init,
+        (): Self::Init,
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
@@ -149,7 +148,7 @@ impl SimpleComponent for AppModel {
             AppMsg::Navigate(NavigationAction::GoTo(page)) => {
                 self.page = page;
                 // FIXME: welcome page doesn't automatically update under diff language
-                if let Page::Welcome = page {
+                if page == Page::Welcome {
                     self.welcome_page
                         .emit(pages::welcome::WelcomePageMsg::Refresh);
                 }
@@ -186,7 +185,7 @@ fn main() -> Result<()> {
     if std::env::args().any(|arg| arg == "--non-interactive") {
         // Get installation state from stdin json instead
 
-        let install_state = InstallationState::from(serde_json::from_reader(std::io::stdin())?);
+        let install_state: InstallationState = serde_json::from_reader(std::io::stdin())?;
 
         install_state.install()?;
 
