@@ -35,11 +35,10 @@ pub struct RepartOutput {
 impl RepartOutput {
     /// Generate a `BTreeMap` of mountpoint -> node name for generating /etc/fstab
     /// from DDI partition types
-    pub fn mountpoints(&self) -> std::collections::BTreeMap<&'static str, String> {
+    pub fn mountpoints(&self) -> impl Iterator<Item = (&'static str, String)> + '_ {
         self.partitions
             .iter()
             .filter_map(|part| part.ddi_mountpoint().map(|mp| (mp, part.node.clone())))
-            .collect()
     }
 
     pub fn find_by_node(&self, node: &str) -> Option<&RepartPartition> {
@@ -51,10 +50,9 @@ impl RepartOutput {
     /// This function may be deprecated when systemd 256 hits f40, or when
     /// we rebase to f41
     pub fn generate_fstab(&self) -> String {
-        let mountpoints = self.mountpoints();
         let mut fstab = String::new();
 
-        for (mntpoint, node) in mountpoints {
+        for (mntpoint, node) in self.mountpoints() {
             let part = self.find_by_node(&node).unwrap();
             let fs_type = part.part_type.as_str();
             let uuid = part.uuid.to_string();
@@ -75,13 +73,11 @@ impl RepartOutput {
     /// Create `tiffin::Container` from the repartitioning output with the mountpoints
     /// from the DDI partition types
     pub fn to_container(&self) -> color_eyre::Result<Container> {
-        let mountpoints = self.mountpoints();
-
         let temp_dir = tempfile::tempdir()?.into_path();
 
         let mut container = Container::new(temp_dir);
 
-        for (mntpoint, node) in &mountpoints {
+        for (mntpoint, node) in self.mountpoints() {
             // strip
             // mntpoint.trim_start_matches('/')
             let mnt_target = MountTarget {
@@ -158,7 +154,9 @@ mod tests {
     #[test]
     fn test_mountpoints() {
         let output = deserialize();
-        let mountpoints = output.mountpoints();
+        let mountpoints = output
+            .mountpoints()
+            .collect::<std::collections::BTreeMap<_, _>>();
         println!("{mountpoints:#?}");
         assert_eq!(mountpoints.len(), 3);
         assert_eq!(mountpoints.get("/boot"), Some(&"/dev/sda3".to_owned()));
