@@ -1,4 +1,5 @@
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::eyre::{eyre, OptionExt};
+use color_eyre::Result;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::process::{Command, Stdio};
@@ -17,6 +18,7 @@ use crate::{
 
 const REPART_DIR: &str = "/usr/share/readymade/repart-cfgs/";
 
+#[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InstallationType {
     WholeDisk,
@@ -51,7 +53,7 @@ impl InstallationState {
 
         let mut command = command.spawn()?;
 
-        let mut child_stdin = command.stdin.take().unwrap();
+        let mut child_stdin = command.stdin.take().ok_or_eyre(eyre!("Can't take stdin"))?;
         child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
         drop(child_stdin);
 
@@ -65,6 +67,7 @@ impl InstallationState {
         }
     }
 
+    #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     pub fn install(&self) -> Result<()> {
         let inst_type = self
@@ -133,7 +136,7 @@ impl InstallationState {
                     }
                     Err(e) => {
                         tracing::error!("Failed to mount `{LIVE_BASE}`, using `{FALLBACK}` as copy source anyway... ({e})");
-                        FALLBACK.to_string()
+                        FALLBACK.to_owned()
                     }
                 }
             }
@@ -172,21 +175,11 @@ pub fn setup_system(output: RepartOutput) -> Result<()> {
     // The reason we're checking for UEFI here is because we want to check the current
     // system's boot mode before we install GRUB, not check inside the container
     let uefi = util::check_uefi();
-    container
-        // first, upcast color_eyre::Report to a dyn Error
-        .run(|| Ok(_inner_sys_setup(uefi, output)?))
-        .map_err(|e| {
-            // then, downcast back to color_ey::Report for better error diagnostics
-            // SAFETY: _inner_sys_setup() returns error under color_eyre::Report.
-            eyre!("Error configuring system")
-                .wrap_err(unsafe { Box::from_raw(Box::into_raw(e).cast::<color_eyre::Report>()) })
-        })?;
-
-    Ok(())
+    container.run(|| _inner_sys_setup(uefi, output))?
 }
 
 #[tracing::instrument]
-fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> color_eyre::Result<()> {
+fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> Result<()> {
     if uefi {
         // The reason why we don't do grub2-install here is because for
         // Fedora specifically, the install script simply plops in

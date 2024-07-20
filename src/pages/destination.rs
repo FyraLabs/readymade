@@ -20,7 +20,7 @@ pub struct DiskInit {
 
 #[relm4::factory(pub)]
 impl FactoryComponent for DiskInit {
-    type Init = DiskInit;
+    type Init = Self;
     type Input = ();
     type Output = ();
     type CommandOutput = ();

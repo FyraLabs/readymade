@@ -90,6 +90,7 @@ enum AppMsg {
     Navigate(NavigationAction),
 }
 
+#[allow(clippy::str_to_string)]
 #[relm4::component]
 impl SimpleComponent for AppModel {
     type Init = ();
@@ -164,14 +165,52 @@ impl SimpleComponent for AppModel {
     }
 }
 // todo: non-interactive mode?
+#[allow(clippy::missing_errors_doc)]
+#[allow(clippy::missing_panics_doc)]
 fn main() -> Result<()> {
-    color_eyre::install()?;
+    setup_logs_and_install_panic_hook();
 
-    // Log to a file for debugging
-    let tempdir = tempfile::Builder::new().prefix("readymade").tempdir()?;
+    if std::env::args().any(|arg| arg == "--non-interactive") {
+        // Get installation state from stdin json instead
+
+        let install_state: InstallationState = serde_json::from_reader(std::io::stdin())?;
+
+        return install_state.install();
+    }
+
+    gettextrs::textdomain(APPID)?;
+    gettextrs::bind_textdomain_codeset(APPID, "UTF-8")?;
+
+    let app = libhelium::Application::builder()
+        .application_id(APPID)
+        .flags(ApplicationFlags::default())
+        // SAFETY: just doing weird low-level pointer stuff
+        .default_accent_color(unsafe {
+            &libhelium::ColorRGBColor::from_glib_none(std::ptr::from_mut(&mut libhelium::ffi::HeColorRGBColor {
+                // todo: fix this upstream
+                r: 0.0,
+                g: 7.0 / 255.0,
+                b: 143.0 / 255.0,
+            }))
+        })
+        .build();
+
+    tracing::debug!("Starting Readymade");
+    RelmApp::from_app(app).run::<AppModel>(());
+    Ok(())
+}
+
+/// # Panics
+/// - cannot install `color_eyre`
+/// - cannot create readymade tempdir
+fn setup_logs_and_install_panic_hook() {
+    color_eyre::install().expect("install color_eyre");
+    let tempdir = tempfile::Builder::new()
+        .prefix("readymade")
+        .tempdir()
+        .expect("create readymade tempdir");
     let file_appender = tracing_appender::rolling::never(tempdir.path(), "readymade.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-
     let sub_builder = tracing_subscriber::fmt()
         .with_env_filter("trace")
         .with_ansi(true)
@@ -179,50 +218,16 @@ fn main() -> Result<()> {
         .finish()
         .with(tracing_subscriber::fmt::Layer::default().with_writer(non_blocking))
         .with(tracing_subscriber::fmt::Layer::default().with_writer(std::io::stderr));
-
     tracing::subscriber::set_global_default(sub_builder).expect("unable to set global subscriber");
-
-    if std::env::args().any(|arg| arg == "--non-interactive") {
-        // Get installation state from stdin json instead
-
-        let install_state: InstallationState = serde_json::from_reader(std::io::stdin())?;
-
-        install_state.install()?;
-
-        return Ok(());
-    }
-
-    #[cfg(debug_assertions)]
-    {
+    if cfg!(debug_assert) {
         tracing::info!("Running in debug mode");
     }
-
     tracing::info!(
         "Readymade Installer {version}",
         version = env!("CARGO_PKG_VERSION")
     );
-
     tracing::info!(
         "Logging to {tempdir}/readymade.log",
         tempdir = tempdir.path().display()
     );
-    gettextrs::textdomain(APPID)?;
-    gettextrs::bind_textdomain_codeset(APPID, "UTF-8")?;
-
-    let app = libhelium::Application::builder()
-        .application_id(APPID)
-        .flags(ApplicationFlags::default())
-        .default_accent_color(unsafe {
-            &libhelium::ColorRGBColor::from_glib_none(&mut libhelium::ffi::HeColorRGBColor {
-                // todo: fix this upstream
-                r: 0.0,
-                g: 7.0 / 255.0,
-                b: 143.0 / 255.0,
-            } as *mut _)
-        })
-        .build();
-
-    tracing::debug!("Starting Readymade");
-    RelmApp::from_app(app).run::<AppModel>(());
-    Ok(())
 }

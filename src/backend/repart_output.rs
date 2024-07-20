@@ -2,7 +2,7 @@ use bytesize::ByteSize;
 use color_eyre::eyre::eyre;
 use std::fmt::Write;
 // use lsblk::mountpoints;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use sys_mount::MountFlags;
 use tiffin::{Container, MountTarget};
 
@@ -24,8 +24,6 @@ pub fn systemd_version() -> color_eyre::Result<usize> {
     Ok(version)
 }
 
-// use super::repartcfg::PartTypeIdent;
-
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 // type should be just an array of partitions
 #[serde(transparent)]
@@ -35,10 +33,6 @@ pub struct RepartOutput {
 }
 
 impl RepartOutput {
-    pub fn get_partition(&self, partno: i32) -> Option<&RepartPartition> {
-        self.partitions.iter().find(|part| part.partno == partno)
-    }
-
     /// Generate a `BTreeMap` of mountpoint -> node name for generating /etc/fstab
     /// from DDI partition types
     pub fn mountpoints(&self) -> std::collections::BTreeMap<&'static str, String> {
@@ -68,9 +62,9 @@ impl RepartOutput {
             let dump = 0;
             let pass = 2;
 
-            write!(
+            writeln!(
                 fstab,
-                "UUID={uuid}\t{mntpoint}\t{fs_type}\t{options}\t{dump}\t{pass}\n"
+                "UUID={uuid}\t{mntpoint}\t{fs_type}\t{options}\t{dump}\t{pass}"
             )
             .unwrap();
         }
@@ -97,7 +91,7 @@ impl RepartOutput {
                 fstype: None,
             };
 
-            container.add_mount(mnt_target, Path::new(node));
+            container.add_mount(mnt_target, PathBuf::from(node));
         }
 
         Ok(container)
@@ -167,15 +161,15 @@ mod tests {
         let mountpoints = output.mountpoints();
         println!("{mountpoints:#?}");
         assert_eq!(mountpoints.len(), 3);
-        assert_eq!(mountpoints.get("/boot"), Some(&"/dev/sda3".to_string()));
-        assert_eq!(mountpoints.get("/boot/efi"), Some(&"/dev/sda1".to_string()));
-        assert_eq!(mountpoints.get("/"), Some(&"/dev/sda4".to_string()));
+        assert_eq!(mountpoints.get("/boot"), Some(&"/dev/sda3".to_owned()));
+        assert_eq!(mountpoints.get("/boot/efi"), Some(&"/dev/sda1".to_owned()));
+        assert_eq!(mountpoints.get("/"), Some(&"/dev/sda4".to_owned()));
     }
 
     #[test]
     fn get_systemd_version() -> color_eyre::Result<()> {
         let version = systemd_version()?;
-        println!("{}", version);
+        println!("{version}");
         Ok(())
     }
 }

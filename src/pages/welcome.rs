@@ -24,11 +24,11 @@ pub enum WelcomePageOutput {
 }
 
 fn update_lbl1(lbl: &gtk::Label) {
-    lbl.set_label(&*gettext(r#"Either test %s from this installer or start the installation now. You can always return to this screen by selecting "Installer" in the menu."#).replace("%s", DISTRO));
+    lbl.set_label(&gettext(r#"Either test %s from this installer or start the installation now. You can always return to this screen by selecting "Installer" in the menu."#).replace("%s", DISTRO));
 }
 
 fn update_lbl0(lbl: &gtk::Label) {
-    lbl.set_label(&*gettext("Welcome to %s").replace("%s", DISTRO));
+    lbl.set_label(&gettext("Welcome to %s").replace("%s", DISTRO));
 }
 
 #[relm4::component(pub)]
@@ -58,14 +58,14 @@ impl SimpleComponent for WelcomePage {
                 #[local_ref]
                 lbl0 -> gtk::Label {
                     #[watch]
-                    set_label: &*gettext("Welcome to %s").replace("%s", DISTRO),
+                    set_label: &gettext("Welcome to %s").replace("%s", DISTRO),
                     inline_css: "font-weight: bold; font-size: 1.75rem",
                 },
 
                 #[local_ref]
                 lbl1 -> gtk::Label {
                     #[watch]
-                    set_label: &*gettext(r#"Either test %s from this installer or start the installation now. You can always return to this screen by selecting "Installer" in the menu."#).replace("%s", DISTRO),
+                    set_label: &gettext(r#"Either test %s from this installer or start the installation now. You can always return to this screen by selecting "Installer" in the menu."#).replace("%s", DISTRO),
                     set_justify: gtk::Justification::Center,
                     set_max_width_chars: 60,
                     set_wrap: true
@@ -100,7 +100,7 @@ impl SimpleComponent for WelcomePage {
     ) -> ComponentParts<Self> {
         let lbl0 = gtk::Label::new(None);
         let lbl1 = gtk::Label::new(None);
-        let model = WelcomePage { lbl0, lbl1 };
+        let model = Self { lbl0, lbl1 };
         let lbl0 = &model.lbl0;
         let lbl1 = &model.lbl1;
         let widgets = view_output!();
@@ -111,7 +111,7 @@ impl SimpleComponent for WelcomePage {
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             WelcomePageMsg::Navigate(action) => {
-                sender.output(WelcomePageOutput::Navigate(action)).unwrap()
+                sender.output(WelcomePageOutput::Navigate(action)).unwrap();
             }
             WelcomePageMsg::Refresh => {
                 update_lbl0(&self.lbl0);

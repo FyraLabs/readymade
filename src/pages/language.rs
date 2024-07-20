@@ -131,7 +131,7 @@ impl SimpleComponent for LanguagePage {
             .for_each(|x| _ = btns.push_back(x));
         btns.drop();
 
-        let model = LanguagePage { btnfactory };
+        let model = Self { btnfactory };
         let btnbox = model.btnfactory.widget();
         let widgets = view_output!();
 
@@ -141,15 +141,15 @@ impl SimpleComponent for LanguagePage {
     fn update(&mut self, message: Self::Input, sender: relm4::prelude::ComponentSender<Self>) {
         match message {
             LanguagePageMsg::Navigate(action) => {
-                sender.output(LanguagePageOutput::Navigate(action)).unwrap()
+                sender.output(LanguagePageOutput::Navigate(action)).unwrap();
             }
             LanguagePageMsg::Selected => {
                 if let Some(row) = self.btnfactory.widget().selected_row() {
+                    #[allow(clippy::cast_sign_loss)]
                     let language = self.btnfactory.get(row.index() as usize).unwrap();
                     gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, &*language.locale)
                         .unwrap();
-                    crate::INSTALLATION_STATE.write().langlocale =
-                        Some(language.locale.to_string());
+                    crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.clone());
                 }
             }
         }

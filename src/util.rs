@@ -1,5 +1,4 @@
 //! QoL Utilities for Readymade
-use color_eyre::Section as _;
 
 pub const LIVE_BASE: &str = "/dev/mapper/live-base";
 
@@ -150,7 +149,7 @@ pub enum InstallMessage {
 
 impl InstallMessage {
     pub fn new(s: &str) -> Self {
-        Self::Status(s.to_string())
+        Self::Status(s.to_owned())
     }
 
     pub fn into_json(self) -> String {
@@ -167,7 +166,7 @@ macro_rules! stage {
         if std::env::var("NON_INTERACTIVE_INSTALL").is_ok_and(|v| v == "1") {
             // Then we are in a non-interactive install, which means we export IPC
             // to stdout
-            let install_status = crate::util::InstallMessage::new($s);
+            let install_status = $crate::util::InstallMessage::new($s);
             println!("{}", install_status.into_json());
         }
 
@@ -188,8 +187,8 @@ pub fn exist_then<T: Default>(r: std::io::Result<T>) -> std::io::Result<T> {
 }
 
 /// Ignore errors about nonexisting files.
-pub fn exist_then_read_dir(
-    p: impl AsRef<std::path::Path>,
+pub fn exist_then_read_dir<A: AsRef<std::path::Path>>(
+    p: A,
 ) -> std::io::Result<Box<dyn Iterator<Item = std::fs::DirEntry>>> {
     match std::fs::read_dir(p) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Box::new(std::iter::empty())),

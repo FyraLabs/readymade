@@ -19,7 +19,7 @@ const OSNAME_PLACEHOLDER: &str = "Unknown OS";
 pub fn detect_os() -> Vec<DiskInit> {
     let disks = lsblk::BlockDevice::list().unwrap();
 
-    println!("{:?}", disks);
+    println!("{disks:?}");
 
     let osprobe: HashMap<_, _> = OSProbe::scan()
         .map(|probe| (probe.into_iter().map(|os| (os.part, os.os_name_pretty))).collect())
@@ -36,13 +36,13 @@ pub fn detect_os() -> Vec<DiskInit> {
                 disk_name: model
                     .map(|s| s.trim().to_owned())
                     .ok()
-                    .or(disk.label.take().or(disk.id.take()))
-                    .map_or_else(|| disk.name.to_owned(), |s| format!("{s} ({})", disk.name)),
+                    .or_else(|| disk.label.take().or_else(|| disk.id.take()))
+                    .map_or_else(|| disk.name.clone(), |s| format!("{s} ({})", disk.name)),
                 os_name: osprobe
                     .iter()
                     .filter_map(|(path, osname)| path.to_str().zip(Some(osname)))
                     .find_map(|(path, osname)| path.starts_with(&disk.name).then_some(osname))
-                    .map_or(OSNAME_PLACEHOLDER.to_owned(), |osname| osname.to_owned()),
+                    .map_or(OSNAME_PLACEHOLDER.to_owned(), ToOwned::to_owned),
                 size: bytesize::ByteSize::kib(disk.capacity().unwrap().unwrap() >> 1),
                 devpath: disk.fullname,
             };
@@ -56,5 +56,5 @@ pub fn detect_os() -> Vec<DiskInit> {
 #[test]
 fn test_lsblk_smoke() {
     let devices = lsblk::BlockDevice::list();
-    assert!(devices.is_ok());
+    devices.unwrap();
 }

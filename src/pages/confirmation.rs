@@ -5,7 +5,7 @@ use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 use crate::{NavigationAction, Page, INSTALLATION_STATE};
 
-pub struct ConfirmationPage {}
+pub struct ConfirmationPage;
 
 #[derive(Debug)]
 pub enum ConfirmationPageMsg {
@@ -56,13 +56,13 @@ impl SimpleComponent for ConfirmationPage {
 
                         gtk::Label {
                             #[watch]
-                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or("".to_owned()),
+                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
                             inline_css: "font-size: 16px; font-weight: bold"
                         },
 
                         gtk::Label {
                             #[watch]
-                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or("".to_owned()),
+                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or_default(),
                         }
                     },
 
@@ -81,7 +81,7 @@ impl SimpleComponent for ConfirmationPage {
 
                         gtk::Label {
                             #[watch]
-                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or("".to_owned()),
+                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
                             inline_css: "font-size: 16px; font-weight: bold"
                         },
 
@@ -141,7 +141,7 @@ impl SimpleComponent for ConfirmationPage {
                     .output(ConfirmationPageOutput::Navigate(NavigationAction::GoTo(
                         Page::Installation,
                     )))
-                    .unwrap()
+                    .unwrap();
             }
             ConfirmationPageMsg::Navigate(action) => sender
                 .output(ConfirmationPageOutput::Navigate(action))

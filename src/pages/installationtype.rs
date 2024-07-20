@@ -4,7 +4,7 @@ use gtk::prelude::*;
 use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
-pub struct InstallationTypePage {}
+pub struct InstallationTypePage;
 
 #[derive(Debug)]
 pub enum InstallationTypePageMsg {
@@ -55,13 +55,13 @@ impl SimpleComponent for InstallationTypePage {
 
                         gtk::Label {
                             #[watch]
-                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or("".to_owned()),
+                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
                             inline_css: "font-size: 16px; font-weight: bold"
                         },
 
                         gtk::Label {
                             #[watch]
-                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or("".to_owned()),
+                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or_default(),
                         }
                     },
 
@@ -129,13 +129,12 @@ impl SimpleComponent for InstallationTypePage {
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk) => {
-                let mut installation_state_guard = INSTALLATION_STATE.write();
-                installation_state_guard.installation_type = Some(InstallationType::WholeDisk);
+                INSTALLATION_STATE.write().installation_type = Some(InstallationType::WholeDisk);
                 sender
                     .output(InstallationTypePageOutput::Navigate(
                         NavigationAction::GoTo(Page::Confirmation),
                     ))
-                    .unwrap()
+                    .unwrap();
             }
             InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot(_)) => {
                 todo!()
@@ -144,14 +143,13 @@ impl SimpleComponent for InstallationTypePage {
             InstallationTypePageMsg::InstallationTypeSelected(
                 InstallationType::ChromebookInstall,
             ) => {
-                let mut installation_state_guard = INSTALLATION_STATE.write();
-                installation_state_guard.installation_type =
+                INSTALLATION_STATE.write().installation_type =
                     Some(InstallationType::ChromebookInstall);
                 sender
                     .output(InstallationTypePageOutput::Navigate(
                         NavigationAction::GoTo(Page::Confirmation),
                     ))
-                    .unwrap()
+                    .unwrap();
             }
             InstallationTypePageMsg::Navigate(action) => sender
                 .output(InstallationTypePageOutput::Navigate(action))

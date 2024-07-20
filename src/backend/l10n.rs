@@ -31,20 +31,24 @@ pub fn list_langs() -> HashMap<String, (String, String)> {
     _list(get_lang_from_locale)
 }
 
-#[test]
-fn test_list_locales() {
-    let locales = list_locales();
-    assert!(!locales.is_empty());
-    assert_eq!(list_langs().len(), locales.len());
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_list_locales() {
+        let locales = list_locales();
+        assert!(!locales.is_empty());
+        assert_eq!(list_langs().len(), locales.len());
+    }
 
-#[test]
-fn test_get_lang_from_locale() {
-    assert_eq!(
-        get_lang_from_locale("en_US.UTF-8"),
-        Some((
-            "English (United States)".to_string(),
-            "English (United States)".to_string()
-        ))
-    );
+    #[test]
+    fn test_get_lang_from_locale() {
+        assert_eq!(
+            get_lang_from_locale("en_US.UTF-8"),
+            Some((
+                "English (United States)".to_owned(),
+                "English (United States)".to_owned()
+            ))
+        );
+    }
 }
