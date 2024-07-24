@@ -7,6 +7,7 @@ Summary:        Install ready-made distribution images
 License:        MIT
 URL:            https://github.com/FyraLabs/readymade
 Source0:        %{url}/archive/%{gitcommit}.tar.gz
+Requires:       submarine
 BuildRequires:	anda-srpm-macros rust-packaging
 BuildRequires:  pkgconfig(libhelium-1)
 BuildRequires:  pkgconfig(gnome-desktop-4)
