@@ -1,6 +1,7 @@
 //! QoL Utilities for Readymade
 
 pub const LIVE_BASE: &str = "/dev/mapper/live-base";
+pub const ROOTFS_BASE: &str = "/run/rootfsbase";
 
 #[cfg(target_os = "linux")]
 /// Check if the current running system is UEFI or not.
