@@ -1,14 +1,11 @@
-use std::path::PathBuf;
-
+use crate::prelude::*;
 use crate::{NavigationAction, INSTALLATION_STATE};
-use gettextrs::gettext;
-use gtk::prelude::*;
-use libhelium::prelude::*;
 use relm4::{
     factory::{DynamicIndex, FactoryComponent, FactorySender, FactoryVecDeque},
     ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent,
 };
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiskInit {

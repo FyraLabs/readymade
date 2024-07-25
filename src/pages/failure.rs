@@ -1,8 +1,5 @@
+use crate::prelude::*;
 use crate::NavigationAction;
-use gettextrs::gettext;
-use libhelium::prelude::*;
-use relm4::gtk::prelude::*;
-use relm4::RelmWidgetExt;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
 const BUG_REPORT_LINK: &str = "https://github.com/FyraLabs/readymade/issues";

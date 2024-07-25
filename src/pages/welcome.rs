@@ -1,7 +1,6 @@
+use crate::prelude::*;
 use crate::NavigationAction;
-use gettextrs::gettext;
-use gtk::prelude::*;
-use relm4::{gtk, ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
+use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 pub const DISTRO: &str = "Ultramarine Linux";
 

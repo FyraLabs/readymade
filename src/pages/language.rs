@@ -1,7 +1,4 @@
-use gettextrs::gettext;
-use itertools::Itertools;
-use libhelium::prelude::*;
-use relm4::gtk::prelude::ButtonExt;
+use crate::prelude::*;
 use relm4::{ComponentParts, RelmWidgetExt, SimpleComponent};
 
 use crate::NavigationAction;

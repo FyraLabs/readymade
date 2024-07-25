@@ -1,7 +1,5 @@
+use crate::prelude::*;
 use crate::{InstallationType, NavigationAction, Page, INSTALLATION_STATE};
-use gettextrs::gettext;
-use gtk::prelude::*;
-use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 pub struct InstallationTypePage;

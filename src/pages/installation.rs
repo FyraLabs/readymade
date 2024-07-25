@@ -1,10 +1,8 @@
-use std::time::Duration;
-
+use crate::prelude::*;
 use crate::{NavigationAction, INSTALLATION_STATE};
 use color_eyre::Result;
-use gettextrs::gettext;
-use libhelium::prelude::*;
 use relm4::{Component, ComponentParts, ComponentSender};
+use std::time::Duration;
 
 #[derive(Debug, Default)]
 pub struct InstallationPage {

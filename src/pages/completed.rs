@@ -1,8 +1,7 @@
+use crate::prelude::*;
 use crate::NavigationAction;
 use gettextrs::gettext;
 use libhelium::prelude::*;
-use relm4::gtk::prelude::*;
-use relm4::prelude::*;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
 #[derive(Debug, Default)]

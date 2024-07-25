@@ -3,13 +3,13 @@ mod backend;
 mod disks;
 mod install;
 mod pages;
+pub mod prelude;
 mod util;
 
+use crate::prelude::*;
 use color_eyre::Result;
-use gtk::gio::ApplicationFlags;
-use gtk::glib::translate::FromGlibPtrNone;
-use gtk::prelude::*;
 use install::{InstallationState, InstallationType};
+use libhelium::glib::translate::FromGlibPtrNone;
 use pages::installation::InstallationPageMsg;
 use relm4::{
     Component, ComponentController, ComponentParts, ComponentSender, RelmApp, SharedState,
@@ -184,7 +184,7 @@ fn main() -> Result<()> {
 
     let app = libhelium::Application::builder()
         .application_id(APPID)
-        .flags(ApplicationFlags::default())
+        .flags(libhelium::gtk::gio::ApplicationFlags::default())
         // SAFETY: just doing weird low-level pointer stuff
         .default_accent_color(unsafe {
             &libhelium::ColorRGBColor::from_glib_none(std::ptr::from_mut(&mut libhelium::ffi::HeColorRGBColor {
