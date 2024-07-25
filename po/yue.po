@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-27 17:21+0000\n"
-"PO-Revision-Date: 2024-04-29 14:31+0000\n"
+"POT-Creation-Date: 2024-07-25 10:42+0000\n"
+"PO-Revision-Date: 2024-07-25 21:13+0800\n"
 "Last-Translator: madomado <madonuko@outlook.com>\n"
 "Language-Team: Yue <https://weblate.fyralabs.com/projects/tauOS/readymade/"
 "yue/>\n"
@@ -16,61 +16,100 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Weblate 5.5\n"
+"X-Generator: Poedit 3.4.4\n"
 
-#: src/pages/confirmation.rs:30
+#: src/pages/completed.rs:31
+msgid "Completed"
+msgstr ""
+
+#: src/pages/completed.rs:37
+msgid "Installation complete. You may reboot now and enjoy your fresh system."
+msgstr ""
+
+#: src/pages/completed.rs:49 src/pages/failure.rs:62
+msgid "Close"
+msgstr ""
+
+#: src/pages/completed.rs:56
+msgid "Reboot"
+msgstr ""
+
+#: src/pages/confirmation.rs:33
 msgid "Confirmation"
 msgstr "確定"
 
-#: src/pages/confirmation.rs:97 src/pages/destination.rs:108 src/pages/installationtype.rs:95
+#: src/pages/confirmation.rs:100 src/pages/destination.rs:111
+#: src/pages/installationtype.rs:103
 msgid "Previous"
 msgstr "上一版"
 
-#: src/pages/confirmation.rs:106 src/pages/welcome.rs:68
+#: src/pages/confirmation.rs:110 src/pages/welcome.rs:88
 msgid "Install"
 msgstr "安裝"
 
-#: src/pages/destination.rs:84
+#: src/pages/destination.rs:86
 msgid "Destination"
 msgstr "目的地"
 
-#: src/pages/destination.rs:117
+#: src/pages/destination.rs:121 src/pages/language.rs:107
 msgid "Next"
 msgstr "下一版"
 
-#: src/pages/installation.rs:28
+#: src/pages/failure.rs:34
+#, fuzzy
+#| msgid "Installation Type"
+msgid "Installation Failure"
+msgstr "安裝類型"
+
+#: src/pages/failure.rs:40
+msgid "The installation process failed."
+msgstr ""
+
+#: src/pages/failure.rs:69
+msgid "Report a bug"
+msgstr ""
+
+#: src/pages/installation.rs:44
 msgid "Installation"
 msgstr "安裝"
 
-#: src/pages/installation.rs:44
+#: src/pages/installation.rs:61
 msgid "Installing base system..."
 msgstr "裝緊基本系統…"
 
-#: src/pages/installationtype.rs:30
+#: src/pages/installationtype.rs:31
 msgid "Installation Type"
 msgstr "安裝類型"
 
-#: src/pages/installationtype.rs:73
-msgid "Entire Disk"
-msgstr "成個硬碟"
+#: src/pages/installationtype.rs:90
+msgid "Chromebook"
+msgstr ""
 
-#: src/pages/installationtype.rs:78
-msgid "Dual Boot"
-msgstr "雙系統"
+#: src/pages/language.rs:80
+msgid "Language"
+msgstr ""
 
-#: src/pages/installationtype.rs:83
-msgid "Custom"
-msgstr "自定義"
+#: src/pages/welcome.rs:27 src/pages/welcome.rs:68
+msgid ""
+"Either test %s from this installer or start the installation now. You can "
+"always return to this screen by selecting \"Installer\" in the menu."
+msgstr ""
+"呢度會安裝 %s。想試用下先再裝嘅，可以陣間喺選單度開返「Installer」返嚟呢個畫"
+"面。"
 
-#: src/pages/welcome.rs:45
+#: src/pages/welcome.rs:31 src/pages/welcome.rs:61
 msgid "Welcome to %s"
 msgstr "歡迎嚟到 %s"
 
-#: src/pages/welcome.rs:50
-msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
-msgstr "呢度會安裝 "
-"%s。想試用下先再裝嘅，可以陣間喺選單度開返「Installer」返嚟呢個畫面。"
-
-#: src/pages/welcome.rs:62
+#: src/pages/welcome.rs:81
 msgid "Try"
 msgstr "試用返陣先"
+
+#~ msgid "Entire Disk"
+#~ msgstr "成個硬碟"
+
+#~ msgid "Dual Boot"
+#~ msgstr "雙系統"
+
+#~ msgid "Custom"
+#~ msgstr "自定義"
