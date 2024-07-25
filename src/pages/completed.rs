@@ -4,7 +4,7 @@ use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
 #[derive(Debug, Default)]
-pub struct CompletedPage {}
+pub struct CompletedPage;
 
 #[derive(Debug)]
 pub enum CompletedPageMsg {}
@@ -27,7 +27,13 @@ impl SimpleComponent for CompletedPage {
             set_vexpand: true,
 
             add = &gtk::Box {
-
+                gtk::Label {
+                    #[watch]
+                    set_label: &gettext("Installation complete. You may reboot now and enjoy your fresh system."),
+                    set_justify: gtk::Justification::Center,
+                    set_max_width_chars: 60,
+                    set_wrap: true
+                },
             }
         }
     }

@@ -3,6 +3,7 @@
 pub mod completed;
 pub mod confirmation;
 pub mod destination;
+pub mod failure;
 pub mod installation;
 pub mod installationtype;
 pub mod language;

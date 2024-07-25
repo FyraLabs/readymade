@@ -76,6 +76,7 @@ generate_pages!(Page AppModel AppMsg:
     },
     Installation,
     Completed,
+    Failure,
 );
 
 #[derive(Debug)]
@@ -118,7 +119,7 @@ impl SimpleComponent for AppModel {
                     Page::Confirmation => *model.confirmation_page.widget(),
                     Page::Installation => *model.installation_page.widget(),
                     Page::Completed => *model.completed_page.widget(),
-
+                    Page::Failure => *model.failure_page.widget(),
                 }
             }
         }
