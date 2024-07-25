@@ -1,13 +1,18 @@
 use crate::NavigationAction;
 use gettextrs::gettext;
 use libhelium::prelude::*;
+use relm4::gtk::prelude::*;
+use relm4::prelude::*;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
 #[derive(Debug, Default)]
 pub struct CompletedPage;
 
 #[derive(Debug)]
-pub enum CompletedPageMsg {}
+pub enum CompletedPageMsg {
+    Reboot,
+    Close,
+}
 
 #[derive(Debug)]
 pub enum CompletedPageOutput {
@@ -34,6 +39,25 @@ impl SimpleComponent for CompletedPage {
                     set_max_width_chars: 60,
                     set_wrap: true
                 },
+
+                gtk::Box {
+                    set_spacing: 8,
+                    set_halign: gtk::Align::Center,
+
+                    libhelium::PillButton {
+                        #[watch]
+                        set_label: &gettext("Close"),
+                        inline_css: "padding-left: 48px; padding-right: 48px",
+                        connect_clicked => CompletedPageMsg::Close,
+                    },
+
+                    libhelium::PillButton {
+                        #[watch]
+                        set_label: &gettext("Reboot"),
+                        inline_css: "padding-left: 48px; padding-right: 48px",
+                        connect_clicked => CompletedPageMsg::Reboot,
+                    }
+                }
             }
         }
     }
@@ -50,5 +74,12 @@ impl SimpleComponent for CompletedPage {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {}
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
+        match message {
+            CompletedPageMsg::Reboot => _ = crate::util::run_as_root("systemctl reboot").unwrap(),
+            CompletedPageMsg::Close => sender
+                .output(CompletedPageOutput::Navigate(NavigationAction::Quit))
+                .unwrap(),
+        }
+    }
 }
