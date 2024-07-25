@@ -206,19 +206,24 @@ fn main() -> Result<()> {
 /// - cannot create readymade tempdir
 fn setup_logs_and_install_panic_hook() {
     color_eyre::install().expect("install color_eyre");
-    let tempdir = tempfile::Builder::new()
-        .prefix("readymade")
-        .tempdir()
-        .expect("create readymade tempdir");
-    let file_appender = tracing_appender::rolling::never(tempdir.path(), "readymade.log");
-    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    let file_appender = tracing_appender::rolling::never(std::env::temp_dir(), "readymade.log");
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+
     let sub_builder = tracing_subscriber::fmt()
         .with_env_filter("trace")
+        // todo: somehow make the non-blocking writer also log levels higher than info? or something
+        .with_writer(non_blocking)
+        .with_writer(std::io::stderr)
         .with_ansi(true)
         .pretty()
         .finish()
-        .with(tracing_subscriber::fmt::Layer::default().with_writer(non_blocking))
-        .with(tracing_subscriber::fmt::Layer::default().with_writer(std::io::stderr));
+        // Log to journald, to
+        .with(tracing_journald::layer()
+            .expect("unable to create journald layer")
+            .with_syslog_identifier("readymade".to_string())
+            // todo: log trace too??? why does it only log info
+            // make layers log levels higher than info
+            );
     tracing::subscriber::set_global_default(sub_builder).expect("unable to set global subscriber");
     if cfg!(debug_assert) {
         tracing::info!("Running in debug mode");
@@ -227,8 +232,11 @@ fn setup_logs_and_install_panic_hook() {
         "Readymade Installer {version}",
         version = env!("CARGO_PKG_VERSION")
     );
+    tracing::info!("Logging to journald");
     tracing::info!(
-        "Logging to {tempdir}/readymade.log",
-        tempdir = tempdir.path().display()
+        "Logging to {tmp}/readymade.log",
+        tmp = std::env::temp_dir().to_string_lossy()
     );
+
+    let _guard = guard;
 }
