@@ -66,6 +66,8 @@ Readymade checks for Dracut's default `live-base` (in `/dev/mapper/live-base`) l
 
 While you may expect it to mount a SquashFS, the default behaviour is to mount an overlay disk image generated *from* the SquashFS. This is to prevent the SquashFS to be extracted twice, as the live module already mounts the SquashFS and turns it into a Device Mapper device.
 
+If that somehow fails, it may try again and check for `/run/rootfsbase` as the source path, this is a fallback for Dracut live environments that have the SquashFS containing the live environment directly inside the SquashFS and not as a disk image inside the SquashFS.
+
 Readymade will mount this location if possible, and if not, it will attempt to copy files from `/mnt/live-base` as the source path anyway.
 
 You can however override this by setting the environment variable `REPART_COPY_SOURCE` to the path of the base filesystem to copy from. This makes use of systemd 255's new relative repart source feature.

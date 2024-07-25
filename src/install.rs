@@ -126,6 +126,17 @@ impl InstallationState {
                 // convert back to string, may cause performance issues but it's not a big deal
                 copy_source.to_string_lossy().to_string()
             }
+            // if /run/rootfsbase exists and is a directory, we'll use that as the copy source
+            else if std::fs::metadata(crate::util::ROOTFS_BASE)
+                .map(|m| m.is_dir())
+                .unwrap_or(false)
+            {
+                tracing::info!(
+                    "Using {} as copy source, as it exists presumably due to raw rootfs in dracut",
+                    crate::util::ROOTFS_BASE
+                );
+                crate::util::ROOTFS_BASE.to_owned()
+            }
             // if we can mount /dev/mapper/live-base, we'll use that as the copy source
             else {
                 match Self::mount_dev(crate::util::LIVE_BASE) {
@@ -155,6 +166,7 @@ impl InstallationState {
                 --dry-run=$dry_run
                 --definitions=$cfgdir
                 --empty=force
+                --offline=true
                 $arg
                 --copy-source=$copy_source
                 --json=pretty
