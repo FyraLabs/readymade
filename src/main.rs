@@ -169,7 +169,7 @@ impl SimpleComponent for AppModel {
 #[allow(clippy::missing_errors_doc)]
 #[allow(clippy::missing_panics_doc)]
 fn main() -> Result<()> {
-    setup_logs_and_install_panic_hook();
+    let _guard = setup_logs_and_install_panic_hook();
 
     if std::env::args().any(|arg| arg == "--non-interactive") {
         // Get installation state from stdin json instead
@@ -201,14 +201,15 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+/// Returns a logging guard.
+///
 /// # Panics
 /// - cannot install `color_eyre`
 /// - cannot create readymade tempdir
-fn setup_logs_and_install_panic_hook() {
+fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
     color_eyre::install().expect("install color_eyre");
     let file_appender = tracing_appender::rolling::never(std::env::temp_dir(), "readymade.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-
     let sub_builder = tracing_subscriber::fmt()
         .with_env_filter("trace")
         // todo: somehow make the non-blocking writer also log levels higher than info? or something
@@ -218,9 +219,10 @@ fn setup_logs_and_install_panic_hook() {
         .pretty()
         .finish()
         // Log to journald, to
+        .with(tracing_subscriber::EnvFilter::builder().with_default_directive(tracing::level_filters::LevelFilter::TRACE.into()).from_env().unwrap())
         .with(tracing_journald::layer()
             .expect("unable to create journald layer")
-            .with_syslog_identifier("readymade".to_string())
+            .with_syslog_identifier("readymade".to_owned())
             // todo: log trace too??? why does it only log info
             // make layers log levels higher than info
             );
@@ -237,6 +239,5 @@ fn setup_logs_and_install_panic_hook() {
         "Logging to {tmp}/readymade.log",
         tmp = std::env::temp_dir().to_string_lossy()
     );
-
-    let _guard = guard;
+    guard
 }
