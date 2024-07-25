@@ -208,7 +208,10 @@ fn main() -> Result<()> {
 /// - cannot create readymade tempdir
 fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
     color_eyre::install().expect("install color_eyre");
-    let file_appender = tracing_appender::rolling::never(std::env::temp_dir(), "readymade.log");
+    let temp_dir = tempfile::tempdir().expect("create readymade tempdir").into_path();
+    // create dir
+    std::fs::create_dir_all(&temp_dir).expect("create readymade logs tempdir");
+    let file_appender = tracing_appender::rolling::never(&temp_dir, "readymade.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
     let sub_builder = tracing_subscriber::fmt()
         .with_env_filter("trace")
@@ -237,7 +240,7 @@ fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
     tracing::info!("Logging to journald");
     tracing::info!(
         "Logging to {tmp}/readymade.log",
-        tmp = std::env::temp_dir().to_string_lossy()
+        tmp = temp_dir.to_owned().to_string_lossy()
     );
     guard
 }
