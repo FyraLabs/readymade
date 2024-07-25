@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Readymade 0.1.0\n"
+"Project-Id-Version: Readymade 0.1.12\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-07-15 09:29+0000\n"
+"POT-Creation-Date: 2024-07-25 10:42+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,8 +17,20 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/pages/completed.rs:26
+#: src/pages/completed.rs:31
 msgid "Completed"
+msgstr ""
+
+#: src/pages/completed.rs:37
+msgid "Installation complete. You may reboot now and enjoy your fresh system."
+msgstr ""
+
+#: src/pages/completed.rs:49 src/pages/failure.rs:62
+msgid "Close"
+msgstr ""
+
+#: src/pages/completed.rs:56
+msgid "Reboot"
 msgstr ""
 
 #: src/pages/confirmation.rs:33
@@ -29,7 +41,7 @@ msgstr ""
 msgid "Previous"
 msgstr ""
 
-#: src/pages/confirmation.rs:110 src/pages/welcome.rs:87
+#: src/pages/confirmation.rs:110 src/pages/welcome.rs:88
 msgid "Install"
 msgstr ""
 
@@ -37,8 +49,20 @@ msgstr ""
 msgid "Destination"
 msgstr ""
 
-#: src/pages/destination.rs:121 src/pages/language.rs:110
+#: src/pages/destination.rs:121 src/pages/language.rs:107
 msgid "Next"
+msgstr ""
+
+#: src/pages/failure.rs:34
+msgid "Installation Failure"
+msgstr ""
+
+#: src/pages/failure.rs:40
+msgid "The installation process failed."
+msgstr ""
+
+#: src/pages/failure.rs:69
+msgid "Report a bug"
 msgstr ""
 
 #: src/pages/installation.rs:44
@@ -57,18 +81,18 @@ msgstr ""
 msgid "Chromebook"
 msgstr ""
 
-#: src/pages/language.rs:73
+#: src/pages/language.rs:80
 msgid "Language"
 msgstr ""
 
-#: src/pages/welcome.rs:27 src/pages/welcome.rs:67
+#: src/pages/welcome.rs:27 src/pages/welcome.rs:68
 msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
 
-#: src/pages/welcome.rs:31 src/pages/welcome.rs:60
+#: src/pages/welcome.rs:31 src/pages/welcome.rs:61
 msgid "Welcome to %s"
 msgstr ""
 
-#: src/pages/welcome.rs:80
+#: src/pages/welcome.rs:81
 msgid "Try"
 msgstr ""
