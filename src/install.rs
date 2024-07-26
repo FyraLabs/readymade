@@ -347,15 +347,19 @@ impl InstallationType {
 mod tests {
     use super::*;
     fn generate_state() -> InstallationState {
+        let custom_device = std::env::var("_READYMADE_LOOPDEV").ok();
         let inst_state = InstallationState {
             langlocale: Some("en_US.UTF-8".to_string()),
             installation_type: Some(InstallationType::ChromebookInstall),
             destination_disk: Some(DiskInit {
                 disk_name: "Dummy virtual disk".to_string(),
                 os_name: "Unknown".to_string(),
-                devpath: "test.img".into(),
+                devpath: custom_device
+                    .clone()
+                    .unwrap_or_else(|| "test.img".to_string())
+                    .into(),
                 size: bytesize::ByteSize::gb(10),
-                _image_file: true,
+                _image_file: custom_device.is_none(),
             }),
         };
         inst_state

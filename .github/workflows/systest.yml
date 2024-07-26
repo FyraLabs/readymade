@@ -1,88 +1,95 @@
 name: Installation test
 
-
 on:
-  push:
-  pull_request:
+    push:
+    pull_request:
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/tau-os/builder:main
-      options: --init --privileged -v /dev:/dev --device /dev/kvm -u root
-    steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
+    test:
+        runs-on: ubuntu-latest
+        container:
+            image: ghcr.io/tau-os/builder:main
+            options: --init --privileged -v /dev:/dev --device /dev/kvm -u root
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-        - name: Install Rust toolchain
-          uses: dtolnay/rust-toolchain@stable
-          with:
-            components: rustfmt
-        
-        - name: Install dependencies
-          run: dnf install -y sudo curl fuse squashfs-tools
-    
-        - name: Get image hash
-          id: get-hash
-          run: |
-              curl -s https://images.fyralabs.com/isos/ultramarine/40/ultramarine-xfce-40-live-x86_64.iso.sha256sum > .iso_hash
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  components: rustfmt
 
-        - name: Cache downloaded files
-          id: cache-dl
-          uses: actions/cache@v4
-          if: always()
-          with:
-              save-always: true
-              path: dl_cache
-              key: dl_cache-${{ hashFiles('.iso_hash') }}
-              restore-keys: |
-                  dl_cache-${{ hashFiles('.iso_hash') }}
+            - name: Install dependencies
+              run: dnf install -y sudo curl fuse squashfs-tools
 
-        - name: Cache rust target
-          id: cache-target
-          uses: actions/cache@v4
-          if: always()
-          with:
-              save-always: true
-              path: target
-              key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-              restore-keys: |
-                  target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-        
-        - name: Download image
-          run: |
-              mkdir -p dl_cache
-              curl -s https://images.fyralabs.com/isos/ultramarine/40/ultramarine-xfce-40-live-x86_64.iso > dl_cache/ultramarine-xfce-40-live-x86_64.iso
-          if: steps.cache-dl.outputs.cache-hit != 'true'
+            - name: Get image hash
+              id: get-hash
+              run: |
+                  curl -s https://images.fyralabs.com/isos/ultramarine/40/ultramarine-xfce-40-live-x86_64.iso.sha256sum > .iso_hash
 
-        - uses: actions/cache/save@v3
-          if: steps.cache-dl.outputs.cache-hit != 'true'
-          with:
-              path: dl_cache
-              key: dl_cache-${{ hashFiles('.iso_hash') }}
+            - name: Cache downloaded files
+              id: cache-dl
+              uses: actions/cache@v4
+              if: always()
+              with:
+                  save-always: true
+                  path: dl_cache
+                  key: dl_cache-${{ hashFiles('.iso_hash') }}
+                  restore-keys: |
+                      dl_cache-${{ hashFiles('.iso_hash') }}
 
-        - name: Prepare mounts
-          run: |
-              mkdir -p /mnt/iso
-              mount -o loop dl_cache/ultramarine-xfce-40-live-x86_64.iso /mnt/iso
-              mkdir -p /mnt/live-base
-              mount -o loop /mnt/iso/LiveOS/squashfs.img /mnt/live-base
+            - name: Cache rust target
+              id: cache-target
+              uses: actions/cache@v4
+              if: always()
+              with:
+                  save-always: true
+                  path: target
+                  key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
-        - name: Test code
-          run: |
-                cargo test -p readymade test_install -- --nocapture --ignored
+            - name: Download image
+              run: |
+                  mkdir -p dl_cache
+                  curl -s https://images.fyralabs.com/isos/ultramarine/40/ultramarine-xfce-40-live-x86_64.iso > dl_cache/ultramarine-xfce-40-live-x86_64.iso
+              if: steps.cache-dl.outputs.cache-hit != 'true'
 
-        - uses: actions/cache/save@v3
-          if: always()
-          with:
-              path: target
-              key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+            - uses: actions/cache/save@v3
+              if: steps.cache-dl.outputs.cache-hit != 'true'
+              with:
+                  path: dl_cache
+                  key: dl_cache-${{ hashFiles('.iso_hash') }}
 
-        - name: Cleanup mounts
-          if: always()
-          run: |
-              umount /mnt/live-base
-              umount /mnt/iso
-              rmdir /mnt/live-base
-              rmdir /mnt/iso
+            - name: Prepare mounts
+              run: |
+                  mkdir -p /mnt/iso
+                  mount -o loop dl_cache/ultramarine-xfce-40-live-x86_64.iso /mnt/iso
+                  mkdir -p /mnt/live-base
+                  mount -o loop /mnt/iso/LiveOS/squashfs.img /mnt/live-base
+
+                  # create new sparse file of 20GB
+                  truncate -s 20G test.img
+
+                  loopdev=$(losetup -P -f --show test.img)
+                  echo "LOOP_DEV=$loopdev" >> $GITHUB_ENV
+
+            - name: Test code
+              run: |
+                  export _READYMADE_LOOPDEV=$LOOP_DEV
+                  cargo test -p readymade test_install -- --nocapture --ignored
+
+            - uses: actions/cache/save@v3
+              if: always()
+              with:
+                  path: target
+                  key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+            - name: Cleanup mounts
+              if: always()
+              run: |
+                  losetup -v -d $LOOP_DEV
+                  umount /mnt/live-base
+                  umount /mnt/iso
+                  rmdir /mnt/live-base
+                  rmdir /mnt/iso
