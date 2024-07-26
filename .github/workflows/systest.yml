@@ -20,7 +20,7 @@ jobs:
                   components: rustfmt
 
             - name: Install dependencies
-              run: dnf install -y sudo curl fuse squashfs-tools submarine
+              run: dnf install -y sudo curl fuse squashfs-tools submarine f2fs-tools
 
             - name: Get image hash
               id: get-hash
