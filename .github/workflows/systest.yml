@@ -49,7 +49,7 @@ jobs:
           run: |
               mkdir -p dl_cache
               curl -s https://images.fyralabs.com/isos/ultramarine/40/ultramarine-xfce-40-live-x86_64.iso > dl_cache/ultramarine-xfce-40-live-x86_64.iso
-          if: steps.cache-primes.outputs.cache-hit != 'true'
+          if: steps.cache-dl.outputs.cache-hit != 'true'
 
         - uses: actions/cache/save@v3
           if: always()
