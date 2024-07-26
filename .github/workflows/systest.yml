@@ -45,9 +45,11 @@ jobs:
               with:
                   save-always: true
                   path: target
-                  key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ hashfiles('**/src') }}
                   restore-keys: |
+                      target-${{ runner.os }}-
                       target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                      target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ hashfiles('**/src') }}
 
             - name: Download image
               run: |
@@ -83,7 +85,7 @@ jobs:
               if: always()
               with:
                   path: target
-                  key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                  key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ hashfiles('**/src') }}
 
             - name: Cleanup mounts
               if: always()
