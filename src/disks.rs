@@ -45,6 +45,7 @@ pub fn detect_os() -> Vec<DiskInit> {
                     .map_or(OSNAME_PLACEHOLDER.to_owned(), ToOwned::to_owned),
                 size: bytesize::ByteSize::kib(disk.capacity().unwrap().unwrap() >> 1),
                 devpath: disk.fullname,
+                _image_file: false,
             };
             tracing::debug!(?ret, "Found disk");
             ret

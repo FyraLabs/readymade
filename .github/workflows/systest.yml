@@ -1,0 +1,26 @@
+name: Installation test
+
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment: test
+    container:
+      image: ghcr.io/tau-os/builder:main
+      options: --init --privileged -v /dev:/dev --device /dev/kvm
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Install Rust toolchain
+          uses: dtolnay/rust-toolchain@stable
+          with:
+            components: rustfmt
+
+        - name: Test code
+          run: |
+              sudo cargo test -p readymade test_install -- --nocapture --ignored

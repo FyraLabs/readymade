@@ -70,6 +70,8 @@ impl InstallationState {
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     pub fn install(&self) -> Result<()> {
+        tracing::trace!(?self, "Starting install process with following options");
+        
         let inst_type = self
             .installation_type
             .as_ref()
@@ -89,7 +91,15 @@ impl InstallationState {
         setup_system(repart_out)?;
 
         if let InstallationType::ChromebookInstall = inst_type {
-            InstallationType::set_cgpt_flags(blockdev)?;
+            // Only set cgpt flags if real disk
+            if !&self
+                .destination_disk
+                .as_ref()
+                .map(|d| d._image_file)
+                .unwrap_or(false)
+            {
+                InstallationType::set_cgpt_flags(blockdev)?;
+            }
         }
         tracing::info!("install() finished");
         Ok(())
@@ -330,5 +340,34 @@ impl InstallationType {
         tracing::debug!("Setting cgpt flags");
         cmd_lib::run_cmd!(cgpt add -i 1 -t kernel -P 15 -T 1 -S 1 $blockdev)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn generate_state() -> InstallationState {
+        let inst_state = InstallationState {
+            langlocale: Some("en_US.UTF-8".to_string()),
+            installation_type: Some(InstallationType::ChromebookInstall),
+            destination_disk: Some(DiskInit {
+                disk_name: "Dummy virtual disk".to_string(),
+                os_name: "Unknown".to_string(),
+                devpath: "test.img".into(),
+                size: bytesize::ByteSize::gb(10),
+                _image_file: true,
+            }),
+        };
+        inst_state
+    }
+    
+    #[test]
+    #[ignore = "This test requires root permissions, it will be executed manually"]
+    fn test_install() {
+        crate::setup_logs_and_install_panic_hook();
+        
+        let state = generate_state();
+        
+        state.install().unwrap();
     }
 }
