@@ -78,8 +78,13 @@ jobs:
 
             - name: Test code
               run: |
+                  set -euxo pipefail
                   export _READYMADE_LOOPDEV=$LOOP_DEV
                   export RUST_BACKTRACE=full
+                  
+                  ls -la /mnt/iso
+                  ls -la /mnt/iso/LiveOS
+                  ls -la /mnt/live-base
                   cargo test -p readymade test_install -- --nocapture --ignored
 
             - uses: actions/cache/save@v3
