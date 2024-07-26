@@ -19,7 +19,31 @@ jobs:
           uses: dtolnay/rust-toolchain@stable
           with:
             components: rustfmt
+    
+        - name: Get image hash
+          id: get-hash
+          run: |
+              curl -s https://images.fyralabs.com/isos/ultramarine/40/ultramarine-xfce-40-live-x86_64.iso.sha256sum > .iso_hash
+              
+              
+        - name: Cache downloaded files
+          id: cache-primes
+          uses: actions/cache@v4
+          with:
+              save-always: true
+              path: dl_cache
+              key: dl_cache-${{ hashFiles('.iso_hash') }}
+        
+        - name: Download image
+          run: |
+              mkdir -p dl_cache
+              curl -s https://images.fyralabs.com/isos/ultramarine/40/ultramarine-xfce-40-live-x86_64.iso > dl_cache/ultramarine-xfce-40-live-x86_64.iso
+          if: steps.cache-primes.outputs.cache-hit != 'true'
 
         - name: Test code
           run: |
+              mkdir -p /mnt/iso
+              mount -o loop dl_cache/ultramarine-xfce-40-live-x86_64.iso /mnt/iso
+              mkdir -p /mnt/live-base
+              mount -o loop /mnt/iso/LiveOS/squashfs.img /mnt/live-base
               cargo test -p readymade test_install -- --nocapture --ignored
