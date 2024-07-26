@@ -79,6 +79,7 @@ jobs:
             - name: Test code
               run: |
                   export _READYMADE_LOOPDEV=$LOOP_DEV
+                  export RUST_BACKTRACE=full
                   cargo test -p readymade test_install -- --nocapture --ignored
 
             - uses: actions/cache/save@v3
