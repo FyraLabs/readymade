@@ -11,7 +11,7 @@ jobs:
     environment: test
     container:
       image: ghcr.io/tau-os/builder:main
-      options: --init --privileged -v /dev:/dev --device /dev/kvm
+      options: --init --privileged -v /dev:/dev --device /dev/kvm -u root
     steps:
         - name: Checkout code
           uses: actions/checkout@v4
@@ -23,4 +23,4 @@ jobs:
 
         - name: Test code
           run: |
-              sudo cargo test -p readymade test_install -- --nocapture --ignored
+              cargo test -p readymade test_install -- --nocapture --ignored
