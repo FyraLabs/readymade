@@ -79,7 +79,7 @@ jobs:
             - name: Test code
               run: |
                   export _READYMADE_LOOPDEV=$LOOP_DEV
-                  cargo test --release -p readymade test_install -- --nocapture --ignored
+                  cargo test -p readymade test_install -- --nocapture --ignored
 
             - uses: actions/cache/save@v3
               if: always()
