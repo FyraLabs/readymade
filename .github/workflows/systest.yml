@@ -44,6 +44,8 @@ jobs:
               save-always: true
               path: target
               key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+              restore-keys: |
+                  target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
         
         - name: Download image
           run: |
@@ -52,10 +54,10 @@ jobs:
           if: steps.cache-dl.outputs.cache-hit != 'true'
 
         - uses: actions/cache/save@v3
-          if: always()
+          if: steps.cache-dl.outputs.cache-hit != 'true'
           with:
               path: dl_cache
-              key: ${{ runner.os }}-${{ hashFiles('.iso_hash') }}
+              key: dl_cache-${{ hashFiles('.iso_hash') }}
 
         - name: Prepare mounts
           run: |
@@ -72,7 +74,7 @@ jobs:
           if: always()
           with:
               path: target
-              key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+              key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
         - name: Cleanup mounts
           if: always()
