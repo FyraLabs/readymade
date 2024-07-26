@@ -169,7 +169,18 @@ impl InstallationState {
             ""
         };
 
-        let dry_run = if cfg!(debug_assertions) { "yes" } else { "no" };
+        // if debug_assertions set to no unless inside a test
+        let dry_run = if cfg!(test) {
+            "false"
+        } else {
+            if cfg!(debug_assertions) {
+                "true"
+            } else {
+                "false"
+            }
+        };
+
+
         tracing::debug!(?dry_run, "Running systemd-repart");
         let out = cmd_lib::run_fun!(
             systemd-repart
