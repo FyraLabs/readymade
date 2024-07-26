@@ -8,7 +8,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    environment: test
     container:
       image: ghcr.io/tau-os/builder:main
       options: --init --privileged -v /dev:/dev --device /dev/kvm -u root
