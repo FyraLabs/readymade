@@ -26,7 +26,7 @@ jobs:
               curl -s https://images.fyralabs.com/isos/ultramarine/40/ultramarine-xfce-40-live-x86_64.iso.sha256sum > .iso_hash
 
         - name: Cache downloaded files
-          id: cache-primes
+          id: cache-dl
           uses: actions/cache@v4
           if: always()
           with:
@@ -35,8 +35,15 @@ jobs:
               key: dl_cache-${{ hashFiles('.iso_hash') }}
               restore-keys: |
                   dl_cache-${{ hashFiles('.iso_hash') }}
-        
 
+        - name: Cache rust target
+          id: cache-target
+          uses: actions/cache@v4
+          if: always()
+          with:
+              save-always: true
+              path: target
+              key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
         
         - name: Download image
           run: |
@@ -60,7 +67,13 @@ jobs:
         - name: Test code
           run: |
                 cargo test -p readymade test_install -- --nocapture --ignored
-        
+
+        - uses: actions/cache/save@v3
+          if: always()
+          with:
+              path: target
+              key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
         - name: Cleanup mounts
           if: always()
           run: |
