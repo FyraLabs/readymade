@@ -16,7 +16,7 @@ pub struct DiskInit {
     #[serde(default)]
     /// This is a debug option, it will always be false in the real world.
     /// It is used to determine if the disk is an image file or not.
-    /// 
+    ///
     /// The option is used in `[install::tests]` for special test cases.
     pub _image_file: bool,
 }

@@ -225,9 +225,9 @@ fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
     let file_appender = temp_dir.map(|dir| {
         eprintln!("Logging to {:?}", dir);
         let appender = tracing_appender::rolling::never(&dir, "readymade.log");
-        
+
         // map into Some((non_blocking, guard)) if file_appender is Some
-        
+
         let (non_blocking, guard) = tracing_appender::non_blocking(appender);
         (non_blocking, guard)
     });
@@ -240,9 +240,9 @@ fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
             (None, None)
         }
     };
-    
+
     // map into Some((non_blocking, guard)) if file_appender is Some
-    
+
     let appender_layer = non_blocking.map(|non_blocking| {
         tracing_subscriber::fmt::Layer::new()
             .with_writer(non_blocking)
@@ -280,7 +280,6 @@ fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
     //     "Logging to {tmp}/readymade.log",
     //     tmp = temp_dir.to_owned().to_string_lossy()
     // );
-    
-    guard
 
+    guard
 }

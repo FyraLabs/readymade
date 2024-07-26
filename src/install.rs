@@ -71,7 +71,7 @@ impl InstallationState {
     #[tracing::instrument]
     pub fn install(&self) -> Result<()> {
         tracing::trace!(?self, "Starting install process with following options");
-        
+
         let inst_type = self
             .installation_type
             .as_ref()
@@ -360,14 +360,14 @@ mod tests {
         };
         inst_state
     }
-    
+
     #[test]
     #[ignore = "This test requires root permissions, it will be executed manually"]
     fn test_install() {
         crate::setup_logs_and_install_panic_hook();
-        
+
         let state = generate_state();
-        
+
         state.install().unwrap();
     }
 }
