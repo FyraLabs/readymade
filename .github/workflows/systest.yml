@@ -19,8 +19,8 @@ jobs:
               with:
                   components: rustfmt
 
-            # - name: Install dependencies
-            #   run: dnf install -y sudo curl fuse squashfs-tools
+            - name: Install dependencies
+              run: dnf install -y sudo curl fuse squashfs-tools submarine
 
             - name: Get image hash
               id: get-hash
@@ -65,6 +65,10 @@ jobs:
 
             - name: Prepare mounts
               run: |
+                  # Symlink the templates so we can use them
+                  mkdir -p /usr/share/readymade
+                  ln -sfvr templates /usr/share/readymade/repart-cfgs
+
                   mkdir -p /mnt/iso
                   mount -o loop dl_cache/ultramarine-xfce-40-live-x86_64.iso /mnt/iso
                   mkdir -p /mnt/live-base
@@ -81,6 +85,8 @@ jobs:
                   set -euxo pipefail
                   export _READYMADE_LOOPDEV=$LOOP_DEV
                   export RUST_BACKTRACE=full
+                  
+
                   
                   ls -la /mnt/iso
                   ls -la /mnt/iso/LiveOS
