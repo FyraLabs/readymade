@@ -19,8 +19,8 @@ jobs:
               with:
                   components: rustfmt
 
-            - name: Install dependencies
-              run: dnf install -y sudo curl fuse squashfs-tools
+            # - name: Install dependencies
+            #   run: dnf install -y sudo curl fuse squashfs-tools
 
             - name: Get image hash
               id: get-hash
