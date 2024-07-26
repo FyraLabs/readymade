@@ -211,12 +211,47 @@ fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
     let temp_dir = tempfile::Builder::new()
         .prefix("readymade-logs")
         .tempdir()
-        .expect("create readymade logs tempdir")
-        .into_path();
-    // create dir
-    std::fs::create_dir_all(&temp_dir).expect("create readymade logs tempdir");
-    let file_appender = tracing_appender::rolling::never(&temp_dir, "readymade.log");
-    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+        .ok()
+        .map(|dir| dir.into_path())
+        // create dir
+        .and_then(|e| {
+            std::fs::create_dir_all(&e)
+                .map(|_| e)
+                .map_err(|e| tracing::error!("Failed to create log directory: {}", e))
+                .ok()
+        });
+
+    // let file_appender = tracing_appender::rolling::never(&temp_dir, "readymade.log");
+    let file_appender = temp_dir.map(|dir| {
+        eprintln!("Logging to {:?}", dir);
+        let appender = tracing_appender::rolling::never(&dir, "readymade.log");
+        
+        // map into Some((non_blocking, guard)) if file_appender is Some
+        
+        let (non_blocking, guard) = tracing_appender::non_blocking(appender);
+        (non_blocking, guard)
+    });
+
+    // Map into Option<Layer>, Option<WorkerGuard> if file_appender is Some
+    let (non_blocking, guard) = {
+        if let Some((non_blocking, guard)) = file_appender {
+            (Some(non_blocking), Some(guard))
+        } else {
+            (None, None)
+        }
+    };
+    
+    // map into Some((non_blocking, guard)) if file_appender is Some
+    
+    let appender_layer = non_blocking.map(|non_blocking| {
+        tracing_subscriber::fmt::Layer::new()
+            .with_writer(non_blocking)
+            .with_ansi(false)
+            .compact()
+    });
+
+    // note: Did you know that an Option<Layer> implements `tracing_subscriber::Layer`?
+    // I did not know that until now. This is very useful as you can conditionally add layers if it works
     let sub_builder = tracing_subscriber::fmt()
         // note: The only last writer will be used, so we will have to use layers to log to multiple places instead
         .with_ansi(true)
@@ -224,19 +259,14 @@ fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
         .finish()
         // Log to journald, to
         .with(tracing_subscriber::EnvFilter::builder().with_default_directive(tracing::level_filters::LevelFilter::TRACE.into()).from_env().unwrap())
-        .with(tracing_subscriber::fmt::Layer::new()
-            // .with_writer(std::io::stderr)
-            .with_writer(non_blocking)
-            .with_ansi(false)
-            .compact()
-            // .with_filter(tracing::level_filters::LevelFilter::TRACE)
-        )
+            // Log into file if possible
+        .with(appender_layer)
         .with(tracing_journald::layer()
-            .expect("unable to create journald layer")
-            .with_syslog_identifier("readymade".to_owned())
-            // todo: log trace too??? why does it only log info
-            // make layers log levels higher than info
-            );
+            .map_err(|e| {
+                tracing::error!("Failed to log to journald: {}", e);
+            })
+            .ok()
+        );
     tracing::subscriber::set_global_default(sub_builder).expect("unable to set global subscriber");
     if cfg!(debug_assert) {
         tracing::info!("Running in debug mode");
@@ -246,9 +276,11 @@ fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
         version = env!("CARGO_PKG_VERSION")
     );
     tracing::info!("Logging to journald");
-    tracing::info!(
-        "Logging to {tmp}/readymade.log",
-        tmp = temp_dir.to_owned().to_string_lossy()
-    );
+    // tracing::info!(
+    //     "Logging to {tmp}/readymade.log",
+    //     tmp = temp_dir.to_owned().to_string_lossy()
+    // );
+    
     guard
+
 }
