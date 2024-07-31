@@ -30,8 +30,17 @@ impl SimpleComponent for FailurePage {
             #[watch]
             set_title: &gettext("Installation Failure"),
             set_vexpand: true,
+            set_hexpand: true,
+            // set_halign: gtk::Align::Center,
+            // set_valign: gtk::Align::Center,
 
             add = &gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_vexpand: true,
+                set_hexpand: true,
+                set_halign: gtk::Align::Center,
+                set_valign: gtk::Align::Center,
+
                 gtk::Label {
                     #[watch]
                     set_label: &gettext("The installation process failed."),

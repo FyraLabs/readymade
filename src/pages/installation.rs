@@ -114,7 +114,7 @@ impl Component for InstallationPage {
                 tracing::debug!("Installation complete");
                 if let Err(e) = res {
                     tracing::error!("Installation failed: {e:?}");
-                    // TODO: add fail UI?
+                    sender.output(InstallationPageOutput::Navigate(NavigationAction::GoTo(crate::Page::Failure))).unwrap();
                 } else {
                     sender
                         .output(InstallationPageOutput::Navigate(NavigationAction::GoTo(
