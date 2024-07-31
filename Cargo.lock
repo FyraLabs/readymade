@@ -308,6 +308,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-queue"
+version = "0.3.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df0346b5d5e76ac2fe4e327c5fd1118d6be7c51dfb18f9b7922923f287471e35"
+dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-utils"
 version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1628,6 +1637,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "process_alive"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc1b5e484e0aa9dce62b74ddce9fd0cf94b2caeac8fc53a4433a5e8202fa6c47"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1701,6 +1720,7 @@ dependencies = [
  "cmd_lib",
  "color-eyre",
  "const_format",
+ "crossbeam-queue",
  "gettext-rs",
  "gnome-desktop",
  "itertools 0.13.0",
@@ -1709,6 +1729,7 @@ dependencies = [
  "open",
  "os-detect",
  "paste",
+ "process_alive",
  "rayon",
  "relm4",
  "serde",
