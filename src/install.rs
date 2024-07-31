@@ -2,12 +2,12 @@ use color_eyre::eyre::{eyre, OptionExt};
 use color_eyre::Result;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use sys_mount::{Unmount, UnmountFlags};
 use std::process::{Command, Stdio};
 use std::{
     io::Write,
     path::{Path, PathBuf},
 };
+use sys_mount::{Unmount, UnmountFlags};
 
 use crate::util::{exist_then, exist_then_read_dir};
 use crate::{
@@ -41,10 +41,7 @@ impl InstallationState {
         let mut command = Command::new("pkexec");
         command
             .arg(std::env::current_exe()?)
-            .arg("--non-interactive")
-            .stdin(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .stdout(Stdio::inherit());
+            .arg("--non-interactive");
 
         // pass in REPART_COPY_SOURCE if it's set
         // This is a bit hacky, I should fix this later
@@ -52,19 +49,16 @@ impl InstallationState {
             command.env("REPART_COPY_SOURCE", std::env::var("REPART_COPY_SOURCE")?);
         }
 
-        let mut command = command.spawn()?;
+        let res = crate::util::cmds::read_while_show_output(&mut command, Some("│ "), |hdl| {
+            let mut child_stdin = hdl.stdin.take().expect("can't take stdin");
+            child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
+            Ok(())
+        });
 
-        let mut child_stdin = command.stdin.take().ok_or_eyre(eyre!("Can't take stdin"))?;
-        child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
-        drop(child_stdin);
-
-        match command.wait() {
-            Ok(exit_status) if exit_status.success() => Ok(()),
-            Ok(exit_status) => Err(color_eyre::Report::msg(exit_status.to_string())),
-            Err(e) => Err(
-                color_eyre::eyre::eyre!("Failed to execute readymade non-interactively")
-                    .wrap_err(e),
-            ),
+        match res {
+            Ok((exit_status, ..)) if exit_status.success() => Ok(()),
+            Ok((exit_status, ..)) => Err(color_eyre::Report::msg(exit_status.to_string())),
+            Err(e) => Err(eyre!("Failed to execute readymade non-interactively").wrap_err(e)),
         }
     }
 
