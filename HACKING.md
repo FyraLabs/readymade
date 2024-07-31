@@ -58,7 +58,8 @@ Copy the `com.fyralabs.pkexec.readymade.policy` file to `/usr/share/polkit-1/act
 ## Debugging
 
 Readymade currently forces all logging to be at the `trace` level for debugging purposes. This is the most verbose level available in tracing.
-Readymade logs to stderr and to a file called `/tmp/readymade.log`. The file logger is powered by `tracing-appender`.
+Readymade logs to stderr and to a temporary folder `/tmp/readymade-logsXXXXXX`, which contains the file `readymade.log`.
+The logger is powered by `tracing-appender`.
 
 It also logs to the systemd journal, so you can view the logs by running
 ```sh

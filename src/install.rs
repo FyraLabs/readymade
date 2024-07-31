@@ -183,7 +183,7 @@ impl InstallationState {
                 --dry-run=$dry_run
                 --definitions=$cfgdir
                 --empty=force
-                --offline=true
+                --offline=false
                 $arg
                 --copy-source=$copy_source
                 --json=pretty

@@ -208,18 +208,29 @@ fn main() -> Result<()> {
 /// - cannot create readymade tempdir
 fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
     color_eyre::install().expect("install color_eyre");
-    let file_appender = tracing_appender::rolling::never(std::env::temp_dir(), "readymade.log");
+    let temp_dir = tempfile::Builder::new()
+        .prefix("readymade-logs")
+        .tempdir()
+        .expect("create readymade logs tempdir")
+        .into_path();
+    // create dir
+    std::fs::create_dir_all(&temp_dir).expect("create readymade logs tempdir");
+    let file_appender = tracing_appender::rolling::never(&temp_dir, "readymade.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
     let sub_builder = tracing_subscriber::fmt()
-        .with_env_filter("trace")
-        // todo: somehow make the non-blocking writer also log levels higher than info? or something
-        .with_writer(non_blocking)
-        .with_writer(std::io::stderr)
+        // note: The only last writer will be used, so we will have to use layers to log to multiple places instead
         .with_ansi(true)
         .pretty()
         .finish()
         // Log to journald, to
         .with(tracing_subscriber::EnvFilter::builder().with_default_directive(tracing::level_filters::LevelFilter::TRACE.into()).from_env().unwrap())
+        .with(tracing_subscriber::fmt::Layer::new()
+            // .with_writer(std::io::stderr)
+            .with_writer(non_blocking)
+            .with_ansi(false)
+            .compact()
+            // .with_filter(tracing::level_filters::LevelFilter::TRACE)
+        )
         .with(tracing_journald::layer()
             .expect("unable to create journald layer")
             .with_syslog_identifier("readymade".to_owned())
@@ -237,7 +248,7 @@ fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
     tracing::info!("Logging to journald");
     tracing::info!(
         "Logging to {tmp}/readymade.log",
-        tmp = std::env::temp_dir().to_string_lossy()
+        tmp = temp_dir.to_owned().to_string_lossy()
     );
     guard
 }
