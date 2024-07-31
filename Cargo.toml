@@ -45,6 +45,8 @@ tiffin = "0.3.1"
 open = "5"
 tracing-journald = "0.3.0"
 rayon = "1.10.0"
+process_alive = "0.1.1"
+crossbeam-queue = "0.3.11"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"
