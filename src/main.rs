@@ -74,7 +74,13 @@ generate_pages!(Page AppModel AppMsg:
             ConfirmationPageOutput::Navigate(action) => AppMsg::Navigate(action),
         }
     },
-    Installation,
+    Installation |msg| {
+        tracing::debug!("InstallationPage emitted {msg:?}");
+        match msg {
+            InstallationPageOutput::Navigate(action) => AppMsg::Navigate(action),
+            InstallationPageOutput::SendErr(s) => AppMsg::SendErr(s),
+        }
+    },
     Completed,
     Failure,
 );
@@ -89,6 +95,7 @@ pub enum NavigationAction {
 enum AppMsg {
     StartInstallation,
     Navigate(NavigationAction),
+    SendErr(String),
 }
 
 #[allow(clippy::str_to_string)]
@@ -162,6 +169,9 @@ impl SimpleComponent for AppModel {
             //
             // AppMsg::Navigate(NavigationAction::Quit) => relm4::main_application().quit(),
             AppMsg::Navigate(NavigationAction::Quit) => std::process::exit(0),
+            AppMsg::SendErr(s) => self
+                .failure_page
+                .emit(pages::failure::FailurePageMsg::Err(s)),
         }
     }
 }
@@ -172,6 +182,7 @@ fn main() -> Result<()> {
     let _guard = setup_logs_and_install_panic_hook();
 
     if std::env::args().any(|arg| arg == "--non-interactive") {
+        tracing::info!("Running in non-interactive mode");
         // Get installation state from stdin json instead
 
         let install_state: InstallationState = serde_json::from_reader(std::io::stdin())?;

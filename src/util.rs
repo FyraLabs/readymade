@@ -174,6 +174,7 @@ macro_rules! stage {
 
         {
             let _guard = s.enter();
+            tracing::debug!("Entering stage");
             $body
         }
     }};
@@ -271,7 +272,12 @@ pub mod cmds {
         let (mut tmpoutbytes, mut tmperrbytes) = (vec![], vec![]);
 
         let pid = process_alive::Pid::from(hdl.id());
-        while process_alive::state(pid).is_alive() {
+        let mut finish = false;
+        while !finish {
+            if !process_alive::state(pid).is_alive() {
+                finish = true;
+            }
+
             while let Some(c) = outq.pop() {
                 tmpoutbytes.push(c);
             }

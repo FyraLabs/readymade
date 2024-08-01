@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use crate::prelude::*;
 use crate::NavigationAction;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
@@ -6,12 +8,15 @@ const BUG_REPORT_LINK: &str = "https://github.com/FyraLabs/readymade/issues";
 const BUG_REPORT_MSG: &str = "If you believe the failure is caused by a bug in this installer, we would appreciate a bug report. You may click the button below to open up the issue tracking webpage.";
 
 #[derive(Debug, Default)]
-pub struct FailurePage;
+pub struct FailurePage {
+    buffer: gtk::TextBuffer,
+}
 
 #[derive(Debug)]
 pub enum FailurePageMsg {
     Navigate(NavigationAction),
     ReportBug,
+    Err(String),
 }
 
 #[derive(Debug)]
@@ -57,6 +62,13 @@ impl SimpleComponent for FailurePage {
                     set_wrap: true
                 },
 
+                gtk::TextView {
+                    inline_css: "monospace: true",
+                    add_css_class: "text-view",
+
+                    set_buffer: Some(&model.buffer),
+                },
+
                 // TODO: box for displaying logs
 
                 gtk::Box {
@@ -86,7 +98,7 @@ impl SimpleComponent for FailurePage {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = Self {};
+        let model = Self::default();
 
         let widgets = view_output!();
 
@@ -95,6 +107,7 @@ impl SimpleComponent for FailurePage {
 
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
+            FailurePageMsg::Err(s) => self.buffer.write_str(&s).unwrap(),
             FailurePageMsg::ReportBug => {
                 open::that(BUG_REPORT_LINK).unwrap();
             }
