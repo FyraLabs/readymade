@@ -75,24 +75,9 @@ impl InstallationState {
             .expect("A valid destination device should be set before calling install()")
             .devpath;
         let cfgdir = inst_type.cfgdir();
-        let copy_source = Self::copy_source()?;
-        let repart_out = stage!("Creating partitions" {
+        let repart_out = stage!("Creating partitions and copying files" {
             // todo: not freeze on error, show error message as err handler?
-            Self::systemd_repart(blockdev, &cfgdir, &copy_source)?
-        });
-
-        stage!("Copying files" {
-            std::fs::create_dir_all("/mnt")?;
-            let blockdevs = lsblk::BlockDevice::list()?;
-            let rootmnt = sys_mount::Mount::new(blockdevs.iter().find(|dev| dev.is_part() && dev.name.ends_with('4') && dev.disk_name().is_ok_and(|name|  blockdev.file_name().unwrap().eq(&*name))).ok_or_else(|| eyre!("Can't find root partition"))?.fullname.to_str().unwrap(), "/mnt")?;
-            std::fs::create_dir_all("/mnt/boot")?;
-            let bootmnt = sys_mount::Mount::new(blockdevs.iter().find(|dev| dev.is_part() && dev.name.ends_with('3') && dev.disk_name().is_ok_and(|name|  blockdev.file_name().unwrap().eq(&*name))).ok_or_else(|| eyre!("Can't find boot partition"))?.fullname.to_str().unwrap(), "/mnt/boot")?;
-            std::fs::create_dir_all("/mnt/boot/efi")?;
-            let efimnt = sys_mount::Mount::new(blockdevs.iter().find(|dev| dev.is_part() && dev.name.ends_with('1') && dev.disk_name().is_ok_and(|name|  blockdev.file_name().unwrap().eq(&*name))).ok_or_else(|| eyre!("Can't find efi partition"))?.fullname.to_str().unwrap(), "/mnt/boot/efi")?;
-            util::copy_dir(copy_source, "/mnt")?;
-            efimnt.unmount(UnmountFlags::empty())?;
-            bootmnt.unmount(UnmountFlags::empty())?;
-            rootmnt.unmount(UnmountFlags::empty())?;
+            Self::systemd_repart(blockdev, &cfgdir)?
         });
 
         tracing::info!("Copying files done, Setting up system...");
@@ -112,58 +97,57 @@ impl InstallationState {
         sys_mount::Mount::builder().mount(dev, MOUNTPOINT)
     }
 
-    fn copy_source() -> Result<String> {
-        const FALLBACK: &str = "/mnt/live-base";
-        // We'll be using a new feature from systemd 255 (relative repart copy source)
-        // to copy the repartitioning definitions from the live base to the target disk
-
-        // environment variable override. This is documented in HACKING.md
-
-        if let Ok(copy_source) = std::env::var("REPART_COPY_SOURCE") {
-            tracing::info!("Using REPART_COPY_SOURCE override: {copy_source}");
-            let copy_source = Path::new(&copy_source.trim()).canonicalize()?;
-
-            if copy_source == Path::new("/") {
-                tracing::warn!("REPART_COPY_SOURCE is set to `/`, this is likely a mistake. Copying entire host root filesystem to target disk...");
-            }
-
-            // convert back to string, may cause performance issues but it's not a big deal
-            Ok(copy_source.to_string_lossy().to_string())
-        }
-        // if /run/rootfsbase exists and is a directory, we'll use that as the copy source
-        else if std::fs::metadata(crate::util::ROOTFS_BASE)
-            .map(|m| m.is_dir())
-            .unwrap_or(false)
-        {
-            tracing::info!(
-                "Using {} as copy source, as it exists presumably due to raw rootfs in dracut",
-                crate::util::ROOTFS_BASE
-            );
-            Ok(crate::util::ROOTFS_BASE.to_owned())
-        }
-        // if we can mount /dev/mapper/live-base, we'll use that as the copy source
-        else {
-            match Self::mount_dev(crate::util::LIVE_BASE) {
-                Ok(mount) => {
-                    let m = mount.target_path().to_string_lossy().to_string();
-                    tracing::info!("Mounted live-base at {m}");
-                    Ok(m)
-                }
-                Err(e) => {
-                    tracing::error!("Failed to mount `{LIVE_BASE}`, using `{FALLBACK}` as copy source anyway... ({e})");
-                    Ok(FALLBACK.to_owned())
-                }
-            }
-        }
-    }
-
     // todo: Generate custom repart partitioning definitions in case the user wants to use a custom partitioning scheme
     #[tracing::instrument]
     fn systemd_repart(
         blockdev: &Path,
         cfgdir: &Path,
-        copy_source: &str,
     ) -> Result<crate::backend::repart_output::RepartOutput> {
+        let copy_source = {
+            const FALLBACK: &str = "/mnt/live-base";
+            // We'll be using a new feature from systemd 255 (relative repart copy source)
+            // to copy the repartitioning definitions from the live base to the target disk
+
+            // environment variable override. This is documented in HACKING.md
+
+            if let Ok(copy_source) = std::env::var("REPART_COPY_SOURCE") {
+                tracing::info!("Using REPART_COPY_SOURCE override: {copy_source}");
+                let copy_source = Path::new(&copy_source.trim()).canonicalize()?;
+
+                if copy_source == Path::new("/") {
+                    tracing::warn!("REPART_COPY_SOURCE is set to `/`, this is likely a mistake. Copying entire host root filesystem to target disk...");
+                }
+
+                // convert back to string, may cause performance issues but it's not a big deal
+                copy_source.to_string_lossy().to_string()
+            }
+            // if /run/rootfsbase exists and is a directory, we'll use that as the copy source
+            else if std::fs::metadata(crate::util::ROOTFS_BASE)
+                .map(|m| m.is_dir())
+                .unwrap_or(false)
+            {
+                tracing::info!(
+                    "Using {} as copy source, as it exists presumably due to raw rootfs in dracut",
+                    crate::util::ROOTFS_BASE
+                );
+                crate::util::ROOTFS_BASE.to_owned()
+            }
+            // if we can mount /dev/mapper/live-base, we'll use that as the copy source
+            else {
+                match Self::mount_dev(crate::util::LIVE_BASE) {
+                    Ok(mount) => {
+                        let m = mount.target_path().to_string_lossy().to_string();
+                        tracing::info!("Mounted live-base at {m}");
+                        m
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to mount `{LIVE_BASE}`, using `{FALLBACK}` as copy source anyway... ({e})");
+                        FALLBACK.to_owned()
+                    }
+                }
+            }
+        };
+
         let arg = if systemd_version()? >= 256 {
             "--generate-fstab"
         } else {
