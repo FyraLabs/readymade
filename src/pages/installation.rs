@@ -27,6 +27,7 @@ pub enum InstallationPageCommandMsg {
 #[derive(Debug)]
 pub enum InstallationPageOutput {
     Navigate(NavigationAction),
+    SendErr(String),
 }
 
 #[relm4::component(pub)]
@@ -114,7 +115,14 @@ impl Component for InstallationPage {
                 tracing::debug!("Installation complete");
                 if let Err(e) = res {
                     tracing::error!("Installation failed: {e:?}");
-                    sender.output(InstallationPageOutput::Navigate(NavigationAction::GoTo(crate::Page::Failure))).unwrap();
+                    sender
+                        .output(InstallationPageOutput::SendErr(format!("{e:?}")))
+                        .unwrap();
+                    sender
+                        .output(InstallationPageOutput::Navigate(NavigationAction::GoTo(
+                            crate::Page::Failure,
+                        )))
+                        .unwrap();
                 } else {
                     sender
                         .output(InstallationPageOutput::Navigate(NavigationAction::GoTo(

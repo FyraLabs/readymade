@@ -1,13 +1,12 @@
-use color_eyre::eyre::{eyre, OptionExt};
-use color_eyre::Result;
+use color_eyre::eyre::eyre;
+use color_eyre::{Result, Section};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use sys_mount::{Unmount, UnmountFlags};
 
 use crate::util::{exist_then, exist_then_read_dir};
 use crate::{
@@ -41,7 +40,8 @@ impl InstallationState {
         let mut command = Command::new("pkexec");
         command
             .arg(std::env::current_exe()?)
-            .arg("--non-interactive");
+            .arg("--non-interactive")
+            .stdin(std::process::Stdio::piped());
 
         // pass in REPART_COPY_SOURCE if it's set
         // This is a bit hacky, I should fix this later
@@ -49,15 +49,21 @@ impl InstallationState {
             command.env("REPART_COPY_SOURCE", std::env::var("REPART_COPY_SOURCE")?);
         }
 
+        print!("┌─ BEGIN: Readymade subprocess logs\n│ ");
         let res = crate::util::cmds::read_while_show_output(&mut command, Some("│ "), |hdl| {
             let mut child_stdin = hdl.stdin.take().expect("can't take stdin");
             child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
+            hdl.stdin = Some(child_stdin);
             Ok(())
         });
+        println!("└─ END OF Readymade subprocess logs");
 
         match res {
             Ok((exit_status, ..)) if exit_status.success() => Ok(()),
-            Ok((exit_status, ..)) => Err(color_eyre::Report::msg(exit_status.to_string())),
+            Ok((exit_status, stdout, stderr)) => Err(eyre!("Readymade subprocess failed")
+                .with_note(|| exit_status.to_string())
+                .with_note(|| format!("Stdout:\n{}", strip_ansi_escapes::strip_str(&stdout)))
+                .with_note(|| format!("Stderr:\n{}", strip_ansi_escapes::strip_str(&stderr)))),
             Err(e) => Err(eyre!("Failed to execute readymade non-interactively").wrap_err(e)),
         }
     }
