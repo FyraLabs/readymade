@@ -1,0 +1,109 @@
+name: Installation test
+
+on:
+    push:
+    pull_request:
+
+jobs:
+    test:
+        runs-on: x86-64-lg
+        container:
+            image: ghcr.io/tau-os/builder:main
+            options: --init --privileged -v /dev:/dev --device /dev/kvm -u root
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  components: rustfmt
+
+            - name: Install dependencies
+              run: dnf install -y sudo curl fuse squashfs-tools submarine f2fs-tools
+
+            - name: Get image hash
+              id: get-hash
+              run: |
+                  curl -s https://images.fyralabs.com/isos/ultramarine/40/ultramarine-xfce-40-live-x86_64.iso.sha256sum > .iso_hash
+
+            - name: Cache downloaded files
+              id: cache-dl
+              uses: actions/cache@v4
+              if: always()
+              with:
+                  save-always: true
+                  path: dl_cache
+                  key: dl_cache-${{ hashFiles('.iso_hash') }}
+                  restore-keys: |
+                      dl_cache-${{ hashFiles('.iso_hash') }}
+
+            - name: Cache rust target
+              id: cache-target
+              uses: actions/cache@v4
+              if: always()
+              with:
+                  save-always: true
+                  path: target
+                  key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ hashfiles('**/src') }}
+                  restore-keys: |
+                      target-${{ runner.os }}-
+                      target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+                      target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ hashfiles('**/src') }}
+
+            - name: Download image
+              run: |
+                  mkdir -p dl_cache
+                  curl -s https://images.fyralabs.com/isos/ultramarine/40/ultramarine-xfce-40-live-x86_64.iso > dl_cache/ultramarine-xfce-40-live-x86_64.iso
+              if: steps.cache-dl.outputs.cache-hit != 'true'
+
+            - uses: actions/cache/save@v3
+              if: steps.cache-dl.outputs.cache-hit != 'true'
+              with:
+                  path: dl_cache
+                  key: dl_cache-${{ hashFiles('.iso_hash') }}
+
+            - name: Prepare mounts
+              run: |
+                  # Symlink the templates so we can use them
+                  mkdir -p /usr/share/readymade
+                  ln -sfvr templates /usr/share/readymade/repart-cfgs
+
+                  mkdir -p /mnt/iso
+                  mount -o loop dl_cache/ultramarine-xfce-40-live-x86_64.iso /mnt/iso
+                  mkdir -p /mnt/live-base
+                  mount -o loop /mnt/iso/LiveOS/squashfs.img /mnt/live-base
+
+                  # create new sparse file of 20GB
+                  truncate -s 20G test.img
+
+                  loopdev=$(losetup -P -f --show test.img)
+                  echo "LOOP_DEV=$loopdev" >> $GITHUB_ENV
+
+            - name: Test code
+              run: |
+                  set -euxo pipefail
+                  export _READYMADE_LOOPDEV=$LOOP_DEV
+                  export RUST_BACKTRACE=full
+                  
+
+                  
+                  ls -la /mnt/iso
+                  ls -la /mnt/iso/LiveOS
+                  ls -la /mnt/live-base
+                  cargo test -p readymade test_install -- --nocapture --ignored
+
+            - uses: actions/cache/save@v3
+              if: always()
+              with:
+                  path: target
+                  key: target-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ hashfiles('**/src') }}
+
+            - name: Cleanup mounts
+              if: always()
+              run: |
+                  losetup -v -d $LOOP_DEV
+                  umount /mnt/live-base
+                  umount /mnt/iso
+                  rmdir /mnt/live-base
+                  rmdir /mnt/iso
