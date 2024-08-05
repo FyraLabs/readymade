@@ -84,12 +84,15 @@ impl SimpleComponent for LanguagePage {
             add = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
+                // set_height_request: 1200,
+                set_vexpand: true,
 
                 gtk::SearchBar {
                     // FIXME: … doesn't exist?
                     connect_entry: &model.search
                 },
                 gtk::ScrolledWindow {
+
                     #[local_ref]
                     btnbox -> gtk::ListBox {
                         add_css_class: "content-list",
