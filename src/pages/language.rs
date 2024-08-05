@@ -50,6 +50,7 @@ impl relm4::factory::FactoryComponent for LanguageRow {
 // Model
 pub struct LanguagePage {
     btnfactory: relm4::factory::FactoryVecDeque<LanguageRow>,
+    search: gtk::Entry,
 }
 
 #[derive(Debug)]
@@ -79,6 +80,11 @@ impl SimpleComponent for LanguagePage {
             add = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
+
+                gtk::SearchBar {
+                    // FIXME: … doesn't exist?
+                    connect_entry: &model.search
+                },
                 gtk::ScrolledWindow {
                     #[local_ref]
                     btnbox -> gtk::ListBox {
@@ -128,7 +134,11 @@ impl SimpleComponent for LanguagePage {
             .for_each(|x| _ = btns.push_back(x));
         btns.drop();
 
-        let model = Self { btnfactory };
+        let model = Self {
+            btnfactory,
+            search: gtk::Entry::new(),
+        };
+        model.search.connect_changed(|en| println!("{}", en.text()));
         let btnbox = model.btnfactory.widget();
         let widgets = view_output!();
 
