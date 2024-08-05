@@ -1,7 +1,11 @@
+use std::rc::Rc;
+
 use crate::prelude::*;
-use relm4::{ComponentParts, RelmWidgetExt, SimpleComponent};
+use relm4::{ComponentParts, RelmWidgetExt, SharedState, SimpleComponent};
 
 use crate::NavigationAction;
+
+static SEARCH_STATE: SharedState<gtk::glib::GString> = SharedState::new();
 
 #[derive(Debug)]
 struct LanguageRow {
@@ -49,7 +53,7 @@ impl relm4::factory::FactoryComponent for LanguageRow {
 
 // Model
 pub struct LanguagePage {
-    btnfactory: relm4::factory::FactoryVecDeque<LanguageRow>,
+    btnfactory: Rc<relm4::factory::FactoryVecDeque<LanguageRow>>,
     search: gtk::Entry,
 }
 
@@ -135,11 +139,22 @@ impl SimpleComponent for LanguagePage {
         btns.drop();
 
         let model = Self {
-            btnfactory,
+            btnfactory: Rc::new(btnfactory),
             search: gtk::Entry::new(),
         };
-        model.search.connect_changed(|en| println!("{}", en.text()));
+        model
+            .search
+            .connect_changed(|en| *SEARCH_STATE.write() = en.text());
         let btnbox = model.btnfactory.widget();
+        let btnfactory = Rc::clone(&model.btnfactory);
+        btnbox.set_filter_func(move |row| {
+            let s = SEARCH_STATE.read().as_str().to_ascii_lowercase();
+            #[allow(clippy::cast_sign_loss)]
+            let lang = btnfactory.get(row.index() as usize).unwrap();
+            lang.locale.to_ascii_lowercase().starts_with(&s)
+                || lang.native_name.to_ascii_lowercase().contains(&s)
+                || lang.name.to_ascii_lowercase().starts_with(&s)
+        });
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
