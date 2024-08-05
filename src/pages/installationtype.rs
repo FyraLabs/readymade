@@ -83,7 +83,7 @@ impl SimpleComponent for InstallationTypePage {
                         //     inline_css: "padding-left: 48px; padding-right: 48px",
                         //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
                         // },
-                        libhelium::PillButton {
+                        libhelium::Button {
                             #[watch]
                             set_label: &gettext("Chromebook"),
                             inline_css: "padding-left: 48px; padding-right: 48px",
@@ -96,7 +96,7 @@ impl SimpleComponent for InstallationTypePage {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_spacing: 6,
 
-                    libhelium::TextButton {
+                    libhelium::Button {
                         #[watch]
                         set_label: &gettext("Previous"),
                         connect_clicked => InstallationTypePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))

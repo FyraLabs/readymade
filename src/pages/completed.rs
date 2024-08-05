@@ -43,14 +43,14 @@ impl SimpleComponent for CompletedPage {
                     set_spacing: 8,
                     set_halign: gtk::Align::Center,
 
-                    libhelium::PillButton {
+                    libhelium::Button {
                         #[watch]
                         set_label: &gettext("Close"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
                         connect_clicked => CompletedPageMsg::Close,
                     },
 
-                    libhelium::PillButton {
+                    libhelium::Button {
                         #[watch]
                         set_label: &gettext("Reboot"),
                         inline_css: "padding-left: 48px; padding-right: 48px",

@@ -104,7 +104,7 @@ impl SimpleComponent for DestinationPage {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_spacing: 4,
 
-                    libhelium::TextButton {
+                    libhelium::Button {
                         #[watch]
                         set_label: &gettext("Previous"),
                         connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome))
@@ -114,7 +114,7 @@ impl SimpleComponent for DestinationPage {
                         set_hexpand: true,
                     },
 
-                    libhelium::PillButton {
+                    libhelium::Button {
                         #[watch]
                         set_label: &gettext("Next"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
