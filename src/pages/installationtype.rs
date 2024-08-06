@@ -68,22 +68,23 @@ impl SimpleComponent for InstallationTypePage {
                         set_halign: gtk::Align::Center,
                         set_valign: gtk::Align::End,
                         set_homogeneous: true,
-                        // libhelium::PillButton {
+                        // libhelium::Button {
                         //     set_label: &gettext("Entire Disk"),
                         //     inline_css: "padding-left: 48px; padding-right: 48px",
                         //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
                         // },
-                        // libhelium::PillButton {
+                        // libhelium::Button {
                         //     set_label: &gettext("Dual Boot"),
                         //     inline_css: "padding-left: 48px; padding-right: 48px",
                         //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot)
                         // },
-                        // libhelium::PillButton {
+                        // libhelium::Button {
                         //     set_label: &gettext("Custom"),
                         //     inline_css: "padding-left: 48px; padding-right: 48px",
                         //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
                         // },
-                        libhelium::PillButton {
+                        libhelium::Button {
+                            set_is_pill: true,
                             #[watch]
                             set_label: &gettext("Chromebook"),
                             inline_css: "padding-left: 48px; padding-right: 48px",
@@ -96,7 +97,8 @@ impl SimpleComponent for InstallationTypePage {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_spacing: 6,
 
-                    libhelium::TextButton {
+                    libhelium::Button {
+                        set_is_text: true,
                         #[watch]
                         set_label: &gettext("Previous"),
                         connect_clicked => InstallationTypePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))

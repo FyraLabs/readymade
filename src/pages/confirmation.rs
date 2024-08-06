@@ -92,7 +92,8 @@ impl SimpleComponent for ConfirmationPage {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_spacing: 4,
 
-                    libhelium::TextButton {
+                    libhelium::Button {
+                        set_is_pill: true,
                         #[watch]
                         set_label: &gettext("Previous"),
                         connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallationType))
@@ -102,7 +103,8 @@ impl SimpleComponent for ConfirmationPage {
                         set_hexpand: true,
                     },
 
-                    libhelium::PillButton {
+                    libhelium::Button {
+                        set_is_pill: true,
                         #[watch]
                         set_label: &gettext("Install"),
                         inline_css: "padding-left: 48px; padding-right: 48px",

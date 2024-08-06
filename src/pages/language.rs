@@ -112,7 +112,8 @@ impl SimpleComponent for LanguagePage {
                         set_hexpand: true,
                     },
 
-                    libhelium::PillButton {
+                    libhelium::Button {
+                        set_is_pill: true,
                         #[watch]
                         set_label: &gettext("Next"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
