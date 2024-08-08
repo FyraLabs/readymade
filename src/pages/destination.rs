@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::{NavigationAction, INSTALLATION_STATE};
+use libhelium::prelude::{HeButtonExt, ViewExt};
 use relm4::{
     factory::{DynamicIndex, FactoryComponent, FactorySender, FactoryVecDeque},
     ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent,

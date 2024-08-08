@@ -1,8 +1,8 @@
-use std::fmt::Write;
-
 use crate::prelude::*;
 use crate::NavigationAction;
+use libhelium::prelude::{HeButtonExt, ViewExt};
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
+use std::fmt::Write;
 
 const BUG_REPORT_LINK: &str = "https://github.com/FyraLabs/readymade/issues";
 const BUG_REPORT_MSG: &str = "If you believe the failure is caused by a bug in this installer, we would appreciate a bug report. You may click the button below to open up the issue tracking webpage.";

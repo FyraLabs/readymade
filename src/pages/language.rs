@@ -1,9 +1,8 @@
-use std::rc::Rc;
-
 use crate::prelude::*;
-use relm4::{ComponentParts, RelmWidgetExt, SharedState, SimpleComponent};
-
 use crate::NavigationAction;
+use libhelium::prelude::{HeButtonExt, MiniContentBlockExt, ViewExt};
+use relm4::{ComponentParts, RelmWidgetExt, SharedState, SimpleComponent};
+use std::rc::Rc;
 
 static SEARCH_STATE: SharedState<gtk::glib::GString> = SharedState::new();
 

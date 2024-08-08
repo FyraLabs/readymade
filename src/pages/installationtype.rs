@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::{InstallationType, NavigationAction, Page, INSTALLATION_STATE};
+use libhelium::prelude::{HeButtonExt, ViewExt};
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 pub struct InstallationTypePage;

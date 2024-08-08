@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::NavigationAction;
+use libhelium::prelude::HeButtonExt;
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 pub const DISTRO: &str = "Ultramarine Linux";
