@@ -27,11 +27,22 @@ pub enum InstallationType {
     Custom,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct InstallationState {
     pub langlocale: Option<String>,
     pub destination_disk: Option<DiskInit>,
     pub installation_type: Option<InstallationType>,
+}
+
+// TODO: remove this after have support for anything other than chromebook
+impl Default for InstallationState {
+    fn default() -> Self {
+        Self {
+            langlocale: Default::default(),
+            destination_disk: Default::default(),
+            installation_type: Some(InstallationType::ChromebookInstall),
+        }
+    }
 }
 
 impl InstallationState {

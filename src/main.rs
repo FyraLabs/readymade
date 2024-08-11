@@ -66,7 +66,7 @@ generate_pages!(Page AppModel AppMsg:
     Language,
     Welcome,
     Destination,
-    InstallationType,
+    // InstallationType,
     Confirmation |msg| {
         tracing::debug!("ConfirmationPage emitted {msg:?}");
         match msg {
@@ -123,7 +123,7 @@ impl SimpleComponent for AppModel {
                     Page::Language => *model.language_page.widget(),
                     Page::Welcome => *model.welcome_page.widget(),
                     Page::Destination => *model.destination_page.widget(),
-                    Page::InstallationType => *model.installation_type_page.widget(),
+                    // Page::InstallationType => *model.installation_type_page.widget(),
                     Page::Confirmation => *model.confirmation_page.widget(),
                     Page::Installation => *model.installation_page.widget(),
                     Page::Completed => *model.completed_page.widget(),

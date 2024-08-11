@@ -97,7 +97,8 @@ impl SimpleComponent for ConfirmationPage {
                         set_is_pill: true,
                         #[watch]
                         set_label: &gettext("Previous"),
-                        connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallationType))
+                        // connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallationType))
+                        connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
                     },
 
                     gtk::Box {
