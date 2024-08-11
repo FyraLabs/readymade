@@ -265,13 +265,29 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> Result<()> {
             .arg("--verbose")
             .status()?;
     });
-    // Generate /etc/fstab
     if systemd_version()? <= 256 {
         stage!("Generating /etc/fstab..." {
             let mut fstab = std::fs::File::create("/etc/fstab")?;
             fstab.write_all(output.generate_fstab().as_bytes())?;
         });
     }
+
+    stage!("Regenerating initramfs" {
+        // We assume the installation wouldn't be used on another system (false only if you install
+        // on something like a USB stick anyway)
+        // → reduce size of initramfs aggressively for faster boot times
+        //
+        // on my system this reduces the size from 170M down to 43M.
+        // — mado
+        std::process::Command::new("dracut").args([
+            "--force",
+            "--parallel",
+            "--regenerate-all",
+            "--hostonly",
+            "--strip",
+            "--aggressive-strip",
+        ]).status()?;
+    });
 
     stage!("Initializing system" {
         _initialize_system()?;
