@@ -5,6 +5,15 @@ use relm4::{ComponentParts, RelmWidgetExt, SharedState, SimpleComponent};
 use std::rc::Rc;
 
 static SEARCH_STATE: SharedState<gtk::glib::GString> = SharedState::new();
+// This is a list of languages sorted by total speakers:
+// https://en.wikipedia.org/wiki/List_of_languages_by_total_number_of_speakers
+// (2024-08-17)
+//
+// These are filtered by our Ultramarine website plausible statistics and the 5 most popular
+// langauges in the world.
+const POPULAR_LANGS: [&str; 9] = [
+    "en_US", "zh_CN", "zh_TW", "hi_IN", "es_ES", "ar_AE", "fr_FR", "pt_BR", "de_DE",
+];
 
 #[derive(Debug)]
 struct LanguageRow {
@@ -15,11 +24,17 @@ struct LanguageRow {
 
 impl From<(String, (String, String))> for LanguageRow {
     fn from(value: (String, (String, String))) -> Self {
+        let (locale, (name, native_name)) = value;
         Self {
-            locale: value.0,
-            name: value.1 .0,
-            native_name: value.1 .1,
+            locale,
+            name,
+            native_name,
         }
+    }
+}
+impl From<LanguageRow> for (String, (String, String)) {
+    fn from(val: LanguageRow) -> Self {
+        (val.locale, (val.name, val.native_name))
     }
 }
 
@@ -146,6 +161,20 @@ impl SimpleComponent for LanguagePage {
             .for_each(|x| _ = btns.push_back(x));
         btns.drop();
 
+        // sort the popular languages, put to top
+        for lang in POPULAR_LANGS.iter().rev() {
+            let Some(index) = btnfactory
+                .iter()
+                .position(|l: &LanguageRow| l.locale.starts_with(lang))
+            else {
+                continue;
+            };
+            let Some(x) = btnfactory.guard().remove(index) else {
+                unreachable!()
+            };
+            btnfactory.guard().push_front(x.into());
+        }
+
         let model = Self {
             btnfactory: Rc::new(btnfactory),
             search: libhelium::TextField::new(),
@@ -169,22 +198,11 @@ impl SimpleComponent for LanguagePage {
         let search = &model.search;
         let widgets = view_output!();
 
-        // autoselect en_US
-        // FIXME: possible to autoscroll to there?
+        // autoselect en_US (first entry)
         let btnfactory = Rc::clone(&model.btnfactory);
-        btnfactory.widget().select_row(
-            btnfactory
-                .widget()
-                .iter_children()
-                .enumerate()
-                .find(|(i, _)| {
-                    btnfactory
-                        .get(*i)
-                        .is_some_and(|x| x.locale.starts_with("en_US"))
-                })
-                .map(|(_, row)| row)
-                .as_ref(),
-        );
+        btnfactory
+            .widget()
+            .select_row(btnfactory.widget().iter_children().next().as_ref());
 
         ComponentParts { model, widgets }
     }

@@ -115,6 +115,7 @@ impl SimpleComponent for AppModel {
 
             #[wrap(Some)]
             set_child = &gtk::Box {
+                set_vexpand: true,
                 set_orientation: gtk::Orientation::Vertical,
                 libhelium::AppBar {
                 },
