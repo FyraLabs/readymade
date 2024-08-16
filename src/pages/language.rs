@@ -52,7 +52,7 @@ impl relm4::factory::FactoryComponent for LanguageRow {
 // Model
 pub struct LanguagePage {
     btnfactory: Rc<relm4::factory::FactoryVecDeque<LanguageRow>>,
-    search: gtk::Entry,
+    search: libhelium::TextField,
 }
 
 #[derive(Debug)]
@@ -85,9 +85,10 @@ impl SimpleComponent for LanguagePage {
                 // set_height_request: 1200,
                 set_vexpand: true,
 
-                gtk::SearchBar {
-                    // FIXME: … doesn't exist?
-                    connect_entry: &model.search
+                #[local_ref]
+                search -> libhelium::TextField {
+                    set_is_search: true,
+                    set_is_outline: true,
                 },
                 gtk::ScrolledWindow {
 
@@ -142,12 +143,15 @@ impl SimpleComponent for LanguagePage {
 
         let model = Self {
             btnfactory: Rc::new(btnfactory),
-            search: gtk::Entry::new(),
+            search: libhelium::TextField::new(),
         };
-        model
-            .search
-            .connect_changed(|en| *SEARCH_STATE.write() = en.text());
         let btnbox = model.btnfactory.widget();
+        let btnfactory2 = Rc::clone(&model.btnfactory);
+        model.search.internal_entry().connect_changed(move |en| {
+            *SEARCH_STATE.write() = en.text();
+            btnfactory2.widget().invalidate_filter();
+            tracing::trace!(?en, "Search Changed!");
+        });
         let btnfactory = Rc::clone(&model.btnfactory);
         btnbox.set_filter_func(move |row| {
             let s = SEARCH_STATE.read().as_str().to_ascii_lowercase();
@@ -157,6 +161,7 @@ impl SimpleComponent for LanguagePage {
                 || lang.native_name.to_ascii_lowercase().contains(&s)
                 || lang.name.to_ascii_lowercase().starts_with(&s)
         });
+        let search = &model.search;
         let widgets = view_output!();
 
         ComponentParts { model, widgets }

@@ -197,6 +197,7 @@ fn main() -> Result<()> {
     let app = libhelium::Application::builder()
         .application_id(APPID)
         .flags(libhelium::gtk::gio::ApplicationFlags::default())
+        // FIXME: idk what this is
         // // SAFETY: just doing weird low-level pointer stuff
         // .default_accent_color(unsafe {
         //     &libhelium::ColorRGBColor::from_glib_none(std::ptr::from_mut(&mut libhelium::ffi::HeColorRGBColor {
@@ -236,7 +237,7 @@ fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
         .pretty()
         .finish()
         // Log to journald, to
-        .with(tracing_subscriber::EnvFilter::builder().with_default_directive(tracing::level_filters::LevelFilter::TRACE.into()).from_env().unwrap())
+        .with(tracing_subscriber::EnvFilter::builder().with_default_directive(tracing::level_filters::LevelFilter::TRACE.into()).parse(std::env::var("RUST_LOG").unwrap_or_default()).unwrap())
         .with(tracing_subscriber::fmt::Layer::new()
             // .with_writer(std::io::stderr)
             .with_writer(non_blocking)
@@ -261,7 +262,7 @@ fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
     tracing::info!("Logging to journald");
     tracing::info!(
         "Logging to {tmp}/readymade.log",
-        tmp = temp_dir.to_owned().to_string_lossy()
+        tmp = temp_dir.to_string_lossy()
     );
     guard
 }
