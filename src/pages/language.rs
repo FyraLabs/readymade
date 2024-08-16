@@ -89,6 +89,8 @@ impl SimpleComponent for LanguagePage {
                 search -> libhelium::TextField {
                     set_is_search: true,
                     set_is_outline: true,
+                    set_margin_top: 6,
+                    set_margin_bottom: 6,
                 },
                 gtk::ScrolledWindow {
 
