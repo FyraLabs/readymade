@@ -93,7 +93,7 @@ impl SimpleComponent for LanguagePage {
                     set_margin_top: 6,
                     set_margin_bottom: 6,
                     set_prefix_icon: Some("system-search-symbolic"),
-                    set_placeholder_text: Some(&gettext("Search language/locale…")),
+                    set_placeholder_text: Some(&gettext("Search Language/Locale…")),
                 },
                 gtk::ScrolledWindow {
 
