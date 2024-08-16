@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use crate::{NavigationAction, INSTALLATION_STATE};
 use color_eyre::Result;
-use libhelium::prelude::ViewExt;
 use relm4::{Component, ComponentParts, ComponentSender};
 use std::time::Duration;
 

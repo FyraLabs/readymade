@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::NavigationAction;
-use libhelium::prelude::{HeButtonExt, MiniContentBlockExt, ViewExt};
 use relm4::{ComponentParts, RelmWidgetExt, SharedState, SimpleComponent};
 use std::rc::Rc;
 

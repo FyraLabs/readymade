@@ -197,15 +197,15 @@ fn main() -> Result<()> {
     let app = libhelium::Application::builder()
         .application_id(APPID)
         .flags(libhelium::gtk::gio::ApplicationFlags::default())
-        // SAFETY: just doing weird low-level pointer stuff
-        .default_accent_color(unsafe {
-            &libhelium::ColorRGBColor::from_glib_none(std::ptr::from_mut(&mut libhelium::ffi::HeColorRGBColor {
-                // todo: fix this upstream
-                r: 0.0,
-                g: 7.0 / 255.0,
-                b: 143.0 / 255.0,
-            }))
-        })
+        // // SAFETY: just doing weird low-level pointer stuff
+        // .default_accent_color(unsafe {
+        //     &libhelium::ColorRGBColor::from_glib_none(std::ptr::from_mut(&mut libhelium::ffi::HeColorRGBColor {
+        //         // todo: fix this upstream
+        //         r: 0.0,
+        //         g: 7.0 / 255.0,
+        //         b: 143.0 / 255.0,
+        //     }))
+        // })
         .build();
 
     tracing::debug!("Starting Readymade");

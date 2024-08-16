@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::{NavigationAction, Page, INSTALLATION_STATE};
-use libhelium::prelude::{HeButtonExt, ViewExt};
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 pub struct ConfirmationPage;

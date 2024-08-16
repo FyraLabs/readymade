@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::NavigationAction;
-use libhelium::prelude::{HeButtonExt, ViewExt};
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 use std::fmt::Write;
 

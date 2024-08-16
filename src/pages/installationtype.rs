@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::{InstallationType, NavigationAction, Page, INSTALLATION_STATE};
-use libhelium::prelude::{HeButtonExt, ViewExt};
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 pub struct InstallationTypePage;
@@ -99,7 +98,7 @@ impl SimpleComponent for InstallationTypePage {
                     set_spacing: 6,
 
                     libhelium::Button {
-                        set_is_text: true,
+                        set_is_textual: true,
                         #[watch]
                         set_label: &gettext("Previous"),
                         connect_clicked => InstallationTypePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))

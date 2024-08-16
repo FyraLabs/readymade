@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use crate::NavigationAction;
 use gettextrs::gettext;
-use libhelium::prelude::{ButtonExt, HeButtonExt, ViewExt};
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
 #[derive(Debug, Default)]
