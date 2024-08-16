@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::NavigationAction;
+use relm4::RelmIterChildrenExt;
 use relm4::{ComponentParts, RelmWidgetExt, SharedState, SimpleComponent};
 use std::rc::Rc;
 
@@ -91,6 +92,8 @@ impl SimpleComponent for LanguagePage {
                     set_is_outline: true,
                     set_margin_top: 6,
                     set_margin_bottom: 6,
+                    set_prefix_icon: Some("system-search-symbolic"),
+                    set_placeholder_text: Some(&gettext("Search language/locale…")),
                 },
                 gtk::ScrolledWindow {
 
@@ -165,6 +168,23 @@ impl SimpleComponent for LanguagePage {
         });
         let search = &model.search;
         let widgets = view_output!();
+
+        // autoselect en_US
+        // FIXME: possible to autoscroll to there?
+        let btnfactory = Rc::clone(&model.btnfactory);
+        btnfactory.widget().select_row(
+            btnfactory
+                .widget()
+                .iter_children()
+                .enumerate()
+                .find(|(i, _)| {
+                    btnfactory
+                        .get(*i)
+                        .is_some_and(|x| x.locale.starts_with("en_US"))
+                })
+                .map(|(_, row)| row)
+                .as_ref(),
+        );
 
         ComponentParts { model, widgets }
     }
