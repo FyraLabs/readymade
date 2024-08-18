@@ -98,7 +98,6 @@ impl SimpleComponent for LanguagePage {
             add = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
-                // set_height_request: 1200,
                 set_vexpand: true,
 
                 #[local_ref]

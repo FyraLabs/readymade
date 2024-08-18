@@ -48,6 +48,8 @@ rayon = "1.10.0"
 process_alive = "0.1.1"
 crossbeam-queue = "0.3.11"
 strip-ansi-escapes = "0.2.0"
+toml = "0.8.19"
+serde_valid = { version = "0.24.0", features = ["toml"] }
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"

@@ -1,5 +1,6 @@
 #![warn(rust_2018_idioms)]
 mod backend;
+pub mod cfg;
 mod disks;
 mod install;
 mod pages;
@@ -9,7 +10,6 @@ mod util;
 use crate::prelude::*;
 use color_eyre::Result;
 use install::{InstallationState, InstallationType};
-use libhelium::glib::translate::FromGlibPtrNone;
 use pages::installation::InstallationPageMsg;
 use relm4::{
     Component, ComponentController, ComponentParts, ComponentSender, RelmApp, SharedState,
@@ -19,6 +19,7 @@ use tracing_subscriber::prelude::*;
 
 /// State related to the user's installation configuration
 static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
+static CONFIG: SharedState<cfg::ReadymadeConfig> = SharedState::new();
 
 // todo: lazy_static const variables for the setup params
 
@@ -191,6 +192,8 @@ fn main() -> Result<()> {
 
         return install_state.install();
     }
+
+    *CONFIG.write() = cfg::get_cfg()?;
 
     gettextrs::textdomain(APPID)?;
     gettextrs::bind_textdomain_codeset(APPID, "UTF-8")?;
