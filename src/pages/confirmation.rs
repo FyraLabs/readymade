@@ -83,7 +83,7 @@ impl SimpleComponent for ConfirmationPage {
                         },
 
                         gtk::Label {
-                            set_label: "Ultramarine Linux",
+                            set_label: &crate::CONFIG.read().distro.name,
                         }
                     }
                 },
@@ -96,8 +96,13 @@ impl SimpleComponent for ConfirmationPage {
                         set_is_pill: true,
                         #[watch]
                         set_label: &gettext("Previous"),
-                        // connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallationType))
-                        connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
+                        connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(
+                            if crate::CONFIG.read().install.allowed_installtypes.len() == 1 {
+                                crate::Page::Destination
+                            } else {
+                                crate::Page::InstallationType
+                            }
+                        )),
                     },
 
                     gtk::Box {

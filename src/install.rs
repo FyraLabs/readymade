@@ -19,7 +19,8 @@ use crate::{
 const REPART_DIR: &str = "/usr/share/readymade/repart-cfgs/";
 
 #[allow(clippy::unsafe_derive_deserialize)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum InstallationType {
     WholeDisk,
     DualBoot(u64),
@@ -40,7 +41,12 @@ impl Default for InstallationState {
         Self {
             langlocale: Default::default(),
             destination_disk: Default::default(),
-            installation_type: Some(InstallationType::ChromebookInstall),
+            installation_type: if let [one] = &crate::CONFIG.read().install.allowed_installtypes[..]
+            {
+                Some(*one)
+            } else {
+                None
+            },
         }
     }
 }

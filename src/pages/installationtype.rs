@@ -68,22 +68,33 @@ impl SimpleComponent for InstallationTypePage {
                         set_halign: gtk::Align::Center,
                         set_valign: gtk::Align::End,
                         set_homogeneous: true,
-                        // libhelium::Button {
-                        //     set_label: &gettext("Entire Disk"),
-                        //     inline_css: "padding-left: 48px; padding-right: 48px",
-                        //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
-                        // },
-                        // libhelium::Button {
-                        //     set_label: &gettext("Dual Boot"),
-                        //     inline_css: "padding-left: 48px; padding-right: 48px",
-                        //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot)
-                        // },
-                        // libhelium::Button {
-                        //     set_label: &gettext("Custom"),
-                        //     inline_css: "padding-left: 48px; padding-right: 48px",
-                        //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
-                        // },
                         libhelium::Button {
+                            set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::WholeDisk),
+                            set_is_pill: true,
+                            #[watch]
+                            set_label: &gettext("Entire Disk"),
+                            inline_css: "padding-left: 48px; padding-right: 48px",
+                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
+                        },
+                        libhelium::Button {
+                            set_visible: crate::CONFIG.read().install.allowed_installtypes.iter().any(|x| matches!(x, InstallationType::DualBoot(_))),
+                            set_is_pill: true,
+                            #[watch]
+                            set_label: &gettext("Dual Boot"),
+                            inline_css: "padding-left: 48px; padding-right: 48px",
+                            // FIXME:
+                            // connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot)
+                        },
+                        libhelium::Button {
+                            set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::Custom),
+                            set_is_pill: true,
+                            #[watch]
+                            set_label: &gettext("Custom"),
+                            inline_css: "padding-left: 48px; padding-right: 48px",
+                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
+                        },
+                        libhelium::Button {
+                            set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::ChromebookInstall),
                             set_is_pill: true,
                             #[watch]
                             set_label: &gettext("Chromebook"),

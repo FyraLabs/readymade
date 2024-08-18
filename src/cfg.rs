@@ -1,4 +1,5 @@
 #![allow(clippy::str_to_string)]
+use color_eyre::eyre::eyre;
 use color_eyre::Result;
 use serde::Deserialize;
 use serde_valid::toml::FromTomlStr;
@@ -9,7 +10,7 @@ const DEFAULT_CFG_PATH: &str = "/etc/readymade.toml";
 #[derive(Deserialize, Validate, Default, Debug, Clone, PartialEq, Eq)]
 pub struct Install {
     #[validate(min_items = 1)]
-    pub allowed_installtypes: Vec<String>,
+    pub allowed_installtypes: Vec<crate::install::InstallationType>,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq)]
@@ -43,7 +44,9 @@ pub fn get_cfg() -> Result<ReadymadeConfig> {
         Ok(p) => tracing::debug!("Using READYMADE_CONFIG={p}"),
         Err(std::env::VarError::NotPresent) => tracing::trace!("Using {DEFAULT_CFG_PATH}"),
     }
-    let toml = std::fs::read_to_string(path.as_deref().unwrap_or(DEFAULT_CFG_PATH))?;
+    let path = path.as_deref().unwrap_or(DEFAULT_CFG_PATH);
+    let toml = std::fs::read_to_string(path)
+        .map_err(|e| eyre!("Cannot read config file at {path:?}").wrap_err(e))?;
     Ok(ReadymadeConfig::from_toml_str(&toml)?)
 }
 
@@ -65,7 +68,7 @@ mod tests {
             .unwrap(),
             ReadymadeConfig {
                 install: Install {
-                    allowed_installtypes: vec!["chromebookinstall".into()],
+                    allowed_installtypes: vec![crate::install::InstallationType::ChromebookInstall],
                 },
                 distro: Distro {
                     name: "Ultramarine Linux".into(),
