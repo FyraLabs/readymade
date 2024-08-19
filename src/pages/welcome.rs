@@ -70,8 +70,8 @@ impl SimpleComponent for WelcomePage {
             },
 
             gtk::Box {
-                set_spacing: 8,
-                set_halign: gtk::Align::Center,
+                set_spacing: 4,
+                // set_halign: gtk::Align::Center,
 
                 libhelium::Button {
                     set_is_pill: true,
@@ -81,11 +81,16 @@ impl SimpleComponent for WelcomePage {
                     connect_clicked => WelcomePageMsg::Navigate(NavigationAction::Quit)
                 },
 
+                    gtk::Box {
+                        set_hexpand: true,
+                    },
+
                 libhelium::Button {
                     set_is_pill: true,
                     #[watch]
                     set_label: &gettext("Install"),
                     inline_css: "padding-left: 48px; padding-right: 48px",
+                    add_css_class: "suggested-action",
                     connect_clicked => WelcomePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
                 }
             }

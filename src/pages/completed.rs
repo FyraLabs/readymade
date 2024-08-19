@@ -43,7 +43,7 @@ impl SimpleComponent for CompletedPage {
                     set_halign: gtk::Align::Center,
 
                     libhelium::Button {
-                        set_is_pill: true,
+                        set_is_textual: true,
                         #[watch]
                         set_label: &gettext("Close"),
                         inline_css: "padding-left: 48px; padding-right: 48px",

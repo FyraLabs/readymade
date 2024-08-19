@@ -114,6 +114,7 @@ impl SimpleComponent for ConfirmationPage {
                         #[watch]
                         set_label: &gettext("Install"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
+                        add_css_class: "destructive-action",
                         connect_clicked => ConfirmationPageMsg::StartInstallation
                     },
                 }

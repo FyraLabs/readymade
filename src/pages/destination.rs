@@ -105,7 +105,7 @@ impl SimpleComponent for DestinationPage {
                     set_spacing: 4,
 
                     libhelium::Button {
-                        set_is_pill: true,
+                        set_is_textual: true,
                         #[watch]
                         set_label: &gettext("Previous"),
                         connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome))
@@ -121,7 +121,7 @@ impl SimpleComponent for DestinationPage {
                         set_label: &gettext("Next"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
                         connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(
-                            if crate::CONFIG.read().install.allowed_installtypes.len() == 1 { 
+                            if crate::CONFIG.read().install.allowed_installtypes.len() == 1 {
                                 crate::Page::Confirmation
                             } else {
                                 crate::Page::InstallationType
