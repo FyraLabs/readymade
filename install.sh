@@ -20,3 +20,4 @@ done
 popd
 
 install -Dpm644 com.fyralabs.pkexec.readymade.policy $root/usr/share/polkit-1/actions/com.fyralabs.pkexec.readymade.policy
+install -Dpm644 templates/ultramarine-chromebook.toml $root/etc/readymade.toml
