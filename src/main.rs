@@ -202,7 +202,7 @@ fn main() -> Result<()> {
         .application_id(APPID)
         .flags(libhelium::gtk::gio::ApplicationFlags::default())
         .default_accent_color(unsafe {
-             &libhelium::ColorRGBColor::from_glib_none(std::ptr::from_mut(&mut libhelium::ffi::HeRGBColor {
+             &libhelium::HeRGBColor::from_glib_none(std::ptr::from_mut(&mut libhelium::ffi::HeRGBColor {
                  r: 0.0,
                  g: 7.0,
                 b: 143.0,
