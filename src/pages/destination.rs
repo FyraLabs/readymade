@@ -38,7 +38,7 @@ impl FactoryComponent for Disk {
 
             gtk::Image {
                 set_icon_name: Some("drive-harddisk"),
-                inline_css: "-gtk-icon-size: 128px"
+                set_pixel_size: 128
             },
 
             gtk::Label {
@@ -91,7 +91,7 @@ impl SimpleComponent for DestinationPage {
 
             add = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 4,
+                set_spacing: 6,
                 #[local_ref]
                 disk_list -> gtk::FlowBox {
                     set_selection_mode: gtk::SelectionMode::Single,
@@ -100,14 +100,15 @@ impl SimpleComponent for DestinationPage {
                     set_hexpand: true,
                     set_valign: gtk::Align::Center,
                     set_halign: gtk::Align::Center,
-                    set_min_children_per_line: 7,
-                    set_column_spacing: 4,
-                    set_row_spacing: 4,
+                    set_min_children_per_line: 1,
+                    set_max_children_per_line: 7,
+                    set_column_spacing: 6,
+                    set_row_spacing: 6,
                     connect_selected_children_changed => DestinationPageMsg::SelectionChanged,
                 },
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
-                    set_spacing: 4,
+                    set_spacing: 6,
 
                     libhelium::TextButton {
                         set_label: &gettext("Previous"),
