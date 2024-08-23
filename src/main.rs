@@ -9,6 +9,7 @@ mod util;
 
 use crate::prelude::*;
 use color_eyre::Result;
+use gtk::glib::translate::FromGlibPtrNone;
 use install::{InstallationState, InstallationType};
 use pages::installation::InstallationPageMsg;
 use relm4::{
@@ -201,13 +202,16 @@ fn main() -> Result<()> {
     let app = libhelium::Application::builder()
         .application_id(APPID)
         .flags(libhelium::gtk::gio::ApplicationFlags::default())
+        // SAFETY: placeholder
         .default_accent_color(unsafe {
-             &libhelium::RGBColor::from_glib_none(std::ptr::from_mut(&mut libhelium::ffi::RGBColor {
-                 r: 0.0,
-                 g: 7.0,
-                b: 143.0,
-             }))
-         })
+            &libhelium::RGBColor::from_glib_none(std::ptr::from_mut(
+                &mut libhelium::ffi::HeRGBColor {
+                    r: 0.0,
+                    g: 7.0,
+                    b: 143.0,
+                },
+            ))
+        })
         .build();
 
     tracing::debug!("Starting Readymade");
