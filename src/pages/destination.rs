@@ -28,6 +28,7 @@ impl FactoryComponent for DiskInit {
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
             set_spacing: 2,
+            set_css_classes (["mini-content-block"]),
 
             gtk::Image {
                 set_icon_name: Some("drive-harddisk"),
@@ -104,6 +105,7 @@ impl SimpleComponent for DestinationPage {
                             set_max_children_per_line: 7,
                             set_column_spacing: 6,
                             set_row_spacing: 6,
+                            set_css_classes (["content-flowbox"]),
                             connect_selected_children_changed => DestinationPageMsg::SelectionChanged,
                         },
                 },
