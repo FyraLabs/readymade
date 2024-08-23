@@ -87,18 +87,21 @@ impl SimpleComponent for DestinationPage {
             add = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
-                #[local_ref]
-                disk_list -> gtk::FlowBox {
-                    set_selection_mode: gtk::SelectionMode::Single,
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_vexpand: true,
-                    set_hexpand: false,
-                    set_valign: gtk::Align::Center,
-                    set_halign: gtk::Align::Center,
-                    set_min_children_per_line: 5,
-                    set_column_spacing: 4,
-                    set_row_spacing: 4,
-                    connect_selected_children_changed => DestinationPageMsg::SelectionChanged,
+                gtk::ScrolledWindow {
+                    set_vscrollbar_policy: gtk::PolicyType::Never,
+                    #[local_ref]
+                    disk_list -> gtk::FlowBox {
+                        set_selection_mode: gtk::SelectionMode::Single,
+                        set_orientation: gtk::Orientation::Horizontal,
+                        set_vexpand: true,
+                        set_hexpand: false,
+                        set_valign: gtk::Align::Center,
+                        set_halign: gtk::Align::Center,
+                        set_min_children_per_line: 5,
+                        set_column_spacing: 4,
+                        set_row_spacing: 4,
+                        connect_selected_children_changed => DestinationPageMsg::SelectionChanged,
+                    },
                 },
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
