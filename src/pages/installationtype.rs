@@ -1,10 +1,8 @@
+use crate::prelude::*;
 use crate::{InstallationType, NavigationAction, Page, INSTALLATION_STATE};
-use gettextrs::gettext;
-use gtk::prelude::*;
-use libhelium::prelude::*;
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
-pub struct InstallationTypePage {}
+pub struct InstallationTypePage;
 
 #[derive(Debug)]
 pub enum InstallationTypePageMsg {
@@ -27,6 +25,7 @@ impl SimpleComponent for InstallationTypePage {
 
     view! {
         libhelium::ViewMono {
+            #[watch]
             set_title: &gettext("Installation Type"),
             set_vexpand: true,
 
@@ -54,13 +53,13 @@ impl SimpleComponent for InstallationTypePage {
 
                         gtk::Label {
                             #[watch]
-                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or("".to_owned()),
+                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
                             inline_css: "font-size: 16px; font-weight: bold"
                         },
 
                         gtk::Label {
                             #[watch]
-                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or("".to_owned()),
+                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or_default(),
                         }
                     },
 
@@ -69,22 +68,35 @@ impl SimpleComponent for InstallationTypePage {
                         set_halign: gtk::Align::Center,
                         set_valign: gtk::Align::End,
                         set_homogeneous: true,
-                        // libhelium::PillButton {
-                        //     set_label: &gettext("Entire Disk"),
-                        //     inline_css: "padding-left: 48px; padding-right: 48px",
-                        //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
-                        // },
-                        // libhelium::PillButton {
-                        //     set_label: &gettext("Dual Boot"),
-                        //     inline_css: "padding-left: 48px; padding-right: 48px",
-                        //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot)
-                        // },
-                        // libhelium::PillButton {
-                        //     set_label: &gettext("Custom"),
-                        //     inline_css: "padding-left: 48px; padding-right: 48px",
-                        //     connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
-                        // },
-                        libhelium::PillButton {
+                        libhelium::Button {
+                            set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::WholeDisk),
+                            set_is_pill: true,
+                            #[watch]
+                            set_label: &gettext("Entire Disk"),
+                            inline_css: "padding-left: 48px; padding-right: 48px",
+                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
+                        },
+                        libhelium::Button {
+                            set_visible: crate::CONFIG.read().install.allowed_installtypes.iter().any(|x| matches!(x, InstallationType::DualBoot(_))),
+                            set_is_pill: true,
+                            #[watch]
+                            set_label: &gettext("Dual Boot"),
+                            inline_css: "padding-left: 48px; padding-right: 48px",
+                            // FIXME:
+                            // connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot)
+                        },
+                        libhelium::Button {
+                            set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::Custom),
+                            set_is_pill: true,
+                            #[watch]
+                            set_label: &gettext("Custom"),
+                            inline_css: "padding-left: 48px; padding-right: 48px",
+                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
+                        },
+                        libhelium::Button {
+                            set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::ChromebookInstall),
+                            set_is_pill: true,
+                            #[watch]
                             set_label: &gettext("Chromebook"),
                             inline_css: "padding-left: 48px; padding-right: 48px",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::ChromebookInstall)
@@ -96,7 +108,9 @@ impl SimpleComponent for InstallationTypePage {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_spacing: 6,
 
-                    libhelium::TextButton {
+                    libhelium::Button {
+                        set_is_textual: true,
+                        #[watch]
                         set_label: &gettext("Previous"),
                         connect_clicked => InstallationTypePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
                     },
@@ -126,13 +140,12 @@ impl SimpleComponent for InstallationTypePage {
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk) => {
-                let mut installation_state_guard = INSTALLATION_STATE.write();
-                installation_state_guard.installation_type = Some(InstallationType::WholeDisk);
+                INSTALLATION_STATE.write().installation_type = Some(InstallationType::WholeDisk);
                 sender
                     .output(InstallationTypePageOutput::Navigate(
                         NavigationAction::GoTo(Page::Confirmation),
                     ))
-                    .unwrap()
+                    .unwrap();
             }
             InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot(_)) => {
                 todo!()
@@ -141,14 +154,13 @@ impl SimpleComponent for InstallationTypePage {
             InstallationTypePageMsg::InstallationTypeSelected(
                 InstallationType::ChromebookInstall,
             ) => {
-                let mut installation_state_guard = INSTALLATION_STATE.write();
-                installation_state_guard.installation_type =
+                INSTALLATION_STATE.write().installation_type =
                     Some(InstallationType::ChromebookInstall);
                 sender
                     .output(InstallationTypePageOutput::Navigate(
                         NavigationAction::GoTo(Page::Confirmation),
                     ))
-                    .unwrap()
+                    .unwrap();
             }
             InstallationTypePageMsg::Navigate(action) => sender
                 .output(InstallationTypePageOutput::Navigate(action))

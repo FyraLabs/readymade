@@ -1,11 +1,8 @@
-use gettextrs::gettext;
-use gtk::prelude::*;
-use libhelium::prelude::*;
+use crate::prelude::*;
+use crate::{NavigationAction, Page, INSTALLATION_STATE};
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
-use crate::{NavigationAction, Page, INSTALLATION_STATE};
-
-pub struct ConfirmationPage {}
+pub struct ConfirmationPage;
 
 #[derive(Debug)]
 pub enum ConfirmationPageMsg {
@@ -29,6 +26,7 @@ impl SimpleComponent for ConfirmationPage {
 
     view! {
         libhelium::ViewMono {
+            #[watch]
             set_title: &gettext("Confirmation"),
             set_vexpand: true,
             add = &gtk::Box {
@@ -55,13 +53,13 @@ impl SimpleComponent for ConfirmationPage {
 
                         gtk::Label {
                             #[watch]
-                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or("".to_owned()),
+                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
                             inline_css: "font-size: 16px; font-weight: bold"
                         },
 
                         gtk::Label {
                             #[watch]
-                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or("".to_owned()),
+                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or_default(),
                         }
                     },
 
@@ -80,13 +78,12 @@ impl SimpleComponent for ConfirmationPage {
 
                         gtk::Label {
                             #[watch]
-                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or("".to_owned()),
+                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
                             inline_css: "font-size: 16px; font-weight: bold"
                         },
 
                         gtk::Label {
-                            #[watch]
-                            set_label: "Ultramarine Linux",
+                            set_label: &crate::CONFIG.read().distro.name,
                         }
                     }
                 },
@@ -95,18 +92,29 @@ impl SimpleComponent for ConfirmationPage {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_spacing: 4,
 
-                    libhelium::TextButton {
+                    libhelium::Button {
+                        set_is_pill: true,
+                        #[watch]
                         set_label: &gettext("Previous"),
-                        connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallationType))
+                        connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(
+                            if crate::CONFIG.read().install.allowed_installtypes.len() == 1 {
+                                crate::Page::Destination
+                            } else {
+                                crate::Page::InstallationType
+                            }
+                        )),
                     },
 
                     gtk::Box {
                         set_hexpand: true,
                     },
 
-                    libhelium::PillButton {
+                    libhelium::Button {
+                        set_is_pill: true,
+                        #[watch]
                         set_label: &gettext("Install"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
+                        add_css_class: "destructive-action",
                         connect_clicked => ConfirmationPageMsg::StartInstallation
                     },
                 }
@@ -139,7 +147,7 @@ impl SimpleComponent for ConfirmationPage {
                     .output(ConfirmationPageOutput::Navigate(NavigationAction::GoTo(
                         Page::Installation,
                     )))
-                    .unwrap()
+                    .unwrap();
             }
             ConfirmationPageMsg::Navigate(action) => sender
                 .output(ConfirmationPageOutput::Navigate(action))

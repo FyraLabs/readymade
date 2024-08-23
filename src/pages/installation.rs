@@ -1,11 +1,12 @@
-use crate::{install::run_albius, NavigationAction, INSTALLATION_STATE};
-use gettextrs::gettext;
-use libhelium::prelude::*;
-use relm4::{ComponentParts, ComponentSender, SimpleComponent};
+use crate::prelude::*;
+use crate::{NavigationAction, INSTALLATION_STATE};
+use color_eyre::Result;
+use relm4::{Component, ComponentParts, ComponentSender};
+use std::time::Duration;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct InstallationPage {
-    progress: f64,
+    progress_bar: gtk::ProgressBar,
 }
 
 #[derive(Debug)]
@@ -14,21 +15,31 @@ pub enum InstallationPageMsg {
     #[doc(hidden)]
     Navigate(NavigationAction),
     Update,
+    #[doc(hidden)]
+    Throb,
+}
+
+#[derive(Debug)]
+pub enum InstallationPageCommandMsg {
+    FinishInstallation(Result<()>),
 }
 
 #[derive(Debug)]
 pub enum InstallationPageOutput {
     Navigate(NavigationAction),
+    SendErr(String),
 }
 
 #[relm4::component(pub)]
-impl SimpleComponent for InstallationPage {
+impl Component for InstallationPage {
     type Init = ();
     type Input = InstallationPageMsg;
     type Output = InstallationPageOutput;
+    type CommandOutput = InstallationPageCommandMsg;
 
     view! {
         libhelium::ViewMono {
+            #[watch]
             set_title: &*gettext("Installation"),
             set_vexpand: true,
 
@@ -45,13 +56,12 @@ impl SimpleComponent for InstallationPage {
                 },
 
                 gtk::Label {
+                    #[watch]
                     set_label: &*gettext("Installing base system...")
                 },
 
-                gtk::ProgressBar {
-                    #[watch]
-                    set_fraction: model.progress
-                }
+                #[local_ref]
+                progress_bar -> gtk::ProgressBar {}
             }
         }
     }
@@ -61,38 +71,66 @@ impl SimpleComponent for InstallationPage {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = Self { progress: 0.0 };
+        let model = Self::default();
+        let progress_bar = &model.progress_bar;
 
         let widgets = view_output!();
 
         INSTALLATION_STATE.subscribe(sender.input_sender(), |_| InstallationPageMsg::Update);
 
+        gtk::glib::timeout_add(Duration::from_secs(1), move || {
+            sender.input(InstallationPageMsg::Throb);
+            gtk::glib::ControlFlow::Continue
+        }); // TODO: cleanup
+
         ComponentParts { model, widgets }
     }
 
     #[tracing::instrument]
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
-        // handle channel logics here
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, _: &Self::Root) {
         match message {
-            InstallationPageMsg::StartInstallation => sender.command(|_out, shutdown| {
-                shutdown
-                    .register(async move {
-                        let state = INSTALLATION_STATE.read();
-                        tracing::debug!("Starting installation...");
-                        let recipe = crate::install::generate_recipe(&state)?;
-
-                        tracing::debug!(?recipe);
-
-                        run_albius(&recipe)?;
-
-                        color_eyre::Result::<_>::Ok(())
-                    })
-                    .drop_on_shutdown()
-            }),
+            InstallationPageMsg::StartInstallation => {
+                sender.spawn_oneshot_command(|| {
+                    let state = INSTALLATION_STATE.read();
+                    tracing::debug!(?state, "Starting installation...");
+                    InstallationPageCommandMsg::FinishInstallation(state.install_using_subprocess())
+                });
+            }
             InstallationPageMsg::Navigate(action) => sender
                 .output(InstallationPageOutput::Navigate(action))
                 .unwrap(),
             InstallationPageMsg::Update => {}
+            InstallationPageMsg::Throb => self.progress_bar.pulse(),
+        }
+    }
+
+    fn update_cmd(
+        &mut self,
+        message: Self::CommandOutput,
+        sender: ComponentSender<Self>,
+        _: &Self::Root,
+    ) {
+        match message {
+            InstallationPageCommandMsg::FinishInstallation(res) => {
+                tracing::debug!("Installation complete");
+                if let Err(e) = res {
+                    tracing::error!("Installation failed: {e:?}");
+                    sender
+                        .output(InstallationPageOutput::SendErr(format!("{e:?}")))
+                        .unwrap();
+                    sender
+                        .output(InstallationPageOutput::Navigate(NavigationAction::GoTo(
+                            crate::Page::Failure,
+                        )))
+                        .unwrap();
+                } else {
+                    sender
+                        .output(InstallationPageOutput::Navigate(NavigationAction::GoTo(
+                            crate::Page::Completed,
+                        )))
+                        .unwrap();
+                }
+            }
         }
     }
 }

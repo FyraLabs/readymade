@@ -1,40 +1,57 @@
-use gettextrs::gettext;
-use itertools::Itertools;
-use libhelium::prelude::*;
-use relm4::gtk::prelude::ButtonExt;
-use relm4::{ComponentParts, RelmWidgetExt, SimpleComponent};
-
+use crate::prelude::*;
 use crate::NavigationAction;
+use relm4::RelmIterChildrenExt;
+use relm4::{ComponentParts, RelmWidgetExt, SharedState, SimpleComponent};
+use std::rc::Rc;
+
+static SEARCH_STATE: SharedState<gtk::glib::GString> = SharedState::new();
+// This is a list of languages sorted by total speakers:
+// https://en.wikipedia.org/wiki/List_of_languages_by_total_number_of_speakers
+// (2024-08-17)
+//
+// These are filtered by our Ultramarine website plausible statistics and the 5 most popular
+// langauges in the world.
+const POPULAR_LANGS: [&str; 9] = [
+    "en_US", "zh_CN", "zh_TW", "hi_IN", "es_ES", "ar_AE", "fr_FR", "pt_BR", "de_DE",
+];
 
 #[derive(Debug)]
-struct LanguageButton {
+struct LanguageRow {
     locale: String,
     name: String,
+    native_name: String,
 }
 
-impl From<(String, String)> for LanguageButton {
-    fn from(value: (String, String)) -> Self {
+impl From<(String, (String, String))> for LanguageRow {
+    fn from(value: (String, (String, String))) -> Self {
+        let (locale, (name, native_name)) = value;
         Self {
-            locale: value.0,
-            name: value.1,
+            locale,
+            name,
+            native_name,
         }
+    }
+}
+impl From<LanguageRow> for (String, (String, String)) {
+    fn from(val: LanguageRow) -> Self {
+        (val.locale, (val.name, val.native_name))
     }
 }
 
 #[relm4::factory]
-impl relm4::factory::FactoryComponent for LanguageButton {
-    type Init = (String, String);
+impl relm4::factory::FactoryComponent for LanguageRow {
+    type Init = (String, (String, String));
     type Input = ();
-    type Output = relm4::factory::DynamicIndex;
+    type Output = ();
     type CommandOutput = ();
-    type ParentWidget = relm4::gtk::FlowBox;
+    type ParentWidget = relm4::gtk::ListBox;
 
     view! {
         #[root]
-        gtk::Button {
-            set_label: &self.name,
-            connect_clicked[sender, index] => move |_| {
-                sender.output(index.clone()).unwrap();
+        gtk::ListBoxRow {
+            libhelium::MiniContentBlock {
+                set_title: &self.name,
+                set_subtitle: &self.native_name,
             }
         }
     }
@@ -50,17 +67,16 @@ impl relm4::factory::FactoryComponent for LanguageButton {
 
 // Model
 pub struct LanguagePage {
-    btnfactory: relm4::factory::FactoryVecDeque<LanguageButton>,
+    btnfactory: Rc<relm4::factory::FactoryVecDeque<LanguageRow>>,
+    search: libhelium::TextField,
 }
 
 #[derive(Debug)]
 pub enum LanguagePageMsg {
     #[doc(hidden)]
     Navigate(NavigationAction),
-    // Selected(relm4::factory::DynamicIndex),
-    SelectionChanged,
-    // Mouse clicked
-    Click(relm4::factory::DynamicIndex),
+    #[doc(hidden)]
+    Selected,
 }
 
 #[derive(Debug)]
@@ -76,46 +92,52 @@ impl SimpleComponent for LanguagePage {
 
     view! {
         libhelium::ViewMono {
+            #[watch]
             set_title: &gettext("Language"),
             set_vexpand: true,
             add = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
+                set_vexpand: true,
+
+                #[local_ref]
+                search -> libhelium::TextField {
+                    set_is_search: true,
+                    set_is_outline: true,
+                    set_margin_top: 6,
+                    set_margin_bottom: 6,
+                    set_prefix_icon: Some("system-search-symbolic"),
+                    set_placeholder_text: Some(&gettext("Search Language/Locale…")),
+                },
                 gtk::ScrolledWindow {
+
                     #[local_ref]
-                    btnbox -> gtk::FlowBox {
+                    btnbox -> gtk::ListBox {
+                        add_css_class: "content-list",
                         set_selection_mode: gtk::SelectionMode::Single,
-                        set_orientation: gtk::Orientation::Horizontal,
                         set_vexpand: true,
                         set_hexpand: true,
                         set_valign: gtk::Align::Center,
                         set_halign: gtk::Align::Center,
-                        set_min_children_per_line: 1,
-                        set_max_children_per_line: 1,
-                        set_column_spacing: 4,
-                        set_row_spacing: 4,
-                        connect_selected_children_changed => LanguagePageMsg::SelectionChanged,
+                        connect_selected_rows_changed => LanguagePageMsg::Selected,
                     }
                 },
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_spacing: 4,
 
-                    libhelium::TextButton {
-                        set_label: &gettext("Previous"),
-                        connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Region)),
-                    },
-
                     gtk::Box {
                         set_hexpand: true,
                     },
 
-                    libhelium::PillButton {
+                    libhelium::Button {
+                        set_is_pill: true,
+                        #[watch]
                         set_label: &gettext("Next"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
                         connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome)),
                         #[watch]
-                        set_sensitive: crate::INSTALLATION_STATE.read().timezone.is_some()
+                        set_sensitive: crate::INSTALLATION_STATE.read().langlocale.is_some()
                     }
                 }
             }
@@ -128,21 +150,58 @@ impl SimpleComponent for LanguagePage {
         sender: relm4::prelude::ComponentSender<Self>,
     ) -> relm4::prelude::ComponentParts<Self> {
         let mut btnfactory = relm4::factory::FactoryVecDeque::builder()
-            .launch(gtk::FlowBox::default())
-            .forward(sender.input_sender(), |output| {
-                LanguagePageMsg::Click(output)
-            });
+            .launch(gtk::ListBox::default())
+            .detach();
 
         let mut btns = btnfactory.guard();
         crate::backend::l10n::list_langs()
             .into_iter()
-            .sorted_by(|(_, x), (_, y)| x.cmp(&y))
+            .sorted_by(|(_, x), (_, y)| x.cmp(y))
             .for_each(|x| _ = btns.push_back(x));
-        drop(btns);
+        btns.drop();
 
-        let model = LanguagePage { btnfactory };
+        // sort the popular languages, put to top
+        for lang in POPULAR_LANGS.iter().rev() {
+            let Some(index) = btnfactory
+                .iter()
+                .position(|l: &LanguageRow| l.locale.starts_with(lang))
+            else {
+                continue;
+            };
+            let Some(x) = btnfactory.guard().remove(index) else {
+                unreachable!()
+            };
+            btnfactory.guard().push_front(x.into());
+        }
+
+        let model = Self {
+            btnfactory: Rc::new(btnfactory),
+            search: libhelium::TextField::new(),
+        };
         let btnbox = model.btnfactory.widget();
+        let btnfactory2 = Rc::clone(&model.btnfactory);
+        model.search.internal_entry().connect_changed(move |en| {
+            *SEARCH_STATE.write() = en.text();
+            btnfactory2.widget().invalidate_filter();
+            tracing::trace!(?en, "Search Changed!");
+        });
+        let btnfactory = Rc::clone(&model.btnfactory);
+        btnbox.set_filter_func(move |row| {
+            let s = SEARCH_STATE.read().as_str().to_ascii_lowercase();
+            #[allow(clippy::cast_sign_loss)]
+            let lang = btnfactory.get(row.index() as usize).unwrap();
+            lang.locale.to_ascii_lowercase().starts_with(&s)
+                || lang.native_name.to_ascii_lowercase().contains(&s)
+                || lang.name.to_ascii_lowercase().starts_with(&s)
+        });
+        let search = &model.search;
         let widgets = view_output!();
+
+        // autoselect en_US (first entry)
+        let btnfactory = Rc::clone(&model.btnfactory);
+        btnfactory
+            .widget()
+            .select_row(btnfactory.widget().iter_children().next().as_ref());
 
         ComponentParts { model, widgets }
     }
@@ -150,23 +209,16 @@ impl SimpleComponent for LanguagePage {
     fn update(&mut self, message: Self::Input, sender: relm4::prelude::ComponentSender<Self>) {
         match message {
             LanguagePageMsg::Navigate(action) => {
-                sender.output(LanguagePageOutput::Navigate(action)).unwrap()
+                sender.output(LanguagePageOutput::Navigate(action)).unwrap();
             }
-            LanguagePageMsg::SelectionChanged => {
-                let languages = self.btnfactory.widget().selected_children();
-                let i = languages.first().unwrap().index().try_into().unwrap();
-                let language = self.btnfactory.get(i).unwrap();
-                gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, &*language.locale).unwrap();
-                crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.to_string());
-            }
-            LanguagePageMsg::Click(index) => {
-                self.btnfactory.widget().select_child(
-                    &self
-                        .btnfactory
-                        .widget()
-                        .child_at_index(index.current_index() as i32)
-                        .unwrap(),
-                );
+            LanguagePageMsg::Selected => {
+                if let Some(row) = self.btnfactory.widget().selected_row() {
+                    #[allow(clippy::cast_sign_loss)]
+                    let language = self.btnfactory.get(row.index() as usize).unwrap();
+                    gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, &*language.locale)
+                        .unwrap();
+                    crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.clone());
+                }
             }
         }
     }

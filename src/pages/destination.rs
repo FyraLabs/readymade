@@ -1,30 +1,23 @@
-use std::path::PathBuf;
-
+use crate::prelude::*;
 use crate::{NavigationAction, INSTALLATION_STATE};
-use gettextrs::gettext;
-use gtk::prelude::*;
-use libhelium::prelude::*;
 use relm4::{
     factory::{DynamicIndex, FactoryComponent, FactorySender, FactoryVecDeque},
     ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent,
 };
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiskInit {
     pub disk_name: String,
     pub os_name: String,
     pub devpath: PathBuf,
+    pub size: bytesize::ByteSize,
 }
 
-struct Disk {
-    disk_name: String,
-    os_name: String,
-    devpath: PathBuf,
-}
-
-#[relm4::factory]
-impl FactoryComponent for Disk {
-    type Init = DiskInit;
+#[relm4::factory(pub)]
+impl FactoryComponent for DiskInit {
+    type Init = Self;
     type Input = ();
     type Output = ();
     type CommandOutput = ();
@@ -48,21 +41,21 @@ impl FactoryComponent for Disk {
 
             gtk::Label {
                 set_label: &self.os_name
+            },
+
+            gtk::Label {
+                set_label: &self.size.to_string()
             }
         }
     }
 
     fn init_model(value: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
-        Self {
-            disk_name: value.disk_name,
-            os_name: value.os_name,
-            devpath: value.devpath,
-        }
+        value
     }
 }
 
 pub struct DestinationPage {
-    disks: FactoryVecDeque<Disk>,
+    disks: FactoryVecDeque<DiskInit>,
 }
 
 #[derive(Debug)]
@@ -86,8 +79,10 @@ impl SimpleComponent for DestinationPage {
 
     view! {
         libhelium::ViewMono {
+            #[watch]
             set_title: &gettext("Destination"),
             set_vexpand: true,
+            set_hexpand: false,
 
             add = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -110,7 +105,9 @@ impl SimpleComponent for DestinationPage {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_spacing: 6,
 
-                    libhelium::TextButton {
+                    libhelium::Button {
+                        set_is_textual: true,
+                        #[watch]
                         set_label: &gettext("Previous"),
                         connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome))
                     },
@@ -119,10 +116,18 @@ impl SimpleComponent for DestinationPage {
                         set_hexpand: true,
                     },
 
-                    libhelium::PillButton {
+                    libhelium::Button {
+                        set_is_pill: true,
+                        #[watch]
                         set_label: &gettext("Next"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
-                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::InstallationType)),
+                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(
+                            if crate::CONFIG.read().install.allowed_installtypes.len() == 1 {
+                                crate::Page::Confirmation
+                            } else {
+                                crate::Page::InstallationType
+                            }
+                        )),
                         #[watch]
                         set_sensitive: INSTALLATION_STATE.read().destination_disk.is_some()
                     }
@@ -148,7 +153,7 @@ impl SimpleComponent for DestinationPage {
 
         let model = Self { disks };
 
-        let disk_list = model.disks.widget();
+        let disk_list: &gtk::FlowBox = model.disks.widget();
         let widgets = view_output!();
 
         INSTALLATION_STATE.subscribe(sender.input_sender(), |_| DestinationPageMsg::Update);
@@ -164,17 +169,12 @@ impl SimpleComponent for DestinationPage {
             DestinationPageMsg::SelectionChanged => {
                 let disk_list = self.disks.widget();
                 let selected_children = disk_list.selected_children();
-                let selected_disk = selected_children.first().map(|d| {
-                    let disk = self.disks.get(d.index().try_into().unwrap()).unwrap();
-                    DiskInit {
-                        disk_name: disk.disk_name.clone(),
-                        os_name: disk.os_name.clone(),
-                        devpath: disk.devpath.clone(),
-                    }
-                });
+                let selected_disk = selected_children
+                    .first()
+                    .map(|d| self.disks.get(d.index().try_into().unwrap()).unwrap());
 
                 let mut installation_state_guard = INSTALLATION_STATE.write();
-                installation_state_guard.destination_disk = selected_disk;
+                installation_state_guard.destination_disk = selected_disk.cloned();
             }
             DestinationPageMsg::Update => {}
         }

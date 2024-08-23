@@ -1,9 +1,8 @@
 //! QoL Utilities for Readymade
-use bytesize::ByteSize;
-use color_eyre::Section as _;
 
-pub const MAX_EFI_SIZE: ByteSize = ByteSize::gb(1);
-pub const DEFAULT_SQUASH_LOCATION: &str = "/run/initramfs/live/LiveOS/squashfs.img";
+use std::path::Path;
+pub const LIVE_BASE: &str = "/dev/mapper/live-base";
+pub const ROOTFS_BASE: &str = "/run/rootfsbase";
 
 #[cfg(target_os = "linux")]
 /// Check if the current running system is UEFI or not.
@@ -12,7 +11,7 @@ pub const DEFAULT_SQUASH_LOCATION: &str = "/run/initramfs/live/LiveOS/squashfs.i
 ///
 /// False negatives are possible if the system is booted in BIOS mode and the UEFI variables are not exposed.
 pub fn check_uefi() -> bool {
-    std::fs::read_to_string("/sys/firmware/efi").is_ok()
+    std::fs::metadata("/sys/firmware/efi").is_ok()
 }
 
 // macro to wrap around cmd_lib::run_fun! to prepend pkexec if not root
@@ -36,27 +35,6 @@ pub fn run_as_root(cmd: &str) -> Result<String, std::io::Error> {
 compile_error!(
     "Readymade does not support non-Linux platforms, these functions are Linux-specific."
 );
-/// Chain an error with a custom message.
-pub fn chain_err<E: std::error::Error + Send + Sync + 'static>(
-    msg: &'static str,
-) -> impl FnOnce(E) -> color_eyre::Report {
-    move |e| color_eyre::Report::msg(msg).error(e)
-}
-
-/// Internal function to append an element to a vector.
-pub fn make_push<T>(mut vector: Vec<T>, elem: T) -> Vec<T> {
-    vector.push(elem);
-    vector
-}
-
-/// Internal function to convert an array of `&str` to an array of `serde_json::Value`.
-#[inline]
-pub(crate) fn array_str_to_values<const N: usize>(arr: [&str; N]) -> Vec<serde_json::Value> {
-    arr.into_iter()
-        .map(ToString::to_string)
-        .map(serde_json::Value::String)
-        .collect()
-}
 
 /// Check if the current running system is a Chromebook device.
 ///
@@ -70,4 +48,263 @@ pub(crate) fn array_str_to_values<const N: usize>(arr: [&str; N]) -> Vec<serde_j
 #[cfg(target_os = "linux")]
 pub fn is_chromebook() -> bool {
     std::fs::metadata("/dev/cros_ec").is_ok()
+}
+
+/// Make an enum and impl Serialize
+///
+/// # Examples
+/// ```rs
+/// ini_enum! {
+///     pub enum Idk {
+///         A,
+///         B,
+///         C,
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! ini_enum {
+    (@match $field:ident) => {{
+        stringify!(paste::paste! { [<$field:snake>] }).replace('_', "-")
+    }};
+    (@match $field:ident => $s:literal) => {{
+        $s.to_string()
+    }};
+    (
+        $(#[$outmeta:meta])*
+        $v:vis enum $name:ident {
+            $(
+                $(#[$meta:meta])?
+                $field:ident $(=> $s:literal)?,
+            )*$(,)?
+        }
+    ) => {
+        $(#[$outmeta])*
+        $v enum $name {$(
+            $(#[$meta])?
+            $field,
+        )*}
+        impl serde::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: ::serde::Serializer,
+            {
+                serializer.serialize_str(&match self {$(
+                    Self::$field => ini_enum! { @match $field $(=> $s)? },
+                )*})
+            }
+        }
+    };
+    (
+        $(#[$outmeta1:meta])*
+        $v1:vis enum $name1:ident {
+            $(
+                $(#[$meta1:meta])?
+                $field1:ident $(=> $s1:literal)?,
+            )*$(,)?
+        }
+        $(
+            $(#[$outmeta:meta])*
+            $v:vis enum $name:ident {
+                $(
+                    $(#[$meta:meta])?
+                    $field:ident $(=> $s:literal)?,
+                )*$(,)?
+            }
+        )+
+    ) => {
+        ini_enum! {
+            $(
+                $(#[$outmeta])*
+                $v enum $name {
+                    $(
+                        $(#[$meta])?
+                        $field $(=> $s)?,
+                    )*
+                }
+            )+
+        }
+        ini_enum! {
+            $(#[$outmeta1])*
+            $v1 enum $name1 {
+                $(
+                    $(#[$meta1])?
+                    $field1 $(=> $s1)?,
+                )*
+            }
+        }
+    }
+}
+
+// #[derive(Debug, serde::Serialize, serde::Deserialize)]
+// pub enum InstallStage {
+//     Repart,
+//     Initramfs,
+//     etc...
+// }
+
+/// IPC installation message for non-interactive mode
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub enum InstallMessage {
+    Status(String),
+}
+
+impl InstallMessage {
+    pub fn new(s: &str) -> Self {
+        Self::Status(s.to_owned())
+    }
+
+    pub fn into_json(self) -> String {
+        serde_json::to_string(&self).unwrap()
+    }
+}
+
+#[macro_export]
+macro_rules! stage {
+    // todo: Export text to global progress text
+    ($s:literal $body:block) => {{
+        let s = tracing::info_span!($s);
+
+        if std::env::var("NON_INTERACTIVE_INSTALL").is_ok_and(|v| v == "1") {
+            // Then we are in a non-interactive install, which means we export IPC
+            // to stdout
+            let install_status = $crate::util::InstallMessage::new($s);
+            println!("{}", install_status.into_json());
+        }
+
+        {
+            let _guard = s.enter();
+            tracing::debug!("Entering stage");
+            $body
+        }
+    }};
+}
+
+/// Ignore errors about nonexisting files.
+pub fn exist_then<T: Default>(r: std::io::Result<T>) -> std::io::Result<T> {
+    match r {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+        Err(_) => Ok(T::default()),
+        Ok(x) => Ok(x),
+    }
+}
+
+/// Ignore errors about nonexisting files.
+pub fn exist_then_read_dir<A: AsRef<Path>>(
+    p: A,
+) -> std::io::Result<Box<dyn Iterator<Item = std::fs::DirEntry>>> {
+    match std::fs::read_dir(p) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Box::new(std::iter::empty())),
+        Err(e) => Err(e),
+        Ok(x) => Ok(Box::new(x.flatten())),
+    }
+}
+
+pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> Result<(), std::io::Error> {
+    use rayon::iter::{ParallelBridge, ParallelIterator};
+
+    let to = to.as_ref();
+    std::fs::create_dir_all(to)?;
+    from.as_ref()
+        .read_dir()?
+        .par_bridge()
+        .try_for_each(|dir_entry| -> std::io::Result<()> {
+            let dir_entry = dir_entry?;
+            let to = to.join(dir_entry.file_name());
+            if dir_entry.file_type()?.is_dir() {
+                copy_dir(dir_entry.path(), to)?;
+            } else {
+                std::fs::copy(dir_entry.path(), to)?;
+            }
+            Ok(())
+        })
+}
+
+pub mod cmds {
+    use crossbeam_queue::{ArrayQueue, SegQueue};
+    use std::io::{Read, Write};
+    use std::process::{ChildStderr, ChildStdout, Command, Stdio};
+    use std::sync::Arc;
+    use tracing::{debug, warn};
+
+    fn _just_read_stdout(tx: &Arc<SegQueue<u8>>, stop: &Arc<ArrayQueue<()>>, mut fd: ChildStdout) {
+        while stop.is_empty() {
+            let mut buf = [0];
+            match fd.read(&mut buf) {
+                Ok(1) => tx.push(buf[0]),
+                Err(error) => return warn!(?error, "Fail to read stdout."),
+                _ => continue,
+            }
+        }
+    }
+
+    fn _just_read_stderr(tx: &Arc<SegQueue<u8>>, stop: &Arc<ArrayQueue<()>>, mut fd: ChildStderr) {
+        while stop.is_empty() {
+            let mut buf = [0];
+            match fd.read(&mut buf) {
+                Ok(1) => tx.push(buf[0]),
+                Err(error) => return warn!(?error, "Fail to read stderr."),
+                _ => continue,
+            }
+        }
+    }
+
+    #[tracing::instrument(skip(setup_handle))]
+    pub fn read_while_show_output(
+        cmd: &mut Command,
+        prefix: Option<&str>,
+        setup_handle: impl FnOnce(&mut std::process::Child) -> std::io::Result<()>,
+    ) -> std::io::Result<(std::process::ExitStatus, String, String)> {
+        let prefix = prefix.unwrap_or("");
+        let (newline, newrline) = (format!("\n{prefix}"), format!("\r{prefix}"));
+        let (outq, errq): (Arc<SegQueue<u8>>, Arc<SegQueue<u8>>) = (Arc::default(), Arc::default());
+        let (outstop, errstop) = (Arc::new(ArrayQueue::new(1)), Arc::new(ArrayQueue::new(1)));
+        // clone the arcs for putting into closure
+        let (outqc, errqc, outstopc, errstopc) =
+            (outq.clone(), errq.clone(), outstop.clone(), errstop.clone());
+
+        let mut hdl = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+        setup_handle(&mut hdl)?;
+        let (stdout, stderr) = (hdl.stdout.take().unwrap(), hdl.stderr.take().unwrap());
+        let outhdl = std::thread::spawn(move || _just_read_stdout(&outqc, &outstopc, stdout));
+        let errhdl = std::thread::spawn(move || _just_read_stderr(&errqc, &errstopc, stderr));
+        let (mut out, mut err) = (String::new(), String::new());
+        let (mut tmpoutbytes, mut tmperrbytes) = (vec![], vec![]);
+
+        let pid = process_alive::Pid::from(hdl.id());
+        let mut finish = false;
+        while !finish {
+            if !process_alive::state(pid).is_alive() {
+                finish = true;
+            }
+
+            while let Some(c) = outq.pop() {
+                tmpoutbytes.push(c);
+            }
+            if let Ok(sout) = core::str::from_utf8(&tmpoutbytes) {
+                out.push_str(sout);
+                let s = sout.replace('\n', &newline).replace('\r', &newrline);
+                std::io::stdout().write_all(s.as_bytes())?;
+                tmpoutbytes.clear();
+            }
+
+            while let Some(c) = errq.pop() {
+                tmperrbytes.push(c);
+            }
+            if let Ok(serr) = core::str::from_utf8(&tmperrbytes) {
+                err.push_str(serr);
+                let s = serr.replace('\n', &newline).replace('\r', &newrline);
+                std::io::stderr().write_all(s.as_bytes())?;
+                tmperrbytes.clear();
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+
+        debug!("Command execution finished, joining threads");
+        outstop.push(()).unwrap();
+        errstop.push(()).unwrap();
+        outhdl.join().expect("Fail to join stdout handle thread.");
+        errhdl.join().expect("Fail to join stderr handle thread.");
+        Ok((hdl.wait()?, out, err))
+    }
 }

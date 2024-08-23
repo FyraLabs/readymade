@@ -7,6 +7,7 @@ Summary:        Install ready-made distribution images
 License:        MIT
 URL:            https://github.com/FyraLabs/readymade
 Source0:        %{url}/archive/%{gitcommit}.tar.gz
+Requires:       submarine
 BuildRequires:	anda-srpm-macros rust-packaging
 BuildRequires:  pkgconfig(libhelium-1)
 BuildRequires:  pkgconfig(gnome-desktop-4)
@@ -25,8 +26,12 @@ It is created as a replacement to Red Hat's Anaconda installer for Ultramarine L
 
 %install
 %cargo_install
-install -Dpm644 com.fyralabs.pkexec.readymade.policy %buildroot%_datadir/polkit-1/actions/com.fyralabs.pkexec.readymade.policy
+./install.sh %buildroot
 
-%files
+%find_lang com.fyralabs.Readymade
+
+%files -f com.fyralabs.Readymade.lang
 %_bindir/readymade
 %_datadir/polkit-1/actions/com.fyralabs.pkexec.readymade.policy
+%_datadir/readymade
+%_sysconfdir/readymade.toml
