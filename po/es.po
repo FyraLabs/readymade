@@ -7,8 +7,8 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-07-25 10:42+0000\n"
-"PO-Revision-Date: 2024-07-25 21:14+0800\n"
-"Last-Translator: Alany Benavides <janitogamer21@gmail.com>\n"
+"PO-Revision-Date: 2024-08-28 18:34+0000\n"
+"Last-Translator: Ivan Vodopiviz <ivanvodo@gmail.com>\n"
 "Language-Team: Spanish <https://weblate.fyralabs.com/projects/tauOS/"
 "readymade/es/>\n"
 "Language: es\n"
@@ -16,7 +16,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Poedit 3.4.4\n"
+"X-Generator: Weblate 5.6.2\n"
 
 #: src/pages/completed.rs:31
 msgid "Completed"
@@ -32,7 +32,7 @@ msgstr ""
 
 #: src/pages/completed.rs:56
 msgid "Reboot"
-msgstr ""
+msgstr "Reiniciar"
 
 #: src/pages/confirmation.rs:33
 msgid "Confirmation"
@@ -67,7 +67,7 @@ msgstr ""
 
 #: src/pages/failure.rs:69
 msgid "Report a bug"
-msgstr ""
+msgstr "Reportar un problema"
 
 #: src/pages/installation.rs:44
 msgid "Installation"
