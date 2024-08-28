@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.12\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-07-25 10:42+0000\n"
-"PO-Revision-Date: 2024-08-27 08:34+0000\n"
+"PO-Revision-Date: 2024-08-28 18:34+0000\n"
 "Last-Translator: huuquockiet <huuquockietn@gmail.com>\n"
 "Language-Team: Vietnamese <https://weblate.fyralabs.com/projects/tauOS/"
 "readymade/vi/>\n"
@@ -59,7 +59,7 @@ msgstr "Tiếp"
 
 #: src/pages/failure.rs:34
 msgid "Installation Failure"
-msgstr ""
+msgstr "Cài đặt thất bại"
 
 #: src/pages/failure.rs:40
 msgid "The installation process failed."
@@ -71,16 +71,15 @@ msgstr "Báo cáo lỗi"
 
 #: src/pages/installation.rs:44
 msgid "Installation"
-msgstr ""
+msgstr "Cài đặt"
 
 #: src/pages/installation.rs:61
-#, fuzzy
 msgid "Installing base system..."
-msgstr "Đang cài đặt hệ thống cơ bản"
+msgstr "Đang cài đặt hệ thống cơ bản..."
 
 #: src/pages/installationtype.rs:31
 msgid "Installation Type"
-msgstr ""
+msgstr "Kiểu cài đặt"
 
 #: src/pages/installationtype.rs:90
 msgid "Chromebook"
@@ -93,6 +92,9 @@ msgstr "Ngôn ngữ"
 #: src/pages/welcome.rs:27 src/pages/welcome.rs:68
 msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
+"Trải nghiệm thử %s từ trình cài đặt này hoặc bắt đầu quá trình tải xuống "
+"ngay lập tức. Bạn luôn có thể quay lại màn hình này bằng cách chọn \"Trình "
+"tải xuống\" trong menu."
 
 #: src/pages/welcome.rs:31 src/pages/welcome.rs:61
 msgid "Welcome to %s"
