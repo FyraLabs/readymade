@@ -1,116 +1,105 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# Copyright (C) YEAR THE Readymade'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the Readymade package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
 msgid ""
 msgstr ""
-"Project-Id-Version: Readymade 0.1.0\n"
+"Project-Id-Version: Readymade 0.1.12\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-07-25 10:42+0000\n"
 "PO-Revision-Date: 2024-08-28 18:34+0000\n"
-"Last-Translator: Ivan Vodopiviz <ivanvodo@gmail.com>\n"
-"Language-Team: Spanish <https://weblate.fyralabs.com/projects/tauOS/"
-"readymade/es/>\n"
-"Language: es\n"
+"Last-Translator: huuquockiet <huuquockietn@gmail.com>\n"
+"Language-Team: Vietnamese <https://weblate.fyralabs.com/projects/tauOS/"
+"readymade/vi/>\n"
+"Language: vi\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 "X-Generator: Weblate 5.6.2\n"
 
 #: src/pages/completed.rs:31
 msgid "Completed"
-msgstr ""
+msgstr "Xong"
 
 #: src/pages/completed.rs:37
 msgid "Installation complete. You may reboot now and enjoy your fresh system."
 msgstr ""
+"Cài đặt hoàn tất. Bạn có thể khởi động lại ngay và tận hưởng hệ thống mới "
+"của bạn."
 
 #: src/pages/completed.rs:49 src/pages/failure.rs:62
 msgid "Close"
-msgstr ""
+msgstr "Đóng"
 
 #: src/pages/completed.rs:56
 msgid "Reboot"
-msgstr "Reiniciar"
+msgstr "Khởi động lại"
 
 #: src/pages/confirmation.rs:33
 msgid "Confirmation"
-msgstr "Confirmación"
+msgstr "Xác nhận"
 
-#: src/pages/confirmation.rs:100 src/pages/destination.rs:111
-#: src/pages/installationtype.rs:103
+#: src/pages/confirmation.rs:100 src/pages/destination.rs:111 src/pages/installationtype.rs:103
 msgid "Previous"
-msgstr "Previo"
+msgstr "Trước"
 
 #: src/pages/confirmation.rs:110 src/pages/welcome.rs:88
 msgid "Install"
-msgstr "Instalar"
+msgstr "Cài đặt"
 
 #: src/pages/destination.rs:86
 msgid "Destination"
-msgstr "Destino"
+msgstr "Đích"
 
 #: src/pages/destination.rs:121 src/pages/language.rs:107
 msgid "Next"
-msgstr "Siguiente"
+msgstr "Tiếp"
 
 #: src/pages/failure.rs:34
-#, fuzzy
-#| msgid "Installation Type"
 msgid "Installation Failure"
-msgstr "Tipo de Instalación"
+msgstr "Cài đặt thất bại"
 
 #: src/pages/failure.rs:40
 msgid "The installation process failed."
-msgstr ""
+msgstr "Quá trình tải xuống đã thất bại."
 
 #: src/pages/failure.rs:69
 msgid "Report a bug"
-msgstr "Reportar un problema"
+msgstr "Báo cáo lỗi"
 
 #: src/pages/installation.rs:44
 msgid "Installation"
-msgstr "Instalación"
+msgstr "Cài đặt"
 
 #: src/pages/installation.rs:61
 msgid "Installing base system..."
-msgstr "Instalando sistema base..."
+msgstr "Đang cài đặt hệ thống cơ bản..."
 
 #: src/pages/installationtype.rs:31
 msgid "Installation Type"
-msgstr "Tipo de Instalación"
+msgstr "Kiểu cài đặt"
 
 #: src/pages/installationtype.rs:90
 msgid "Chromebook"
-msgstr ""
+msgstr "Chromebook"
 
 #: src/pages/language.rs:80
 msgid "Language"
-msgstr ""
+msgstr "Ngôn ngữ"
 
 #: src/pages/welcome.rs:27 src/pages/welcome.rs:68
-msgid ""
-"Either test %s from this installer or start the installation now. You can "
-"always return to this screen by selecting \"Installer\" in the menu."
+msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
-"Puedes probar %s de este instalador o iniciar la instalación ahora. Tu "
-"siempre podrás regresar a esta pantalla al seleccionar \"Instalador\" en el "
-"menú."
+"Trải nghiệm thử %s từ trình cài đặt này hoặc bắt đầu quá trình tải xuống "
+"ngay lập tức. Bạn luôn có thể quay lại màn hình này bằng cách chọn \"Trình "
+"tải xuống\" trong menu."
 
 #: src/pages/welcome.rs:31 src/pages/welcome.rs:61
 msgid "Welcome to %s"
-msgstr "Bienvenid@ a %s"
+msgstr "Chào mừng tới %s"
 
 #: src/pages/welcome.rs:81
 msgid "Try"
-msgstr "Intenta"
-
-#~ msgid "Entire Disk"
-#~ msgstr "Disco Completo"
-
-#~ msgid "Dual Boot"
-#~ msgstr "Arranque Dual"
-
-#~ msgid "Custom"
-#~ msgstr "Personalizado"
+msgstr "Thử"
