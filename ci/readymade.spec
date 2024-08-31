@@ -13,6 +13,7 @@ BuildRequires:  pkgconfig(libhelium-1)
 BuildRequires:  pkgconfig(gnome-desktop-4)
 BuildRequires:  clang-devel
 BuildRequires:  gcc
+BuildRequires:  ldd
 
 %description
 Readymade is a Linux Distribution installer based on the great distinst library by System76.
