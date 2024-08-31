@@ -100,6 +100,8 @@ And if possible, write tests for your code, and run `cargo test` to ensure that 
 
 Readymade requires a configuration file at `/etc/readymade.toml`. You can change it to another path using the environment variable `READYMADE_CONFIG`.
 
+Some example configuration files for Ultramarine are in `templates/`.
+
 Example configuration file:
 
 ```toml
