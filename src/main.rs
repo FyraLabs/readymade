@@ -112,7 +112,7 @@ impl SimpleComponent for AppModel {
         libhelium::ApplicationWindow {
             set_title: Some("Readymade Installer"),
             set_default_width: 550,
-            set_default_height: 800,
+            set_default_height: 600,
             set_vexpand: true,
 
             #[wrap(Some)]

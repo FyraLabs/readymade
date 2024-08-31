@@ -48,7 +48,7 @@ impl SimpleComponent for WelcomePage {
                 set_halign: gtk::Align::Center,
 
                 gtk::Image {
-                    set_from_icon_name: Some(&crate::CONFIG.read().distro.icon),
+                    set_icon_name: Some(&crate::CONFIG.read().distro.icon),
                     inline_css: "-gtk-icon-size: 128px",
                 },
 
