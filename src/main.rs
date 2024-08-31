@@ -17,6 +17,7 @@ use relm4::{
     SimpleComponent,
 };
 use tracing_subscriber::prelude::*;
+use tracing_subscriber::{fmt, EnvFilter};
 
 /// State related to the user's installation configuration
 static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
@@ -236,28 +237,18 @@ fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
     std::fs::create_dir_all(&temp_dir).expect("create readymade logs tempdir");
     let file_appender = tracing_appender::rolling::never(&temp_dir, "readymade.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-    let sub_builder = tracing_subscriber::fmt()
-        // note: The only last writer will be used, so we will have to use layers to log to multiple places instead
-        .with_ansi(true)
-        .pretty()
-        .finish()
-        // Log to journald, to
-        .with(tracing_subscriber::EnvFilter::builder().with_default_directive(tracing::level_filters::LevelFilter::TRACE.into()).parse(std::env::var("RUST_LOG").unwrap_or_default()).unwrap())
-        .with(tracing_subscriber::fmt::Layer::new()
-            // .with_writer(std::io::stderr)
-            .with_writer(non_blocking)
-            .with_ansi(false)
-            .compact()
-            // .with_filter(tracing::level_filters::LevelFilter::TRACE)
+
+    tracing_subscriber::registry()
+        .with(fmt::layer().pretty())
+        .with(EnvFilter::from_env("READYMADE_LOG"))
+        .with(
+            tracing_journald::layer()
+                .unwrap()
+                .with_syslog_identifier("readymade".to_owned()),
         )
-        .with(tracing_journald::layer()
-            .expect("unable to create journald layer")
-            .with_syslog_identifier("readymade".to_owned())
-            // todo: log trace too??? why does it only log info
-            // make layers log levels higher than info
-            );
-    tracing::subscriber::set_global_default(sub_builder).expect("unable to set global subscriber");
-    if cfg!(debug_assert) {
+        .init();
+
+    if cfg!(debug_assertions) {
         tracing::info!("Running in debug mode");
     }
     tracing::info!(
