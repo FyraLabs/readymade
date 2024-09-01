@@ -246,6 +246,12 @@ fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
                 .unwrap()
                 .with_syslog_identifier("readymade".to_owned()),
         )
+        .with(
+            fmt::layer()
+                .with_writer(non_blocking)
+                .with_ansi(false)
+                .compact(),
+        )
         .init();
 
     if cfg!(debug_assertions) {
