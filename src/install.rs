@@ -1,9 +1,11 @@
+use color_eyre::eyre::bail;
 use color_eyre::eyre::eyre;
 use color_eyre::eyre::OptionExt;
 use color_eyre::{Result, Section};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::process::Command;
+use std::process::Stdio;
 use std::{
     io::Write,
     path::{Path, PathBuf},
@@ -175,26 +177,47 @@ impl InstallationState {
             }
         };
 
-        let arg = if systemd_version()? >= 256 {
-            "--generate-fstab"
-        } else {
-            ""
-        };
-
         let dry_run = if cfg!(debug_assertions) { "yes" } else { "no" };
-        tracing::debug!(?dry_run, "Running systemd-repart");
-        let out = cmd_lib::run_fun!(
-            pkexec systemd-repart
-                --dry-run=$dry_run
-                --definitions=$cfgdir
-                --empty=force
-                --offline=false
-                $arg
-                --copy-source=$copy_source
-                --json=pretty
-                $blockdev
-        )
-        .map_err(|e| color_eyre::eyre::eyre!("systemd-repart failed").wrap_err(e))?;
+
+        let mut args = vec![
+            "systemd-repart",
+            "--dry-run",
+            dry_run,
+            "--definitions",
+            cfgdir.to_str().unwrap(),
+            "--empty",
+            "force",
+            "--offline",
+            "false",
+            "--copy-source",
+            &copy_source,
+            "--json",
+            "pretty",
+        ];
+
+        if systemd_version()? >= 256 {
+            args.push("--generate-fstab");
+        }
+
+        args.push(blockdev.to_str().unwrap());
+
+        tracing::debug!(?dry_run, ?args, "Running systemd-repart with pkexec");
+
+        let repart_cmd = Command::new("pkexec")
+            .args(args)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .output()
+            .map_err(|e| eyre!("systemd-repart failed").wrap_err(e))?;
+
+        if !repart_cmd.status.success() {
+            bail!(
+                "systemd-repart errored with status code {:?}",
+                repart_cmd.status.code()
+            );
+        }
+
+        let out = std::str::from_utf8(&repart_cmd.stdout)?;
 
         // todo: wait for systemd 256 or genfstab magic
         tracing::debug!(out, "systemd-repart finished");
