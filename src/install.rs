@@ -1,4 +1,5 @@
 use color_eyre::eyre::eyre;
+use color_eyre::eyre::OptionExt;
 use color_eyre::{Result, Section};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -39,8 +40,8 @@ pub struct InstallationState {
 impl Default for InstallationState {
     fn default() -> Self {
         Self {
-            langlocale: Default::default(),
-            destination_disk: Default::default(),
+            langlocale: Option::default(),
+            destination_disk: Option::default(),
             installation_type: if let [one] = &crate::CONFIG.read().install.allowed_installtypes[..]
             {
                 Some(*one)
@@ -55,22 +56,25 @@ impl InstallationState {
     // todo: move methods from installationstate to here!
     pub fn install_using_subprocess(&self) -> Result<()> {
         let mut command = Command::new("pkexec");
+        command.arg("env");
+
+        if let Ok(value) = std::env::var("REPART_COPY_SOURCE") {
+            command.arg(format!("REPART_COPY_SOURCE={}", value));
+        }
+
+        if let Ok(value) = std::env::var("READYMADE_LOG") {
+            command.arg(format!("READYMADE_LOG={}", value));
+        }
+
         command
             .arg(std::env::current_exe()?)
             .arg("--non-interactive")
             .stdin(std::process::Stdio::piped());
 
-        // pass in REPART_COPY_SOURCE if it's set
-        // This is a bit hacky, I should fix this later
-        if std::env::var("REPART_COPY_SOURCE").is_ok() {
-            command.env("REPART_COPY_SOURCE", std::env::var("REPART_COPY_SOURCE")?);
-        }
-
         print!("┌─ BEGIN: Readymade subprocess logs\n│ ");
         let res = crate::util::cmds::read_while_show_output(&mut command, Some("│ "), |hdl| {
             let mut child_stdin = hdl.stdin.take().expect("can't take stdin");
             child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
-            hdl.stdin = Some(child_stdin);
             Ok(())
         });
         println!("└─ END OF Readymade subprocess logs");
