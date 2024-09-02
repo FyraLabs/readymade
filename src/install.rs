@@ -1,6 +1,5 @@
 use color_eyre::eyre::bail;
 use color_eyre::eyre::eyre;
-use color_eyre::eyre::OptionExt;
 use color_eyre::{Result, Section};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -177,7 +176,9 @@ impl InstallationState {
             }
         };
 
-        let dry_run = if cfg!(debug_assertions) { "yes" } else { "no" };
+        let dry_run =
+            std::env::var("READYMADE_DRY_RUN").map_or(cfg!(debug_assertions), |v| v == "1");
+        let dry_run = if dry_run { "yes" } else { "no" };
 
         let mut args = vec![
             "systemd-repart",
@@ -258,10 +259,14 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> Result<()> {
         });
 
         stage!("Generating stage 2 grub.cfg in /boot/grub2/grub.cfg..." {
-            _ = std::process::Command::new("grub2-mkconfig")
+            let grub_cmd_status = Command::new("grub2-mkconfig")
                 .arg("-o")
                 .arg("/boot/grub2/grub.cfg")
                 .status()?;
+
+            if !grub_cmd_status.success() {
+                bail!("grub2-mkconfig failed with exit code {:?}", grub_cmd_status.code());
+            }
         });
     }
 
@@ -302,12 +307,16 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> Result<()> {
 
         // install kernel
 
-        std::process::Command::new("kernel-install")
+        let kernel_install_cmd_status = Command::new("kernel-install")
             .arg("add")
             .arg(kver)
             .arg(format!("/lib/modules/{kver}/vmlinuz"))
             .arg("--verbose")
             .status()?;
+
+        if !kernel_install_cmd_status.success() {
+            bail!("kernel-install failed with exit code {:?}", kernel_install_cmd_status.code());
+        }
     });
     if systemd_version()? <= 256 {
         stage!("Generating /etc/fstab..." {
@@ -323,7 +332,7 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> Result<()> {
         //
         // on my system this reduces the size from 170M down to 43M.
         // — mado
-        std::process::Command::new("dracut").args([
+        let dracut_cmd_status = Command::new("dracut").args([
             "--force",
             "--parallel",
             "--regenerate-all",
@@ -331,6 +340,10 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> Result<()> {
             "--strip",
             "--aggressive-strip",
         ]).status()?;
+
+        if !dracut_cmd_status.success() {
+            bail!("dracut failed with exit code {:?}", dracut_cmd_status.code());
+        }
     });
 
     stage!("Initializing system" {
@@ -338,11 +351,15 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> Result<()> {
     });
 
     stage!("Setting SELinux contexts..." {
-        std::process::Command::new("setfiles")
+        let setfiles_cmd_status = Command::new("setfiles")
             .args(["-e", "/proc", "-e", "/sys"])
             .arg("/etc/selinux/targeted/contexts/files/file_contexts")
             .arg("/")
             .status()?;
+
+        if !setfiles_cmd_status.success() {
+            bail!("dracut failed with exit code {:?}", setfiles_cmd_status.code());
+        }
     });
 
     Ok(())
