@@ -120,8 +120,6 @@ impl SimpleComponent for AppModel {
             set_child = &gtk::Box {
                 set_vexpand: true,
                 set_orientation: gtk::Orientation::Vertical,
-                libhelium::AppBar {
-                },
                 #[transition = "SlideLeftRight"]
                 match model.page {
                     Page::Language => *model.language_page.widget(),

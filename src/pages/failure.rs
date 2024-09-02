@@ -38,7 +38,7 @@ impl SimpleComponent for FailurePage {
             // set_halign: gtk::Align::Center,
             // set_valign: gtk::Align::Center,
 
-            add = &gtk::Box {
+            append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_vexpand: true,
                 set_hexpand: true,

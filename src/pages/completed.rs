@@ -29,7 +29,7 @@ impl SimpleComponent for CompletedPage {
             set_title: &gettext("Completed"),
             set_vexpand: true,
 
-            add = &gtk::Box {
+            append = &gtk::Box {
                 gtk::Label {
                     #[watch]
                     set_label: &gettext("Installation complete. You may reboot now and enjoy your fresh system."),

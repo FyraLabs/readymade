@@ -43,7 +43,7 @@ impl Component for InstallationPage {
             set_title: &*gettext("Installation"),
             set_vexpand: true,
 
-            add = &gtk::Box {
+            append = &gtk::Box {
                 set_hexpand: true,
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,

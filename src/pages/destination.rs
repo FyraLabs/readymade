@@ -84,7 +84,7 @@ impl SimpleComponent for DestinationPage {
             set_vexpand: true,
             set_hexpand: false,
 
-            add = &gtk::Box {
+            append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
                 gtk::ScrolledWindow {

@@ -95,7 +95,7 @@ impl SimpleComponent for LanguagePage {
             #[watch]
             set_title: &gettext("Language"),
             set_vexpand: true,
-            add = &gtk::Box {
+            append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
                 set_vexpand: true,

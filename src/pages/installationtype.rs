@@ -29,7 +29,7 @@ impl SimpleComponent for InstallationTypePage {
             set_title: &gettext("Installation Type"),
             set_vexpand: true,
 
-            add = &gtk::Box {
+            append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 6,
 

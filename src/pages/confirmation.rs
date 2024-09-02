@@ -29,7 +29,7 @@ impl SimpleComponent for ConfirmationPage {
             #[watch]
             set_title: &gettext("Confirmation"),
             set_vexpand: true,
-            add = &gtk::Box {
+            append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
 
