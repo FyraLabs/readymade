@@ -2236,9 +2236,9 @@ dependencies = [
 
 [[package]]
 name = "tiffin"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd2c8a021892c6153ea4f923205ad1f9fe20a826158e030ead09127ed3dbdca6"
+checksum = "f90a4f96511214f78312e53fcfdf332a3bc67693bc2f1c266aac7676ac71859c"
 dependencies = [
  "itertools 0.13.0",
  "nix",
