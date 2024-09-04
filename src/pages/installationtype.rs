@@ -25,8 +25,11 @@ impl SimpleComponent for InstallationTypePage {
 
     view! {
         libhelium::ViewMono {
-            #[watch]
-            set_title: &gettext("Installation Type"),
+            #[wrap(Some)]
+            set_title = &gtk::Label {
+                set_label: &gettext("Installation Type"),
+                set_css_classes: &["view-title"]
+            },
             set_vexpand: true,
 
             append = &gtk::Box {

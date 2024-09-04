@@ -26,8 +26,11 @@ impl SimpleComponent for ConfirmationPage {
 
     view! {
         libhelium::ViewMono {
-            #[watch]
-            set_title: &gettext("Confirmation"),
+            #[wrap(Some)]
+            set_title = &gtk::Label {
+                set_label: &gettext("Confirmation"),
+                set_css_classes: &["view-title"]
+            },
             set_vexpand: true,
             append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
