@@ -25,8 +25,11 @@ impl SimpleComponent for CompletedPage {
 
     view! {
         libhelium::ViewMono {
-            #[watch]
-            set_title: &gettext("Completed"),
+            #[wrap(Some)]
+            set_title = &gtk::Label {
+                set_label: &gettext("Completed"),
+                set_css_classes: &["view-title"]
+            },
             set_vexpand: true,
 
             append = &gtk::Box {

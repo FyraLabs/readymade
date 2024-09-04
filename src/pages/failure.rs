@@ -31,8 +31,11 @@ impl SimpleComponent for FailurePage {
 
     view! {
         libhelium::ViewMono {
-            #[watch]
-            set_title: &gettext("Installation Failure"),
+            #[wrap(Some)]
+            set_title = &gtk::Label {
+                set_label: &gettext("Installation Failure"),
+                set_css_classes: &["view-title"]
+            },
             set_vexpand: true,
             set_hexpand: true,
             // set_halign: gtk::Align::Center,

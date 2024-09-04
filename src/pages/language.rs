@@ -92,8 +92,11 @@ impl SimpleComponent for LanguagePage {
 
     view! {
         libhelium::ViewMono {
-            #[watch]
-            set_title: &gettext("Language"),
+            #[wrap(Some)]
+            set_title = &gtk::Label {
+                set_label: &gettext("Language"),
+                set_css_classes: &["view-title"]
+            },
             set_vexpand: true,
             append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,

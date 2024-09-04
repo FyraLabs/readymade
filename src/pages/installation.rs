@@ -39,8 +39,11 @@ impl Component for InstallationPage {
 
     view! {
         libhelium::ViewMono {
-            #[watch]
-            set_title: &*gettext("Installation"),
+            #[wrap(Some)]
+            set_title = &gtk::Label {
+                set_label: &gettext("Installation"),
+                set_css_classes: &["view-title"]
+            },
             set_vexpand: true,
 
             append = &gtk::Box {

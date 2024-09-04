@@ -1227,9 +1227,9 @@ checksum = "d8adc4bb1803a324070e64a98ae98f38934d91957a99cfb3a43dcbc01bc56439"
 
 [[package]]
 name = "libhelium"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1def74f3658ee1bba72625c6283fbe4f457eb07f01d4ac285f9355613684a646"
+checksum = "41137d26c3e6ffd9b7740ea89e8950d3c7db7063e0dbe9c5d1a001cfc9c29180"
 dependencies = [
  "bitflags 2.6.0",
  "futures-channel",
@@ -1246,9 +1246,9 @@ dependencies = [
 
 [[package]]
 name = "libhelium-sys"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4fdb0c43e046ace6f44600390776cc44e0ce76d0ef2adddbe981b33724b78d9"
+checksum = "da6ae022732042b952ea63ab20a7f30d5d9fe1df4b6e1141558db32b121cf3a4"
 dependencies = [
  "gdk4-sys",
  "gio-sys 0.20.1",
