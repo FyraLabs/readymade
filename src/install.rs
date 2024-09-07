@@ -224,6 +224,7 @@ impl InstallationState {
 
         if systemd_version()? >= 256 {
             args.push("--generate-fstab");
+            args.push("/etc/fsab");
         }
 
         args.push(blockdev.to_str().unwrap());
