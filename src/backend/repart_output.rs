@@ -62,7 +62,7 @@ impl RepartOutput {
 
             writeln!(
                 fstab,
-                "UUID={uuid}\t{mntpoint}\t{fs_type}\t{options}\t{dump}\t{pass}"
+                "PARTUUID={uuid}\t{mntpoint}\t{fs_type}\t{options}\t{dump}\t{pass}"
             )
             .unwrap();
         }
