@@ -24,6 +24,8 @@ Please refer to [HACKING.md](HACKING.md) for more information on how to contribu
 
 As the convention of making up codenames for system components after J-Pop references, we have decided to name the installer after Ado's single, [Readymade](https://youtu.be/jg09lNupc1s), which happens to have a cool meaning to it as this installer essentially installs ready-made squashfs images.
 
+The lyrics themselves could be seen as an insult to people overcomplicating things for themselves (e.g. Arch installation).
+
 ## Licensing
 
 Readymade is generally licensed under the MIT License, but some parts of the codebase and assets may be licensed differently. The non-MIT licensed parts will be clearly marked in the source code and in the assets.
