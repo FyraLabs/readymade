@@ -1738,6 +1738,7 @@ dependencies = [
  "lsblk",
  "open",
  "os-detect",
+ "os_pipe",
  "paste",
  "process_alive",
  "rayon",
@@ -1748,6 +1749,7 @@ dependencies = [
  "serde_with",
  "strip-ansi-escapes",
  "sys-mount",
+ "tee_readwrite",
  "tempfile",
  "thiserror",
  "tiffin",
@@ -2165,6 +2167,12 @@ name = "target-lexicon"
 version = "0.12.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
+
+[[package]]
+name = "tee_readwrite"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57d3e5629bb07f004134a87a2d3cb6272f0a455942401f35776e3f17ecc8d955"
 
 [[package]]
 name = "temp-dir"

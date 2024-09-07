@@ -3,12 +3,16 @@ use color_eyre::eyre::eyre;
 use color_eyre::{Result, Section};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use std::io::BufRead;
+use std::io::BufReader;
 use std::process::Command;
 use std::process::Stdio;
 use std::{
     io::Write,
     path::{Path, PathBuf},
 };
+use tee_readwrite::TeeReader;
+use tee_readwrite::TeeWriter;
 
 use crate::util::{exist_then, exist_then_read_dir};
 use crate::{
@@ -68,20 +72,21 @@ impl InstallationState {
             std::env::var("READYMADE_LOG").unwrap_or("trace".to_string())
         ));
 
+        let mut stdout_logs: Vec<u8> = Vec::new();
+        let mut stderr_logs: Vec<u8> = Vec::new();
+
+        let (stdout_reader, stdout_writer) = os_pipe::pipe()?;
+        let (stderr_reader, stderr_writer) = os_pipe::pipe()?;
+
+        let tee_stdout = TeeReader::new(stdout_reader, &mut stdout_logs, false);
+        let tee_stderr = TeeReader::new(stderr_reader, &mut stderr_logs, false);
+
         command
             .arg(std::env::current_exe()?)
             .arg("--non-interactive")
             .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped());
-
-        // print!("┌─ BEGIN: Readymade subprocess logs\n│ ");
-        // let res = crate::util::cmds::read_while_show_output(&mut command, Some("│ "), |hdl| {
-        //     let mut child_stdin = hdl.stdin.take().expect("can't take stdin");
-        //     child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
-        //     Ok(())
-        // });
-        // println!("└─ END OF Readymade subprocess logs");
+            .stdout(stdout_writer)
+            .stderr(stderr_writer);
 
         let mut res = command.spawn()?;
 
@@ -90,7 +95,26 @@ impl InstallationState {
             child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
         }
 
-        let res = res.wait_with_output();
+        print!("┌─ BEGIN: Readymade subprocess logs\n│ ");
+        let res = std::thread::scope(|s| {
+            s.spawn(|| {
+                let reader = BufReader::new(tee_stdout);
+                reader
+                    .lines()
+                    .for_each(|line| println!("| {}", line.unwrap()));
+            });
+            s.spawn(|| {
+                let reader = BufReader::new(tee_stderr);
+                reader
+                    .lines()
+                    .for_each(|line| eprintln!("| {}", line.unwrap()));
+            });
+
+            let result = res.wait_with_output();
+            drop(command);
+            result
+        });
+        println!("└─ END OF Readymade subprocess logs");
 
         match res {
             Ok(output) if output.status.success() => Ok(()),
@@ -100,7 +124,7 @@ impl InstallationState {
                     format!(
                         "Stdout:\n{}",
                         strip_ansi_escapes::strip_str(
-                            &String::from_utf8(output.stdout).expect("stdout is not valid UTF-8")
+                            &String::from_utf8(stdout_logs).expect("stdout is not valid UTF-8")
                         )
                     )
                 })
@@ -108,7 +132,7 @@ impl InstallationState {
                     format!(
                         "Stderr:\n{}",
                         strip_ansi_escapes::strip_str(
-                            &String::from_utf8(output.stderr).expect("stderr is not valid UTF-8")
+                            &String::from_utf8(stderr_logs).expect("stderr is not valid UTF-8")
                         )
                     )
                 })),
