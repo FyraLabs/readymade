@@ -63,29 +63,55 @@ impl InstallationState {
             command.arg(format!("REPART_COPY_SOURCE={}", value));
         }
 
-        if let Ok(value) = std::env::var("READYMADE_LOG") {
-            command.arg(format!("READYMADE_LOG={}", value));
-        }
+        command.arg(format!(
+            "READYMADE_LOG={}",
+            std::env::var("READYMADE_LOG").unwrap_or("trace".to_string())
+        ));
 
         command
             .arg(std::env::current_exe()?)
             .arg("--non-interactive")
-            .stdin(std::process::Stdio::piped());
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
 
-        print!("┌─ BEGIN: Readymade subprocess logs\n│ ");
-        let res = crate::util::cmds::read_while_show_output(&mut command, Some("│ "), |hdl| {
-            let mut child_stdin = hdl.stdin.take().expect("can't take stdin");
+        // print!("┌─ BEGIN: Readymade subprocess logs\n│ ");
+        // let res = crate::util::cmds::read_while_show_output(&mut command, Some("│ "), |hdl| {
+        //     let mut child_stdin = hdl.stdin.take().expect("can't take stdin");
+        //     child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
+        //     Ok(())
+        // });
+        // println!("└─ END OF Readymade subprocess logs");
+
+        let mut res = command.spawn()?;
+
+        {
+            let mut child_stdin = res.stdin.take().expect("can't take stdin");
             child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
-            Ok(())
-        });
-        println!("└─ END OF Readymade subprocess logs");
+        }
+
+        let res = res.wait_with_output();
 
         match res {
-            Ok((exit_status, ..)) if exit_status.success() => Ok(()),
-            Ok((exit_status, stdout, stderr)) => Err(eyre!("Readymade subprocess failed")
-                .with_note(|| exit_status.to_string())
-                .with_note(|| format!("Stdout:\n{}", strip_ansi_escapes::strip_str(&stdout)))
-                .with_note(|| format!("Stderr:\n{}", strip_ansi_escapes::strip_str(&stderr)))),
+            Ok(output) if output.status.success() => Ok(()),
+            Ok(output) => Err(eyre!("Readymade subprocess failed")
+                .with_note(|| output.status.to_string())
+                .with_note(|| {
+                    format!(
+                        "Stdout:\n{}",
+                        strip_ansi_escapes::strip_str(
+                            &String::from_utf8(output.stdout).expect("stdout is not valid UTF-8")
+                        )
+                    )
+                })
+                .with_note(|| {
+                    format!(
+                        "Stderr:\n{}",
+                        strip_ansi_escapes::strip_str(
+                            &String::from_utf8(output.stderr).expect("stderr is not valid UTF-8")
+                        )
+                    )
+                })),
             Err(e) => Err(eyre!("Failed to execute readymade non-interactively").wrap_err(e)),
         }
     }
