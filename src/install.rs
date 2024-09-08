@@ -369,12 +369,12 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> Result<()> {
             bail!("kernel-install failed with exit code {:?}", kernel_install_cmd_status.code());
         }
     });
-    if systemd_version()? <= 256 {
-        stage!("Generating /etc/fstab..." {
-            let mut fstab = std::fs::File::create("/etc/fstab")?;
-            fstab.write_all(output.generate_fstab().as_bytes())?;
-        });
-    }
+    // if systemd_version()? <= 256 {
+    //     stage!("Generating /etc/fstab..." {
+    //         let mut fstab = std::fs::File::create("/etc/fstab")?;
+    //         fstab.write_all(output.generate_fstab().as_bytes())?;
+    //     });
+    // }
 
     stage!("Regenerating initramfs" {
         // We assume the installation wouldn't be used on another system (false only if you install
