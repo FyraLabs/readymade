@@ -231,7 +231,6 @@ impl InstallationState {
         let dry_run = if dry_run { "yes" } else { "no" };
 
         let mut args = vec![
-            "systemd-repart",
             "--dry-run",
             dry_run,
             "--definitions",
@@ -248,14 +247,14 @@ impl InstallationState {
 
         // if systemd_version()? >= 256 {
         //     args.push("--generate-fstab");
-        //     args.push("/etc/fsab");
+        //     args.push("/dev/stdout");
         // }
 
         args.push(blockdev.to_str().unwrap());
 
-        tracing::debug!(?dry_run, ?args, "Running systemd-repart with pkexec");
+        tracing::debug!(?dry_run, ?args, "Running systemd-repart");
 
-        let repart_cmd = Command::new("pkexec")
+        let repart_cmd = Command::new("systemd-repart")
             .args(args)
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
