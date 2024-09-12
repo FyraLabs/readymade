@@ -3,12 +3,16 @@ use color_eyre::eyre::eyre;
 use color_eyre::{Result, Section};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use std::io::BufRead;
+use std::io::BufReader;
 use std::process::Command;
 use std::process::Stdio;
 use std::{
     io::Write,
     path::{Path, PathBuf},
 };
+use tee_readwrite::TeeReader;
+use tee_readwrite::TeeWriter;
 
 use crate::util::{exist_then, exist_then_read_dir};
 use crate::{
@@ -63,29 +67,75 @@ impl InstallationState {
             command.arg(format!("REPART_COPY_SOURCE={}", value));
         }
 
-        if let Ok(value) = std::env::var("READYMADE_LOG") {
-            command.arg(format!("READYMADE_LOG={}", value));
-        }
+        command.arg(format!(
+            "READYMADE_LOG={}",
+            std::env::var("READYMADE_LOG").unwrap_or("trace".to_string())
+        ));
+
+        let mut stdout_logs: Vec<u8> = Vec::new();
+        let mut stderr_logs: Vec<u8> = Vec::new();
+
+        let (stdout_reader, stdout_writer) = os_pipe::pipe()?;
+        let (stderr_reader, stderr_writer) = os_pipe::pipe()?;
+
+        let tee_stdout = TeeReader::new(stdout_reader, &mut stdout_logs, false);
+        let tee_stderr = TeeReader::new(stderr_reader, &mut stderr_logs, false);
 
         command
             .arg(std::env::current_exe()?)
             .arg("--non-interactive")
-            .stdin(std::process::Stdio::piped());
+            .stdin(std::process::Stdio::piped())
+            .stdout(stdout_writer)
+            .stderr(stderr_writer);
+
+        let mut res = command.spawn()?;
+
+        {
+            let mut child_stdin = res.stdin.take().expect("can't take stdin");
+            child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
+        }
 
         print!("┌─ BEGIN: Readymade subprocess logs\n│ ");
-        let res = crate::util::cmds::read_while_show_output(&mut command, Some("│ "), |hdl| {
-            let mut child_stdin = hdl.stdin.take().expect("can't take stdin");
-            child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
-            Ok(())
+        let res = std::thread::scope(|s| {
+            s.spawn(|| {
+                let reader = BufReader::new(tee_stdout);
+                reader
+                    .lines()
+                    .for_each(|line| println!("| {}", line.unwrap()));
+            });
+            s.spawn(|| {
+                let reader = BufReader::new(tee_stderr);
+                reader
+                    .lines()
+                    .for_each(|line| eprintln!("| {}", line.unwrap()));
+            });
+
+            let result = res.wait_with_output();
+            drop(command);
+            result
         });
         println!("└─ END OF Readymade subprocess logs");
 
         match res {
-            Ok((exit_status, ..)) if exit_status.success() => Ok(()),
-            Ok((exit_status, stdout, stderr)) => Err(eyre!("Readymade subprocess failed")
-                .with_note(|| exit_status.to_string())
-                .with_note(|| format!("Stdout:\n{}", strip_ansi_escapes::strip_str(&stdout)))
-                .with_note(|| format!("Stderr:\n{}", strip_ansi_escapes::strip_str(&stderr)))),
+            Ok(output) if output.status.success() => Ok(()),
+            Ok(output) => Err(eyre!("Readymade subprocess failed")
+                .with_note(|| output.status.to_string())
+                .with_note(|| {
+                    format!(
+                        "Stdout:\n{}",
+                        strip_ansi_escapes::strip_str(
+                            &String::from_utf8(stdout_logs).expect("stdout is not valid UTF-8")
+                        )
+                    )
+                })
+                .with_note(|| {
+                    format!(
+                        "Stderr:\n{}",
+                        strip_ansi_escapes::strip_str(
+                            &String::from_utf8(stderr_logs).expect("stderr is not valid UTF-8")
+                        )
+                    )
+                })),
             Err(e) => Err(eyre!("Failed to execute readymade non-interactively").wrap_err(e)),
         }
     }
@@ -181,7 +231,6 @@ impl InstallationState {
         let dry_run = if dry_run { "yes" } else { "no" };
 
         let mut args = vec![
-            "systemd-repart",
             "--dry-run",
             dry_run,
             "--definitions",
@@ -196,15 +245,16 @@ impl InstallationState {
             "pretty",
         ];
 
-        if systemd_version()? >= 256 {
-            args.push("--generate-fstab");
-        }
+        // if systemd_version()? >= 256 {
+        //     args.push("--generate-fstab");
+        //     args.push("/dev/stdout");
+        // }
 
         args.push(blockdev.to_str().unwrap());
 
-        tracing::debug!(?dry_run, ?args, "Running systemd-repart with pkexec");
+        tracing::debug!(?dry_run, ?args, "Running systemd-repart");
 
-        let repart_cmd = Command::new("pkexec")
+        let repart_cmd = Command::new("systemd-repart")
             .args(args)
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
@@ -318,12 +368,12 @@ fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> Result<()> {
             bail!("kernel-install failed with exit code {:?}", kernel_install_cmd_status.code());
         }
     });
-    if systemd_version()? <= 256 {
-        stage!("Generating /etc/fstab..." {
-            let mut fstab = std::fs::File::create("/etc/fstab")?;
-            fstab.write_all(output.generate_fstab().as_bytes())?;
-        });
-    }
+    // if systemd_version()? <= 256 {
+    //     stage!("Generating /etc/fstab..." {
+    //         let mut fstab = std::fs::File::create("/etc/fstab")?;
+    //         fstab.write_all(output.generate_fstab().as_bytes())?;
+    //     });
+    // }
 
     stage!("Regenerating initramfs" {
         // We assume the installation wouldn't be used on another system (false only if you install

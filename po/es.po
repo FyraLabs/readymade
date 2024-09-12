@@ -7,8 +7,8 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-07-25 10:42+0000\n"
-"PO-Revision-Date: 2024-08-28 18:34+0000\n"
-"Last-Translator: Ivan Vodopiviz <ivanvodo@gmail.com>\n"
+"PO-Revision-Date: 2024-09-04 00:34+0000\n"
+"Last-Translator: Alany Benavides <janitogamer21@gmail.com>\n"
 "Language-Team: Spanish <https://weblate.fyralabs.com/projects/tauOS/"
 "readymade/es/>\n"
 "Language: es\n"
@@ -20,15 +20,16 @@ msgstr ""
 
 #: src/pages/completed.rs:31
 msgid "Completed"
-msgstr ""
+msgstr "Completado"
 
 #: src/pages/completed.rs:37
 msgid "Installation complete. You may reboot now and enjoy your fresh system."
 msgstr ""
+"Instalación Completa. Ahora puedes reiniciar y disfrutar tu nuevo sistema."
 
 #: src/pages/completed.rs:49 src/pages/failure.rs:62
 msgid "Close"
-msgstr ""
+msgstr "Cerrar"
 
 #: src/pages/completed.rs:56
 msgid "Reboot"
@@ -56,18 +57,16 @@ msgid "Next"
 msgstr "Siguiente"
 
 #: src/pages/failure.rs:34
-#, fuzzy
-#| msgid "Installation Type"
 msgid "Installation Failure"
-msgstr "Tipo de Instalación"
+msgstr "Instalación Fallida"
 
 #: src/pages/failure.rs:40
 msgid "The installation process failed."
-msgstr ""
+msgstr "El proceso de instalación falló."
 
 #: src/pages/failure.rs:69
 msgid "Report a bug"
-msgstr "Reportar un problema"
+msgstr "Reportar un error"
 
 #: src/pages/installation.rs:44
 msgid "Installation"
@@ -83,11 +82,11 @@ msgstr "Tipo de Instalación"
 
 #: src/pages/installationtype.rs:90
 msgid "Chromebook"
-msgstr ""
+msgstr "Chromebook"
 
 #: src/pages/language.rs:80
 msgid "Language"
-msgstr ""
+msgstr "Lenguaje"
 
 #: src/pages/welcome.rs:27 src/pages/welcome.rs:68
 msgid ""
