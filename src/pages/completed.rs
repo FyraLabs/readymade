@@ -33,6 +33,9 @@ impl SimpleComponent for CompletedPage {
             set_vexpand: true,
 
             append = &gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_spacing: 4,
+
                 gtk::Label {
                     #[watch]
                     set_label: &gettext("Installation complete. You may reboot now and enjoy your fresh system."),
@@ -79,7 +82,11 @@ impl SimpleComponent for CompletedPage {
 
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
-            CompletedPageMsg::Reboot => _ = crate::util::run_as_root("systemctl reboot").unwrap(),
+            CompletedPageMsg::Reboot => {
+                _ = std::process::Command::new("systemctl")
+                    .arg("reboot")
+                    .status()
+            }
             CompletedPageMsg::Close => sender
                 .output(CompletedPageOutput::Navigate(NavigationAction::Quit))
                 .unwrap(),
