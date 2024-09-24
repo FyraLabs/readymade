@@ -455,7 +455,14 @@ impl InstallationType {
 
     fn set_cgpt_flags(blockdev: &Path) -> Result<()> {
         tracing::debug!("Setting cgpt flags");
-        cmd_lib::run_cmd!(cgpt add -i 1 -t kernel -P 15 -T 1 -S 1 $blockdev)?;
+        let blockdev_str = blockdev.to_str().ok_or_else(|| eyre!("Invalid block device path"))?;
+        let status = Command::new("cgpt")
+            .args(["add", "-i", "1", "-t", "kernel", "-P", "15", "-T", "1", "-S", "1", blockdev_str])
+            .status()?;
+
+        if !status.success() {
+            bail!("cgpt command failed with exit code {:?}", status.code());
+        }
         Ok(())
     }
 }
