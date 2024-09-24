@@ -4,6 +4,7 @@ version = "0.1.12"
 edition = "2021"
 license = "MIT WITH GPL-3.0-or-later"
 description = "The Ado Installer"
+repository = "https://github.com/FyraLabs/readymade"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
