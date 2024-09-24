@@ -53,7 +53,9 @@ impl RepartOutput {
 
         for (mntpoint, node) in self.mountpoints() {
             let part = self.find_by_node(&node).unwrap();
-            let fs_type = part.part_type.as_str();
+            // let fs_type = part.part_type.as_str();
+            let fs_type = "auto";
+            // todo: We need more context to determine the options
             let uuid = part.uuid.to_string();
             let options = "defaults";
             let dump = 0;
@@ -161,6 +163,14 @@ mod tests {
         assert_eq!(mountpoints.get("/boot"), Some(&"/dev/sda3".to_owned()));
         assert_eq!(mountpoints.get("/boot/efi"), Some(&"/dev/sda1".to_owned()));
         assert_eq!(mountpoints.get("/"), Some(&"/dev/sda4".to_owned()));
+    }
+
+    #[test]
+    fn test_fstab() {
+        let output = deserialize();
+        let mountpoints = output.generate_fstab();
+
+        println!("{mountpoints}");
     }
 
     #[test]
