@@ -78,7 +78,8 @@ pub fn is_chromebook() -> bool {
 #[macro_export]
 macro_rules! ini_enum {
     (@match $field:ident) => {{
-        stringify!(paste::paste! { [<$field:snake>] }).replace('_', "-")
+        stringify!($field).replace('_', "-").to_lowercase() // We lowercase this because this is systemd style enum
+        // todo: probably not the best idea to lowercase this on all enums
     }};
     (@match $field:ident => $s:literal) => {{
         $s.to_string()
