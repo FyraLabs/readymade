@@ -1,7 +1,6 @@
 //! systemd-repart config parser
-//! 
+//!
 //! This module contains the types and functions for parsing and generating systemd-repart configuration files.
-
 
 // Update as of 2024-09-24
 // This module will be stripped of all its old validation code and everything will be serialized as-is for now.
@@ -42,7 +41,8 @@ impl<'de> serde::Deserialize<'de> for Size {
         D: serde::Deserializer<'de>,
     {
         // This data will usually be a string, so we need to parse it into a ByteSize
-        let size = ByteSize::from_str(&String::deserialize(deserializer)?).map_err(serde::de::Error::custom)?;
+        let size = ByteSize::from_str(&String::deserialize(deserializer)?)
+            .map_err(serde::de::Error::custom)?;
         Ok(Self { inner: size })
     }
 }
@@ -304,7 +304,6 @@ impl<'de> serde::Deserialize<'de> for PartTypeIdent {
         }
     }
 }
-
 
 ini_enum! {
     #[derive(Debug, serde::Deserialize)]

@@ -59,7 +59,6 @@ impl RepartOutput {
                     writeln!(&mut fstab, "{fstab_entry}").unwrap();
                 }
             }
-            
         }
 
         fstab
@@ -129,7 +128,6 @@ impl RepartPartition {
     /// Generate an FS Table entry for the partition,
     /// Returns a line for /etc/fstab
     pub fn fstab_entry(&self) -> Result<String, Box<dyn std::error::Error>> {
-
         const FALLBACK_FS: &str = "auto";
         const FALLBACK_OPTS: &str = "defaults";
         const FALLBACK_DUMP: i32 = 0;
@@ -163,7 +161,9 @@ impl RepartPartition {
 
         // serialize fs into string, if it's not there, use the fallback
         // use serde::Serialize;
-        let fs_fmt_str = serde_json::to_string(fs_fmt).unwrap_or_else(|_| FALLBACK_FS.to_owned()).replace('"', "");
+        let fs_fmt_str = serde_json::to_string(fs_fmt)
+            .unwrap_or_else(|_| FALLBACK_FS.to_owned())
+            .replace('"', "");
 
         let mut mount_opts = String::new();
 
@@ -223,20 +223,15 @@ impl RepartPartition {
         let file_config = std::fs::read_to_string(&self.file).ok()?;
         let config: RepartConfig = serde_ini::from_str(&file_config).ok()?;
 
-        config.partition.mount_point.clone().map(
-            |_| {
-                let (m, _) = config.partition.mount_point_as_tuple().unwrap_or_else(
-                    || {
-                        self.ddi_mountpoint().map_or_else(
-                            || (String::new(), None),
-                            |mntpoint| (mntpoint.to_owned(), None),
-                        )
-                    },
-                );
-                m
-            }
-        )
-
+        config.partition.mount_point.clone().map(|_| {
+            let (m, _) = config.partition.mount_point_as_tuple().unwrap_or_else(|| {
+                self.ddi_mountpoint().map_or_else(
+                    || (String::new(), None),
+                    |mntpoint| (mntpoint.to_owned(), None),
+                )
+            });
+            m
+        })
     }
 }
 
