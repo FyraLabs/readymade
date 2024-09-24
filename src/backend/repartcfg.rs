@@ -1,4 +1,13 @@
+//! systemd-repart config parser
+//! 
+//! This module contains the types and functions for parsing and generating systemd-repart configuration files.
+
+
+// Update as of 2024-09-24
+// This module will be stripped of all its old validation code and everything will be serialized as-is for now.
+
 use bytesize::ByteSize;
+use serde::Deserialize;
 use serde_with::{
     formats::{ColonSeparator, SemicolonSeparator, SpaceSeparator},
     serde_as, StringWithSeparator,
@@ -27,81 +36,93 @@ impl serde::Serialize for Size {
     }
 }
 
+impl<'de> serde::Deserialize<'de> for Size {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = u64::deserialize(deserializer)?;
+        Ok(Self {
+            inner: ByteSize::b(value),
+        })
+    }
+}
+
 //* https://www.freedesktop.org/software/systemd/man/latest/repart.d.html
 
-// #[derive(serde::Serialize)]
-// #[serde(rename_all = "PascalCase")]
-// pub struct RepartConfig {
-//     partition: Partition,
-// }
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct RepartConfig {
+    partition: Partition,
+}
 
-// #[serde_as]
-// #[derive(serde::Serialize, validator::Validate)]
-// #[serde(rename_all = "PascalCase")]
-// pub struct Partition {
-//     r#type: PartTypeIdent,
-//     label: String,
-//     #[serde(rename = "UUID")]
-//     uuid: uuid::Uuid,
-//     priority: i32,
-//     #[validate(range(min = 0, max = 1_000_000))]
-//     #[serde(default = "_default_weight")]
-//     weight: u32,
-//     #[validate(range(min = 0, max = 1_000_000))]
-//     #[serde(default)]
-//     padding_weight: u32,
-//     #[serde(default = "_default_size_min_bytes")]
-//     size_min_bytes: Size,
-//     #[serde(default)]
-//     size_max_bytes: Size,
-//     #[serde(default)]
-//     padding_min_bytes: Size,
-//     #[serde(default)]
-//     padding_max_bytes: Size,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     copy_blocks: Option<String>,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     format: Option<FileSystem>,
-//     #[serde(default)]
-//     #[serde_as(as = "StringWithSeparator::<ColonSeparator, String>")]
-//     copy_files: Vec<String>,
+#[serde_as]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct Partition {
+    r#type: PartTypeIdent,
+    label: String,
+    #[serde(rename = "UUID")]
+    uuid: uuid::Uuid,
+    priority: i32,
+    // #[validate(range(min = 0, max = 1_000_000))]
+    #[serde(default = "_default_weight")]
+    weight: u32,
+    // #[validate(range(min = 0, max = 1_000_000))]
+    #[serde(default)]
+    padding_weight: u32,
+    #[serde(default = "_default_size_min_bytes")]
+    size_min_bytes: Size,
+    #[serde(default)]
+    size_max_bytes: Size,
+    #[serde(default)]
+    padding_min_bytes: Size,
+    #[serde(default)]
+    padding_max_bytes: Size,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    copy_blocks: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    format: Option<FileSystem>,
+    #[serde(default)]
+    #[serde_as(as = "StringWithSeparator::<ColonSeparator, String>")]
+    copy_files: Vec<String>,
 
-//     // todo: serialize ; and whitespace-separated values as vec
+    // todo: serialize ; and whitespace-separated values as vec
 
-//     // separate by ;
-//     #[serde(default)]
-//     #[serde_as(as = "StringWithSeparator::<SemicolonSeparator, String>")]
-//     exclude_files: Vec<String>,
-//     #[serde(default)]
-//     #[serde_as(as = "StringWithSeparator::<SemicolonSeparator, String>")]
-//     exclude_files_target: Vec<String>,
+    // separate by ;
+    #[serde(default)]
+    #[serde_as(as = "StringWithSeparator::<SemicolonSeparator, String>")]
+    exclude_files: Vec<String>,
+    #[serde(default)]
+    #[serde_as(as = "StringWithSeparator::<SemicolonSeparator, String>")]
+    exclude_files_target: Vec<String>,
 
-//     // separate by whitespace
-//     #[serde(default)]
-//     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
-//     make_directories: Vec<String>,
+    // separate by whitespace
+    #[serde(default)]
+    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
+    make_directories: Vec<String>,
 
-//     #[serde(default)]
-//     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
-//     subvolumes: Vec<String>,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     default_subvolume: Option<String>,
-//     #[serde(default)]
-//     encrypt: EncryptOption,
-//     #[serde(default)]
-//     verity: Verity,
+    #[serde(default)]
+    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
+    subvolumes: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    default_subvolume: Option<String>,
+    #[serde(default)]
+    encrypt: EncryptOption,
+    #[serde(default)]
+    verity: Verity,
 
-//     #[serde(default)]
-//     #[serde(serialize_with = "turn_to_string")]
-//     factory_reset: bool,
+    #[serde(default)]
+    #[serde(serialize_with = "turn_to_string")]
+    factory_reset: bool,
 
-//     // Takes at least one and at most two fields separated with a colon (":").
-//     // #[serde_as(as = "(PathBuf, StringWithSeparator::<SpaceSeparator, String>)")]
-//     // #[serde_as(as = "StringWithSeparator::<ColonSeparator, (PathBuf, StringWithSeparator::<CommaSeperator, String)>")]
-//     // mount_point: (PathBuf, Option<String>),
-//     #[serde(default)]
-//     mount_point: String,
-// }
+    // Takes at least one and at most two fields separated with a colon (":").
+    // #[serde_as(as = "(PathBuf, StringWithSeparator::<SpaceSeparator, String>)")]
+    // #[serde_as(as = "StringWithSeparator::<ColonSeparator, (PathBuf, StringWithSeparator::<CommaSeperator, String)>")]
+    // mount_point: (PathBuf, Option<String>),
+    #[serde(default)]
+    mount_point: String,
+}
 
 fn turn_to_string<T, S>(value: &T, se: S) -> Result<S::Ok, S::Error>
 where
@@ -121,7 +142,7 @@ const fn _default_size_min_bytes() -> Size {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, serde::Deserialize)]
 #[must_use]
 pub enum PartTypeIdent {
     Esp,
@@ -215,7 +236,7 @@ impl serde::Serialize for PartTypeIdent {
 
 
 ini_enum! {
-    #[derive(Debug)]
+    #[derive(Debug, serde::Deserialize)]
     pub enum FileSystem {
         Ext4,
         Btrfs,
@@ -226,15 +247,16 @@ ini_enum! {
         Swap,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Deserialize, Default)]
     pub enum EncryptOption {
+        #[default]
         Off,
         KeyFile,
         Tpm2,
         KeyFileTpm2 => "key-file+tpm2",
     }
 
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Deserialize)]
     pub enum Verity {
         #[default]
         Off,
@@ -244,42 +266,51 @@ ini_enum! {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
+#[cfg(test)]
+mod tests {
 
-//     use super::{Partition, RepartConfig};
+    use super::{Partition, RepartConfig};
 
-//     #[test]
-//     fn ser_new_config() {
-//         let res = serde_ini::to_string(&RepartConfig {
-//             partition: Partition {
-//                 r#type: super::PartTypeIdent::Esp,
-//                 label: "My Label".to_string(),
-//                 uuid: uuid::uuid!("7466c448-87ac-4e1c-b3e3-fe83b7a19262"),
-//                 priority: Default::default(),
-//                 weight: Default::default(),
-//                 padding_weight: Default::default(),
-//                 size_min_bytes: super::_default_size_min_bytes(),
-//                 size_max_bytes: super::Size {
-//                     inner: bytesize::ByteSize::kb(100),
-//                 },
-//                 padding_min_bytes: super::Size::default(),
-//                 padding_max_bytes: super::Size::default(),
-//                 copy_blocks: Some("hai".to_string()),
-//                 format: Some(super::FileSystem::Ext4),
-//                 copy_files: vec![],
-//                 exclude_files: vec![],
-//                 exclude_files_target: vec![],
-//                 make_directories: vec![],
-//                 subvolumes: vec![],
-//                 default_subvolume: None,
-//                 encrypt: crate::backend::repartcfg::EncryptOption::Off,
-//                 verity: super::Verity::Off,
-//                 factory_reset: false,
-//                 mount_point: "idk".to_string(),
-//             },
-//         })
-//         .unwrap();
-//         println!("{res}");
-//     }
-// }
+    #[test]
+    fn read_config() {
+        let config = include_str!("test/submarine.conf");
+        let res: RepartConfig = serde_ini::from_str(config).unwrap();
+
+        println!("{res:#?}");
+    }
+
+    #[test]
+    fn ser_new_config() {
+        let mount_point = "idk".to_owned();
+        let res = serde_ini::to_string(&RepartConfig {
+            partition: Partition {
+                r#type: super::PartTypeIdent::Esp,
+                label: "My Label".to_owned(),
+                uuid: uuid::uuid!("7466c448-87ac-4e1c-b3e3-fe83b7a19262"),
+                priority: Default::default(),
+                weight: Default::default(),
+                padding_weight: Default::default(),
+                size_min_bytes: super::_default_size_min_bytes(),
+                size_max_bytes: super::Size {
+                    inner: bytesize::ByteSize::kb(100),
+                },
+                padding_min_bytes: super::Size::default(),
+                padding_max_bytes: super::Size::default(),
+                copy_blocks: Some("hai".to_owned()),
+                format: Some(super::FileSystem::Ext4),
+                copy_files: vec![],
+                exclude_files: vec![],
+                exclude_files_target: vec![],
+                make_directories: vec![],
+                subvolumes: vec![],
+                default_subvolume: None,
+                encrypt: crate::backend::repartcfg::EncryptOption::default(),
+                verity: super::Verity::Off,
+                factory_reset: false,
+                mount_point,
+            },
+        })
+        .unwrap();
+        println!("{res}");
+    }
+}

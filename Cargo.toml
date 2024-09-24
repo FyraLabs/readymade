@@ -53,6 +53,7 @@ toml = "0.8.19"
 serde_valid = { version = "0.24.0", features = ["toml"] }
 os_pipe = "1.2.1"
 tee_readwrite = "0.2.0"
+serde_ini = "0.2.0"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"

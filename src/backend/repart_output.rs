@@ -31,6 +31,7 @@ pub struct RepartOutput {
     pub partitions: Vec<RepartPartition>,
 }
 
+
 impl RepartOutput {
     /// Generate a `BTreeMap` of mountpoint -> node name for generating /etc/fstab
     /// from DDI partition types
@@ -131,6 +132,26 @@ impl RepartPartition {
             _ => None,
         }
     }
+
+    /// Generate an FS Table entry for the partition,
+    /// Returns a line for /etc/fstab
+    pub fn fstab_entry(&self) -> String {
+        // Damn, this is kinda painful to write...
+
+        const FALLBACK_FS: &str = "auto";
+        const FALLBACK_OPTS: &str = "defaults";
+        const FALLBACK_DUMP: i32 = 0;
+        const FALLBACK_PASS: i32 = 2;
+
+
+        // Now, let's read the config file this thing is generated from...
+
+        
+
+
+        todo!()
+    }
+    
 }
 
 #[cfg(test)]
