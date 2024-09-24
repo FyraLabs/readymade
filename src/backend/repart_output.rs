@@ -11,16 +11,15 @@ pub fn systemd_version() -> color_eyre::Result<usize> {
     let output = std::process::Command::new("systemctl")
         .arg("--version")
         .output()?;
-    let version = std::str::from_utf8(&output.stdout)?;
-    let version = version
+    let version_str = std::str::from_utf8(&output.stdout)?;
+    let version = version_str
         .split_whitespace()
         .nth(1)
-        .ok_or_else(|| eyre!("Could not parse systemd version"))?;
-    let version = version
+        .ok_or_else(|| eyre!("Could not parse systemd version"))?
         .split('.')
         .next()
-        .ok_or_else(|| eyre!("Could not parse systemd version"))?;
-    let version = version.parse()?;
+        .ok_or_else(|| eyre!("Could not parse systemd version"))?
+        .parse()?;
     Ok(version)
 }
 
