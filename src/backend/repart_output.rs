@@ -173,6 +173,14 @@ impl RepartPartition {
             if let Some(default_subvol) = &config.partition.default_subvolume {
                 write!(&mut mount_opts, "subvol={default_subvol},")?;
             }
+
+            if let Some(compression) = &config.partition.compression {
+                if let Some(comp_level) = &config.partition.compression_level {
+                    write!(&mut mount_opts, "compress={compression}:{comp_level},")?;
+                } else {
+                    write!(&mut mount_opts, "compress={compression},")?;
+                }
+            }
         }
 
         if let Some(opts) = mntpoint_opts {

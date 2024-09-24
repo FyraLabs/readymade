@@ -56,7 +56,7 @@ pub struct RepartConfig {
 }
 
 #[serde_as]
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
 #[serde(rename_all = "PascalCase")]
 pub struct Partition {
     #[serde(rename = "Type")]
@@ -87,6 +87,14 @@ pub struct Partition {
     #[serde(default)]
     #[serde_as(as = "StringWithSeparator::<ColonSeparator, String>")]
     pub copy_files: Vec<String>,
+
+    // Btrfs-exclusive options
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compression: Option<String>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compression_level: Option<String>,
 
     // todo: serialize ; and whitespace-separated values as vec
 
@@ -387,6 +395,7 @@ mod tests {
                 verity: super::Verity::Off,
                 factory_reset: false,
                 mount_point: None,
+                ..Default::default()
             },
         })
         .unwrap();
