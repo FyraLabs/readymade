@@ -85,7 +85,7 @@ impl SimpleComponent for CompletedPage {
             CompletedPageMsg::Reboot => {
                 _ = std::process::Command::new("systemctl")
                     .arg("reboot")
-                    .status()
+                    .status();
             }
             CompletedPageMsg::Close => sender
                 .output(CompletedPageOutput::Navigate(NavigationAction::Quit))
