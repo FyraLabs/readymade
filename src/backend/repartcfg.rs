@@ -1,9 +1,17 @@
+//! systemd-repart config parser
+//!
+//! This module contains the types and functions for parsing and generating systemd-repart configuration files.
+
+// Update as of 2024-09-24
+// This module will be stripped of all its old validation code and everything will be serialized as-is for now.
+
 use bytesize::ByteSize;
+use serde::Deserialize;
 use serde_with::{
     formats::{ColonSeparator, SemicolonSeparator, SpaceSeparator},
     serde_as, StringWithSeparator,
 };
-use std::env::consts::ARCH;
+use std::{env::consts::ARCH, str::FromStr};
 
 use crate::ini_enum;
 
@@ -27,81 +35,121 @@ impl serde::Serialize for Size {
     }
 }
 
+impl<'de> serde::Deserialize<'de> for Size {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        // This data will usually be a string, so we need to parse it into a ByteSize
+        let size = ByteSize::from_str(&String::deserialize(deserializer)?)
+            .map_err(serde::de::Error::custom)?;
+        Ok(Self { inner: size })
+    }
+}
+
 //* https://www.freedesktop.org/software/systemd/man/latest/repart.d.html
 
-// #[derive(serde::Serialize)]
-// #[serde(rename_all = "PascalCase")]
-// pub struct RepartConfig {
-//     partition: Partition,
-// }
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct RepartConfig {
+    pub partition: Partition,
+}
 
-// #[serde_as]
-// #[derive(serde::Serialize, validator::Validate)]
-// #[serde(rename_all = "PascalCase")]
-// pub struct Partition {
-//     r#type: PartTypeIdent,
-//     label: String,
-//     #[serde(rename = "UUID")]
-//     uuid: uuid::Uuid,
-//     priority: i32,
-//     #[validate(range(min = 0, max = 1_000_000))]
-//     #[serde(default = "_default_weight")]
-//     weight: u32,
-//     #[validate(range(min = 0, max = 1_000_000))]
-//     #[serde(default)]
-//     padding_weight: u32,
-//     #[serde(default = "_default_size_min_bytes")]
-//     size_min_bytes: Size,
-//     #[serde(default)]
-//     size_max_bytes: Size,
-//     #[serde(default)]
-//     padding_min_bytes: Size,
-//     #[serde(default)]
-//     padding_max_bytes: Size,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     copy_blocks: Option<String>,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     format: Option<FileSystem>,
-//     #[serde(default)]
-//     #[serde_as(as = "StringWithSeparator::<ColonSeparator, String>")]
-//     copy_files: Vec<String>,
+#[serde_as]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
+#[serde(rename_all = "PascalCase")]
+pub struct Partition {
+    #[serde(rename = "Type")]
+    pub part_type: PartTypeIdent,
+    pub label: Option<String>,
+    #[serde(rename = "UUID")]
+    pub uuid: Option<uuid::Uuid>,
+    #[serde(default)]
+    pub priority: i32,
+    // #[validate(range(min = 0, max = 1_000_000))]
+    #[serde(default = "_default_weight")]
+    pub weight: u32,
+    // #[validate(range(min = 0, max = 1_000_000))]
+    #[serde(default)]
+    pub padding_weight: u32,
+    #[serde(default = "_default_size_min_bytes")]
+    pub size_min_bytes: Size,
+    #[serde(default)]
+    pub size_max_bytes: Size,
+    #[serde(default)]
+    pub padding_min_bytes: Size,
+    #[serde(default)]
+    pub padding_max_bytes: Size,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub copy_blocks: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub format: Option<FileSystem>,
+    #[serde(default)]
+    #[serde_as(as = "StringWithSeparator::<ColonSeparator, String>")]
+    pub copy_files: Vec<String>,
 
-//     // todo: serialize ; and whitespace-separated values as vec
+    // Btrfs-exclusive options
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compression: Option<String>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compression_level: Option<String>,
 
-//     // separate by ;
-//     #[serde(default)]
-//     #[serde_as(as = "StringWithSeparator::<SemicolonSeparator, String>")]
-//     exclude_files: Vec<String>,
-//     #[serde(default)]
-//     #[serde_as(as = "StringWithSeparator::<SemicolonSeparator, String>")]
-//     exclude_files_target: Vec<String>,
+    // todo: serialize ; and whitespace-separated values as vec
 
-//     // separate by whitespace
-//     #[serde(default)]
-//     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
-//     make_directories: Vec<String>,
+    // separate by ;
+    #[serde(default)]
+    #[serde_as(as = "StringWithSeparator::<SemicolonSeparator, String>")]
+    pub exclude_files: Vec<String>,
+    #[serde(default)]
+    #[serde_as(as = "StringWithSeparator::<SemicolonSeparator, String>")]
+    pub exclude_files_target: Vec<String>,
 
-//     #[serde(default)]
-//     #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
-//     subvolumes: Vec<String>,
-//     #[serde(skip_serializing_if = "Option::is_none")]
-//     default_subvolume: Option<String>,
-//     #[serde(default)]
-//     encrypt: EncryptOption,
-//     #[serde(default)]
-//     verity: Verity,
+    // separate by whitespace
+    #[serde(default)]
+    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
+    pub make_directories: Vec<String>,
 
-//     #[serde(default)]
-//     #[serde(serialize_with = "turn_to_string")]
-//     factory_reset: bool,
+    #[serde(default)]
+    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
+    pub subvolumes: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_subvolume: Option<String>,
+    #[serde(default)]
+    pub encrypt: EncryptOption,
+    #[serde(default)]
+    pub verity: Verity,
 
-//     // Takes at least one and at most two fields separated with a colon (":").
-//     // #[serde_as(as = "(PathBuf, StringWithSeparator::<SpaceSeparator, String>)")]
-//     // #[serde_as(as = "StringWithSeparator::<ColonSeparator, (PathBuf, StringWithSeparator::<CommaSeperator, String)>")]
-//     // mount_point: (PathBuf, Option<String>),
-//     #[serde(default)]
-//     mount_point: String,
-// }
+    #[serde(default)]
+    #[serde(serialize_with = "turn_to_string")]
+    #[serde(deserialize_with = "bool_from_string")]
+    pub factory_reset: bool,
+
+    // Takes at least one and at most two fields separated with a colon (":").
+    // #[serde_as(as = "(PathBuf, StringWithSeparator::<SpaceSeparator, String>)")]
+    // #[serde_as(as = "StringWithSeparator::<ColonSeparator, (PathBuf, StringWithSeparator::<CommaSeperator, String)>")]
+    // mount_point: (PathBuf, Option<String>),
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mount_point: Option<String>,
+}
+
+impl Partition {
+    pub fn mount_point_as_tuple(&self) -> Option<(String, Option<String>)> {
+        self.mount_point.as_ref().and_then(|mount_point| {
+            if mount_point.is_empty() {
+                return None;
+            }
+            // If there's a colon, split it into two fields
+            // only the first colon is considered though, so if there are more than one, the rest are ignored
+            let mut parts = mount_point.splitn(2, ':');
+            let fst = parts.next()?.to_owned();
+            let snd = parts.next().map(std::borrow::ToOwned::to_owned);
+            Some((fst, snd))
+        })
+    }
+}
 
 fn turn_to_string<T, S>(value: &T, se: S) -> Result<S::Ok, S::Error>
 where
@@ -109,6 +157,21 @@ where
     T: std::fmt::Display,
 {
     se.serialize_str(&format!("{value}"))
+}
+
+// Convert a systemd boolean value into a boolean
+// This means that "yes" and "true" are true, and "no" and "false" are false
+// Same goes for "1" and "0"
+fn bool_from_string<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    match s.as_str() {
+        "yes" | "true" | "1" => Ok(true),
+        "no" | "false" | "0" => Ok(false),
+        _ => Err(serde::de::Error::custom("invalid boolean value")),
+    }
 }
 
 const fn _default_weight() -> u32 {
@@ -151,7 +214,6 @@ pub enum PartTypeIdent {
     UsrArch,
     UsrArchVerity,
     UsrArchVeritySig,
-
     Unknown(String),
 }
 
@@ -165,7 +227,7 @@ const USR_ARCH_VERITY_SIG: &str = const_format::formatcp!("usr-{ARCH}-verity-sig
 
 /// Converts a &str into a new &str with hyphens instead of underscores
 #[must_use]
-#[inline(always)]
+#[inline]
 fn underscore_to_hyphen(input: &str) -> String {
     input.replace('_', "-")
 }
@@ -213,9 +275,47 @@ impl serde::Serialize for PartTypeIdent {
     }
 }
 
+impl<'de> serde::Deserialize<'de> for PartTypeIdent {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "esp" => Ok(Self::Esp),
+            "xbootldr" => Ok(Self::Xbootldr),
+            "swap" => Ok(Self::Swap),
+            "home" => Ok(Self::Home),
+            "srv" => Ok(Self::Srv),
+            "var" => Ok(Self::Var),
+            "tmp" => Ok(Self::Tmp),
+            "linux-generic" => Ok(Self::LinuxGeneric),
+            "root" => Ok(Self::Root),
+            "root-verity" => Ok(Self::RootVerity),
+            "root-verity-sig" => Ok(Self::RootVeritySig),
+            "root-secondary" => Ok(Self::RootSecondary),
+            "root-secondary-verity" => Ok(Self::RootSecondaryVerity),
+            "root-secondary-verity-sig" => Ok(Self::RootSecondaryVeritySig),
+            s if s == underscore_to_hyphen(ROOT_ARCH) => Ok(Self::RootArch),
+            s if s == underscore_to_hyphen(ROOT_ARCH_VERITY) => Ok(Self::RootArchVerity),
+            s if s == underscore_to_hyphen(ROOT_ARCH_VERITY_SIG) => Ok(Self::RootArchVeritySig),
+            "usr" => Ok(Self::Usr),
+            "usr-verity" => Ok(Self::UsrVerity),
+            "usr-verity-sig" => Ok(Self::UsrVeritySig),
+            "usr-secondary" => Ok(Self::UsrSecondary),
+            "usr-secondary-verity" => Ok(Self::UsrSecondaryVerity),
+            "usr-secondary-verity-sig" => Ok(Self::UsrSecondaryVeritySig),
+            s if s == underscore_to_hyphen(USR_ARCH) => Ok(Self::UsrArch),
+            s if s == underscore_to_hyphen(USR_ARCH_VERITY) => Ok(Self::UsrArchVerity),
+            s if s == underscore_to_hyphen(USR_ARCH_VERITY_SIG) => Ok(Self::UsrArchVeritySig),
+            _ => Ok(Self::Unknown(s.clone())),
+        }
+    }
+}
 
 ini_enum! {
-    #[derive(Debug)]
+    #[derive(Debug, serde::Deserialize)]
+    #[serde(rename_all = "lowercase")]
     pub enum FileSystem {
         Ext4,
         Btrfs,
@@ -226,15 +326,18 @@ ini_enum! {
         Swap,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Deserialize, Default)]
+    #[serde(rename_all = "lowercase")]
     pub enum EncryptOption {
+        #[default]
         Off,
         KeyFile,
         Tpm2,
         KeyFileTpm2 => "key-file+tpm2",
     }
 
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Deserialize)]
+    #[serde(rename_all = "lowercase")]
     pub enum Verity {
         #[default]
         Off,
@@ -244,42 +347,58 @@ ini_enum! {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
+#[cfg(test)]
+mod tests {
 
-//     use super::{Partition, RepartConfig};
+    use super::{Partition, RepartConfig};
 
-//     #[test]
-//     fn ser_new_config() {
-//         let res = serde_ini::to_string(&RepartConfig {
-//             partition: Partition {
-//                 r#type: super::PartTypeIdent::Esp,
-//                 label: "My Label".to_string(),
-//                 uuid: uuid::uuid!("7466c448-87ac-4e1c-b3e3-fe83b7a19262"),
-//                 priority: Default::default(),
-//                 weight: Default::default(),
-//                 padding_weight: Default::default(),
-//                 size_min_bytes: super::_default_size_min_bytes(),
-//                 size_max_bytes: super::Size {
-//                     inner: bytesize::ByteSize::kb(100),
-//                 },
-//                 padding_min_bytes: super::Size::default(),
-//                 padding_max_bytes: super::Size::default(),
-//                 copy_blocks: Some("hai".to_string()),
-//                 format: Some(super::FileSystem::Ext4),
-//                 copy_files: vec![],
-//                 exclude_files: vec![],
-//                 exclude_files_target: vec![],
-//                 make_directories: vec![],
-//                 subvolumes: vec![],
-//                 default_subvolume: None,
-//                 encrypt: crate::backend::repartcfg::EncryptOption::Off,
-//                 verity: super::Verity::Off,
-//                 factory_reset: false,
-//                 mount_point: "idk".to_string(),
-//             },
-//         })
-//         .unwrap();
-//         println!("{res}");
-//     }
-// }
+    #[test]
+    fn read_config() {
+        let config = include_str!("test/submarine.conf");
+        let res: RepartConfig = serde_ini::from_str(config).unwrap();
+
+        println!("{res:#?}");
+        println!("{:?}", res.partition.mount_point_as_tuple());
+
+        let config2 = include_str!("test/root.conf");
+        let res2: RepartConfig = serde_ini::from_str(config2).unwrap();
+
+        println!("{res2:#?}");
+        println!("{:?}", res2.partition.mount_point_as_tuple());
+    }
+
+    #[test]
+    fn ser_new_config() {
+        let res = serde_ini::to_string(&RepartConfig {
+            partition: Partition {
+                part_type: super::PartTypeIdent::Esp,
+                label: Some("My Label".to_owned()),
+                uuid: Some(uuid::uuid!("7466c448-87ac-4e1c-b3e3-fe83b7a19262")),
+                priority: Default::default(),
+                weight: Default::default(),
+                padding_weight: Default::default(),
+                size_min_bytes: super::_default_size_min_bytes(),
+                size_max_bytes: super::Size {
+                    inner: bytesize::ByteSize::kb(100),
+                },
+                padding_min_bytes: super::Size::default(),
+                padding_max_bytes: super::Size::default(),
+                copy_blocks: Some("hai".to_owned()),
+                format: Some(super::FileSystem::Ext4),
+                copy_files: vec![],
+                exclude_files: vec![],
+                exclude_files_target: vec![],
+                make_directories: vec![],
+                subvolumes: vec![],
+                default_subvolume: None,
+                encrypt: crate::backend::repartcfg::EncryptOption::default(),
+                verity: super::Verity::Off,
+                factory_reset: false,
+                mount_point: None,
+                ..Default::default()
+            },
+        })
+        .unwrap();
+        println!("{res}");
+    }
+}

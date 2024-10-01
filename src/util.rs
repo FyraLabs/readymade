@@ -23,10 +23,23 @@ pub fn check_uefi() -> bool {
 ///
 /// If the current user is not root, the command will be run with `pkexec`.
 pub fn run_as_root(cmd: &str) -> Result<String, std::io::Error> {
-    if !cmd_lib::run_fun!("whoami").unwrap().contains("root") {
-        cmd_lib::run_fun!(pkexec $cmd)
+    if std::process::Command::new("whoami")
+        .output()
+        .map(|output| String::from_utf8_lossy(&output.stdout).contains("root"))
+        .unwrap_or(false)
+    {
+        let output = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(cmd)
+            .output()?;
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
     } else {
-        cmd_lib::run_fun!($cmd)
+        let output = std::process::Command::new("pkexec")
+            .arg("sh")
+            .arg("-c")
+            .arg(cmd)
+            .output()?;
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 }
 
@@ -65,7 +78,8 @@ pub fn is_chromebook() -> bool {
 #[macro_export]
 macro_rules! ini_enum {
     (@match $field:ident) => {{
-        stringify!(paste::paste! { [<$field:snake>] }).replace('_', "-")
+        stringify!($field).replace('_', "-").to_lowercase() // We lowercase this because this is systemd style enum
+        // todo: probably not the best idea to lowercase this on all enums
     }};
     (@match $field:ident => $s:literal) => {{
         $s.to_string()
@@ -250,18 +264,25 @@ pub mod cmds {
     }
 
     #[tracing::instrument(skip(setup_handle))]
-    pub fn read_while_show_output(
+    pub fn read_while_show_output<F>(
         cmd: &mut Command,
         prefix: Option<&str>,
-        setup_handle: impl FnOnce(&mut std::process::Child) -> std::io::Result<()>,
-    ) -> std::io::Result<(std::process::ExitStatus, String, String)> {
+        setup_handle: F,
+    ) -> std::io::Result<(std::process::ExitStatus, String, String)>
+    where
+        F: FnOnce(&mut std::process::Child) -> std::io::Result<()>,
+    {
         let prefix = prefix.unwrap_or("");
         let (newline, newrline) = (format!("\n{prefix}"), format!("\r{prefix}"));
         let (outq, errq): (Arc<SegQueue<u8>>, Arc<SegQueue<u8>>) = (Arc::default(), Arc::default());
         let (outstop, errstop) = (Arc::new(ArrayQueue::new(1)), Arc::new(ArrayQueue::new(1)));
         // clone the arcs for putting into closure
-        let (outqc, errqc, outstopc, errstopc) =
-            (outq.clone(), errq.clone(), outstop.clone(), errstop.clone());
+        let (outqc, errqc, outstopc, errstopc) = (
+            Arc::clone(&outq),
+            Arc::clone(&errq),
+            Arc::clone(&outstop),
+            Arc::clone(&errstop),
+        );
 
         let mut hdl = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
         setup_handle(&mut hdl)?;

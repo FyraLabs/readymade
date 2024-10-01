@@ -12,11 +12,10 @@ use std::{
     path::{Path, PathBuf},
 };
 use tee_readwrite::TeeReader;
-use tee_readwrite::TeeWriter;
 
 use crate::util::{exist_then, exist_then_read_dir};
 use crate::{
-    backend::repart_output::{systemd_version, RepartOutput},
+    backend::repart_output::RepartOutput,
     pages::destination::DiskInit,
     stage,
     util::{self, LIVE_BASE},
@@ -64,12 +63,12 @@ impl InstallationState {
         command.arg("env");
 
         if let Ok(value) = std::env::var("REPART_COPY_SOURCE") {
-            command.arg(format!("REPART_COPY_SOURCE={}", value));
+            command.arg(format!("REPART_COPY_SOURCE={value}"));
         }
 
         command.arg(format!(
             "READYMADE_LOG={}",
-            std::env::var("READYMADE_LOG").unwrap_or("trace".to_string())
+            std::env::var("READYMADE_LOG").unwrap_or("trace".to_owned())
         ));
 
         let mut stdout_logs: Vec<u8> = Vec::new();
@@ -93,7 +92,7 @@ impl InstallationState {
         {
             let mut child_stdin = res.stdin.take().expect("can't take stdin");
             child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
-        }
+        };
 
         print!("┌─ BEGIN: Readymade subprocess logs\n│ ");
         let res = std::thread::scope(|s| {
@@ -124,7 +123,7 @@ impl InstallationState {
                     format!(
                         "Stdout:\n{}",
                         strip_ansi_escapes::strip_str(
-                            &String::from_utf8(stdout_logs).expect("stdout is not valid UTF-8")
+                            String::from_utf8(stdout_logs).expect("stdout is not valid UTF-8")
                         )
                     )
                 })
@@ -132,7 +131,7 @@ impl InstallationState {
                     format!(
                         "Stderr:\n{}",
                         strip_ansi_escapes::strip_str(
-                            &String::from_utf8(stderr_logs).expect("stderr is not valid UTF-8")
+                            String::from_utf8(stderr_logs).expect("stderr is not valid UTF-8")
                         )
                     )
                 })),
@@ -272,7 +271,7 @@ impl InstallationState {
 
         // todo: wait for systemd 256 or genfstab magic
         tracing::debug!(out, "systemd-repart finished");
-        Ok(serde_json::from_str(&out)?)
+        Ok(serde_json::from_str(out)?)
     }
 }
 
@@ -456,7 +455,29 @@ impl InstallationType {
 
     fn set_cgpt_flags(blockdev: &Path) -> Result<()> {
         tracing::debug!("Setting cgpt flags");
-        cmd_lib::run_cmd!(cgpt add -i 1 -t kernel -P 15 -T 1 -S 1 $blockdev)?;
+        let blockdev_str = blockdev
+            .to_str()
+            .ok_or_else(|| eyre!("Invalid block device path"))?;
+        let status = Command::new("cgpt")
+            .args([
+                "add",
+                "-i",
+                "1",
+                "-t",
+                "kernel",
+                "-P",
+                "15",
+                "-T",
+                "1",
+                "-S",
+                "1",
+                blockdev_str,
+            ])
+            .status()?;
+
+        if !status.success() {
+            bail!("cgpt command failed with exit code {:?}", status.code());
+        }
         Ok(())
     }
 }
