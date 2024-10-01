@@ -35,6 +35,8 @@ impl SimpleComponent for CompletedPage {
             append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
+                set_vexpand: true,
+                set_hexpand: true,
 
                 gtk::Label {
                     #[watch]
@@ -83,9 +85,10 @@ impl SimpleComponent for CompletedPage {
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             CompletedPageMsg::Reboot => {
+                // supposedly it should run pkexec automatically?
                 _ = std::process::Command::new("systemctl")
                     .arg("reboot")
-                    .status()
+                    .status();
             }
             CompletedPageMsg::Close => sender
                 .output(CompletedPageOutput::Navigate(NavigationAction::Quit))
