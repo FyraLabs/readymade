@@ -127,8 +127,14 @@ impl SimpleComponent for DestinationPage {
                         set_label: &gettext("Next"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
                         connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(
-                            if crate::CONFIG.read().install.allowed_installtypes.len() == 1 {
-                                crate::Page::Confirmation
+                            if let [x] = crate::CONFIG.read().install.allowed_installtypes[..] {
+                                #[allow(clippy::enum_glob_use)]
+                                use crate::{install::InstallationType::*, Page::*};
+                                match x {
+                                    ChromebookInstall | WholeDisk => Confirmation,
+                                    DualBoot(_) => InstallDual,
+                                    Custom => InstallCustom,
+                                }
                             } else {
                                 crate::Page::InstallationType
                             }
@@ -147,8 +153,7 @@ impl SimpleComponent for DestinationPage {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let mut disks = FactoryVecDeque::builder()
-            .launch(gtk::FlowBox::default())
-            .forward(sender.input_sender(), |_output| todo!());
+            .launch(gtk::FlowBox::default()).detach();
 
         let disks_data = crate::disks::detect_os();
 

@@ -1,5 +1,5 @@
 [install]
-allowed_installtypes = ["chromebookinstall"]
+allowed_installtypes = ["custom"]
 
 [distro]
 name = "Ultramarine Linux"
