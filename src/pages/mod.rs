@@ -6,5 +6,7 @@ pub mod destination;
 pub mod failure;
 pub mod installation;
 pub mod installationtype;
+pub mod installcustom;
+pub mod installdual;
 pub mod language;
 pub mod welcome;
