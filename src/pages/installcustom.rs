@@ -5,12 +5,13 @@ use relm4::factory::FactoryVecDeque;
 use crate::{prelude::*, NavigationAction};
 
 pub struct InstallCustomPage {
-    choose_mount_factory: Rc<FactoryVecDeque<ChooseMount>>,
+    choose_mount_factory: FactoryVecDeque<ChooseMount>,
 }
 
 #[derive(Debug)]
 pub enum InstallCustomPageMsg {
     AddRow,
+    UpdateRow(AddDialog),
     #[doc(hidden)]
     Navigate(NavigationAction),
 }
@@ -72,14 +73,14 @@ impl SimpleComponent for InstallCustomPage {
     fn init(
         (): Self::Init,
         root: Self::Root,
-        _sender: ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let choose_mount_factory = FactoryVecDeque::builder()
             .launch(gtk::Box::default())
             .detach();
 
         let model = Self {
-            choose_mount_factory: Rc::new(choose_mount_factory),
+            choose_mount_factory,
         };
 
         let mounts = model.choose_mount_factory.widget();
@@ -92,7 +93,25 @@ impl SimpleComponent for InstallCustomPage {
             InstallCustomPageMsg::Navigate(action) => sender
                 .output(InstallCustomPageOutput::Navigate(action))
                 .unwrap(),
-            InstallCustomPageMsg::AddRow => todo!(),
+            InstallCustomPageMsg::AddRow => {
+                // FIXME: the dialog just doesn't appear at all…?
+                let dialog = AddDialog::builder();
+                relm4::main_application().add_window(&dialog.root);
+                let out = sender.input_sender();
+                dialog
+                    .launch(AddDialog {
+                        index: self.choose_mount_factory.len(),
+                        ..AddDialog::default()
+                    })
+                    .forward(out, InstallCustomPageMsg::UpdateRow);
+            }
+            InstallCustomPageMsg::UpdateRow(msg) => {
+                let mut guard = self.choose_mount_factory.guard();
+                let obj = guard.get_mut(msg.index).unwrap();
+                obj.partition = PathBuf::from(msg.partition);
+                obj.mountpoint = PathBuf::from(msg.mountpoint);
+                obj.options = msg.mountopts;
+            }
         }
     }
 }
@@ -130,7 +149,10 @@ impl FactoryComponent for ChooseMount {
             set_orientation: gtk::Orientation::Horizontal,
             gtk::Label {
                 set_label: &format!("{} ← {}{}", self.mountpoint.display(), self.partition.display(), if self.options.is_empty() { String::new() } else { format!(" [{}]", self.options) }),
+                add_css_class: "monospace",
             },
+
+            // TODO: edit btn
 
             libhelium::Button {
                 set_icon_name: "delete",
@@ -159,28 +181,30 @@ impl FactoryComponent for ChooseMount {
     }
 }
 
-
 // ────────────────────────────────────────────────────────────────────────────
 // AddDialog (also for edit)
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Default)]
 struct AddDialog {
     partition: String,
     mountpoint: String,
     mountopts: String,
+    index: usize,
 }
 
 #[derive(Debug)]
 enum AddDialogMsg {
-    
+    ChangedPart(String),
+    ChangedMnpt(String),
+    ChangedOpts(String),
 }
 
 #[relm4::component]
 impl SimpleComponent for AddDialog {
-    type Init = AddDialog;
+    type Init = Self;
     type Input = AddDialogMsg;
-    type Output = ();
-    
+    type Output = Self;
+
     view! {
         libhelium::Window {
             #[wrap(Some)]
@@ -190,32 +214,77 @@ impl SimpleComponent for AddDialog {
                 append = &gtk::Label {
                     set_label: &gettext("Partition"),
                 },
-                append = &gtk::DropDown {
-                    
+                #[local_ref]
+                append = partlist -> gtk::DropDown {
+                    set_enable_search: true,
                 },
                 append = &gtk::Label {
                     set_label: &gettext("Mount at"),
                 },
+                #[name = "tf_at"]
                 append = &libhelium::TextField {
-                    
+                    add_css_class: "monospace",
+
                 },
                 append = &gtk::Label {
                     set_label: &gettext("Mount options"),
                 },
+                #[name = "tf_opts"]
                 append = &libhelium::TextField {
-                    
+                    add_css_class: "monospace",
                 },
-            }
+            },
+            connect_close_request[sender, model] => move |_| {
+                sender.output(model.clone()).unwrap();
+                gtk::glib::Propagation::Proceed
+            },
         }
     }
-    
+
     fn init(
         init: Self::Init,
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
+        // populate partition dropdown list
+        let disk = crate::INSTALLATION_STATE.read().destination_disk.clone();
+        let disk = disk.unwrap().devpath.to_string_lossy().to_string();
+        let partlist = lsblk::BlockDevice::list().unwrap();
+        let partlist = (partlist.iter())
+            .filter(|b| b.is_part() && b.disk_name().is_ok_and(|d| d == disk))
+            .map(|p| p.fullname.clone());
+        let partvec = partlist.collect_vec();
+        let partlist =
+            &gtk::DropDown::from_strings(&partvec.iter().filter_map(|s| s.to_str()).collect_vec());
+
+        let (sd0, sd1, sd2) = (sender.clone(), sender.clone(), sender.clone());
+        // connect signal for the dropdown
+        partlist.connect_selected_notify(move |dropdown| {
+            sd0.input(AddDialogMsg::ChangedPart(
+                #[allow(clippy::indexing_slicing)]
+                partvec[dropdown.selected() as usize].display().to_string(),
+            ));
+        });
+
         let model = init;
         let widgets = view_output!();
+        // connect signal for textfields
+        widgets
+            .tf_at
+            .internal_entry()
+            .connect_changed(move |en| sd1.input(AddDialogMsg::ChangedMnpt(en.text().to_string())));
+        widgets
+            .tf_opts
+            .internal_entry()
+            .connect_changed(move |en| sd2.input(AddDialogMsg::ChangedMnpt(en.text().to_string())));
         ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+        match message {
+            AddDialogMsg::ChangedPart(part) => self.partition = part,
+            AddDialogMsg::ChangedMnpt(mnpt) => self.mountpoint = mnpt,
+            AddDialogMsg::ChangedOpts(opts) => self.mountopts = opts,
+        }
     }
 }
