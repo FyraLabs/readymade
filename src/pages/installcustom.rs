@@ -1,4 +1,4 @@
-use std::{path::PathBuf, rc::Rc};
+use std::path::PathBuf;
 
 use relm4::factory::FactoryVecDeque;
 
@@ -95,15 +95,15 @@ impl SimpleComponent for InstallCustomPage {
                 .unwrap(),
             InstallCustomPageMsg::AddRow => {
                 // FIXME: the dialog just doesn't appear at all…?
-                let dialog = AddDialog::builder();
-                relm4::main_application().add_window(&dialog.root);
                 let out = sender.input_sender();
+                let dialog = AddDialog::builder();
                 dialog
                     .launch(AddDialog {
                         index: self.choose_mount_factory.len(),
                         ..AddDialog::default()
                     })
-                    .forward(out, InstallCustomPageMsg::UpdateRow);
+                    .forward(out, InstallCustomPageMsg::UpdateRow)
+                    .detach_runtime();
             }
             InstallCustomPageMsg::UpdateRow(msg) => {
                 let mut guard = self.choose_mount_factory.guard();
@@ -236,6 +236,7 @@ impl SimpleComponent for AddDialog {
             },
             connect_close_request[sender, model] => move |_| {
                 sender.output(model.clone()).unwrap();
+                tracing::trace!(?model, "connect_close_request()");
                 gtk::glib::Propagation::Proceed
             },
         }
@@ -246,6 +247,7 @@ impl SimpleComponent for AddDialog {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
+        tracing::trace!(?init, "Spawned AddDialog");
         // populate partition dropdown list
         let disk = crate::INSTALLATION_STATE.read().destination_disk.clone();
         let disk = disk.unwrap().devpath.to_string_lossy().to_string();
