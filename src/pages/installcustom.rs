@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use relm4::factory::FactoryVecDeque;
 
-use crate::{prelude::*, NavigationAction};
+use crate::{backend::custom::MountTarget as ChooseMount, prelude::*, NavigationAction};
 
 pub struct InstallCustomPage {
     choose_mount_factory: FactoryVecDeque<ChooseMount>,
@@ -119,24 +119,17 @@ impl SimpleComponent for InstallCustomPage {
 // ────────────────────────────────────────────────────────────────────────────
 // ChooseMount (row in main page)
 
-#[derive(Debug, Clone, Default)]
-struct ChooseMount {
-    partition: PathBuf,
-    mountpoint: PathBuf,
-    options: String,
-}
-
 #[derive(Debug)]
-enum ChooseMountMsg {
+pub enum ChooseMountMsg {
     Remove,
 }
 
 #[derive(Debug)]
-enum ChooseMountOutput {
+pub enum ChooseMountOutput {
     Remove,
 }
 
-#[relm4::factory]
+#[relm4::factory(pub)]
 impl FactoryComponent for ChooseMount {
     type ParentWidget = gtk::Box;
     type Input = ChooseMountMsg;

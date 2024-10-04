@@ -151,9 +151,19 @@ impl SimpleComponent for InstallationTypePage {
                     .unwrap();
             }
             InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot(_)) => {
-                todo!()
+                sender
+                    .output(InstallationTypePageOutput::Navigate(
+                        NavigationAction::GoTo(Page::InstallDual),
+                    ))
+                    .unwrap();
             }
-            InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom) => todo!(),
+            InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom) => {
+                sender
+                    .output(InstallationTypePageOutput::Navigate(
+                        NavigationAction::GoTo(Page::InstallCustom),
+                    ))
+                    .unwrap();
+            }
             InstallationTypePageMsg::InstallationTypeSelected(
                 InstallationType::ChromebookInstall,
             ) => {
