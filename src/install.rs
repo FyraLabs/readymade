@@ -448,7 +448,9 @@ impl InstallationType {
     fn cfgdir(&self) -> PathBuf {
         match self {
             Self::ChromebookInstall => const_format::concatcp!(REPART_DIR, "chromebookinstall"),
-            _ => todo!(),
+            Self::WholeDisk => const_format::concatcp!(REPART_DIR, "wholedisk"),
+            Self::DualBoot(_) => todo!(),
+            Self::Custom => unreachable!(),
         }
         .into()
     }

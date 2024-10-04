@@ -9,10 +9,10 @@ use tracing::{trace, trace_span};
 /// Copy contents of a squashimg into a directory `destroot`.
 /// Normally param `squashfs` should be [crate::util::DEFAULT_SQUASH_LOCATION].
 #[tracing::instrument(skip(callback))]
-pub fn unsquash_copy(
+pub fn unsquash_copy<F: FnMut(usize, usize)>(
     squashfs: &Path,
     destroot: &Path,
-    mut callback: impl FnMut(usize, usize),
+    mut callback: F,
 ) -> Result<()> {
     let squashimg = std::io::BufReader::new(std::fs::File::open(squashfs)?);
     let fs = FilesystemReader::from_reader(squashimg)?;
@@ -31,17 +31,16 @@ pub fn unsquash_copy(
         match &node.inner {
             InnerNode::File(f) => {
                 // Just write it in split second if <= 1 MiB
-                if f.basic.file_size <= 1048576 {
-                    _writef(&path, arcfs.clone(), f)?;
+                if f.basic.file_size <= 1024 * 1024 {
+                    _writef(&path, arcfs, f)?;
                     continue;
                 }
                 // Don't block, instead write while decompress remaining squashfs
                 // Does create a bit of a problem if there are too many files in the squashfs
                 // => too many threads and overwhelm the system?
                 trace!("Creating thread for file creation");
-                let fs = arcfs.clone();
                 let th = std::thread::Builder::new().name(path.display().to_string());
-                threads.push(th.spawn(move || _writef(&path, fs, f))?);
+                threads.push(th.spawn(move || _writef(&path, arcfs, f))?);
             }
             InnerNode::Symlink(link) => {
                 trace!(link = ?link.link, "Creating symlink");
@@ -63,7 +62,7 @@ fn _join_and_handle_threads(
     let l = threads.len();
     for (i, th) in threads.into_iter().enumerate() {
         callback(num_files - l + i, num_files);
-        let name = th.thread().name().unwrap_or_default().to_string();
+        let name = th.thread().name().unwrap_or_default().to_owned();
         match th.join() {
             Ok(Err(e)) => errs.push(ParallelCopyError(name, e)),
             Err(_) => {
@@ -77,7 +76,7 @@ fn _join_and_handle_threads(
                 } else {
                     errs.into_iter().fold(
                         report.with_warning(|| "Encountered other errors below."),
-                        |report, e| report.error(e),
+                        color_eyre::Help::error,
                     )
                 });
             }
@@ -89,7 +88,7 @@ fn _join_and_handle_threads(
     } else {
         Err(errs.into_iter().fold(
             color_eyre::Report::msg("Fail to extract some files."),
-            |report, e| report.error(e),
+            color_eyre::Help::error,
         ))
     }
 }
@@ -97,7 +96,7 @@ fn _join_and_handle_threads(
 /// Internal function for writing file from unsquashfs file `f` to `path`
 fn _writef(
     path: &Path,
-    fs: std::sync::Arc<FilesystemReader<'_>>,
+    fs: &std::sync::Arc<FilesystemReader<'_>>,
     f: &backhand::SquashfsFileReader,
 ) -> std::io::Result<()> {
     trace!(size = f.basic.file_size, "Writing file");
@@ -110,23 +109,27 @@ fn _writef(
     std::io::copy(&mut reader, &mut file).map(|_| ())
 }
 
-#[test]
-fn test_unsquash() -> Result<()> {
-    use std::path::PathBuf;
-    std::process::Command::new("mksquashfs")
-        .arg("./src")
-        .arg("test.sqsh")
-        .status()
-        .unwrap();
-    unsquash_copy(
-        &PathBuf::from("./test.sqsh"),
-        &PathBuf::from("./test-unsquash/"),
-        |_, _| (),
-    )?;
-    assert!(PathBuf::from("test-unsquash/mksys.rs").is_file());
-    std::fs::remove_dir_all("./test-unsquash/")?;
-    std::fs::remove_file("./test.sqsh")?;
-    Ok(())
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_unsquash() -> Result<()> {
+        use std::path::PathBuf;
+        std::process::Command::new("mksquashfs")
+            .arg("./src")
+            .arg("test.sqsh")
+            .status()
+            .unwrap();
+        unsquash_copy(
+            &PathBuf::from("./test.sqsh"),
+            &PathBuf::from("./test-unsquash/"),
+            |_, _| (),
+        )?;
+        assert!(PathBuf::from("test-unsquash/mksys.rs").is_file());
+        std::fs::remove_dir_all("./test-unsquash/")?;
+        std::fs::remove_file("./test.sqsh")?;
+        Ok(())
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
