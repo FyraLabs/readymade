@@ -58,6 +58,7 @@ impl Default for InstallationState {
 
 impl InstallationState {
     // todo: move methods from installationstate to here!
+    #[allow(clippy::unwrap_in_result)]
     pub fn install_using_subprocess(&self) -> Result<()> {
         let mut command = Command::new("pkexec");
         command.arg("env");
@@ -68,7 +69,7 @@ impl InstallationState {
 
         command.arg(format!(
             "READYMADE_LOG={}",
-            std::env::var("READYMADE_LOG").unwrap_or("trace".to_owned())
+            std::env::var("READYMADE_LOG").as_deref().unwrap_or("trace")
         ));
 
         let mut stdout_logs: Vec<u8> = Vec::new();
@@ -174,56 +175,57 @@ impl InstallationState {
         sys_mount::Mount::builder().mount(dev, MOUNTPOINT)
     }
 
+    pub fn determine_copy_source() -> String {
+        const FALLBACK: &str = "/mnt/live-base";
+        // We'll be using a new feature from systemd 255 (relative repart copy source)
+        // to copy the repartitioning definitions from the live base to the target disk
+
+        // environment variable override. This is documented in HACKING.md
+
+        std::env::var("REPART_COPY_SOURCE").map_or_else(|_| if std::fs::metadata(crate::util::ROOTFS_BASE)
+            .map(|m| m.is_dir())
+            .unwrap_or(false)
+        {
+            tracing::info!(
+                "Using {} as copy source, as it exists presumably due to raw rootfs in dracut",
+                crate::util::ROOTFS_BASE
+            );
+            crate::util::ROOTFS_BASE.to_owned()
+        }
+        // if we can mount /dev/mapper/live-base, we'll use that as the copy source
+        else {
+            match Self::mount_dev(crate::util::LIVE_BASE) {
+                Ok(mount) => {
+                    let m = mount.target_path().to_string_lossy().to_string();
+                    tracing::info!("Mounted live-base at {m}");
+                    m
+                }
+                Err(e) => {
+                    tracing::error!("Failed to mount `{LIVE_BASE}`, using `{FALLBACK}` as copy source anyway... ({e})");
+                    FALLBACK.to_owned()
+                }
+            }
+        }, |copy_source| {
+            tracing::info!("Using REPART_COPY_SOURCE override: {copy_source}");
+            let copy_source = Path::new(&copy_source.trim()).canonicalize().unwrap();
+
+            if copy_source == Path::new("/") {
+                tracing::warn!("REPART_COPY_SOURCE is set to `/`, this is likely a mistake. Copying entire host root filesystem to target disk...");
+            }
+
+            // convert back to string, may cause performance issues but it's not a big deal
+            copy_source.to_string_lossy().to_string()
+        })
+    }
+
     // todo: Generate custom repart partitioning definitions in case the user wants to use a custom partitioning scheme
+    #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     fn systemd_repart(
         blockdev: &Path,
         cfgdir: &Path,
     ) -> Result<crate::backend::repart_output::RepartOutput> {
-        let copy_source = {
-            const FALLBACK: &str = "/mnt/live-base";
-            // We'll be using a new feature from systemd 255 (relative repart copy source)
-            // to copy the repartitioning definitions from the live base to the target disk
-
-            // environment variable override. This is documented in HACKING.md
-
-            if let Ok(copy_source) = std::env::var("REPART_COPY_SOURCE") {
-                tracing::info!("Using REPART_COPY_SOURCE override: {copy_source}");
-                let copy_source = Path::new(&copy_source.trim()).canonicalize()?;
-
-                if copy_source == Path::new("/") {
-                    tracing::warn!("REPART_COPY_SOURCE is set to `/`, this is likely a mistake. Copying entire host root filesystem to target disk...");
-                }
-
-                // convert back to string, may cause performance issues but it's not a big deal
-                copy_source.to_string_lossy().to_string()
-            }
-            // if /run/rootfsbase exists and is a directory, we'll use that as the copy source
-            else if std::fs::metadata(crate::util::ROOTFS_BASE)
-                .map(|m| m.is_dir())
-                .unwrap_or(false)
-            {
-                tracing::info!(
-                    "Using {} as copy source, as it exists presumably due to raw rootfs in dracut",
-                    crate::util::ROOTFS_BASE
-                );
-                crate::util::ROOTFS_BASE.to_owned()
-            }
-            // if we can mount /dev/mapper/live-base, we'll use that as the copy source
-            else {
-                match Self::mount_dev(crate::util::LIVE_BASE) {
-                    Ok(mount) => {
-                        let m = mount.target_path().to_string_lossy().to_string();
-                        tracing::info!("Mounted live-base at {m}");
-                        m
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to mount `{LIVE_BASE}`, using `{FALLBACK}` as copy source anyway... ({e})");
-                        FALLBACK.to_owned()
-                    }
-                }
-            }
-        };
+        let copy_source = Self::determine_copy_source();
 
         let dry_run =
             std::env::var("READYMADE_DRY_RUN").map_or(cfg!(debug_assertions), |v| v == "1");
@@ -282,11 +284,11 @@ pub fn setup_system(output: RepartOutput) -> Result<()> {
     // The reason we're checking for UEFI here is because we want to check the current
     // system's boot mode before we install GRUB, not check inside the container
     let uefi = util::check_uefi();
-    container.run(|| _inner_sys_setup(uefi, output))?
+    container.run(|| _inner_sys_setup(uefi))?
 }
 
 #[tracing::instrument]
-fn _inner_sys_setup(uefi: bool, output: RepartOutput) -> Result<()> {
+pub fn _inner_sys_setup(uefi: bool) -> Result<()> {
     if uefi {
         // The reason why we don't do grub2-install here is because for
         // Fedora specifically, the install script simply plops in

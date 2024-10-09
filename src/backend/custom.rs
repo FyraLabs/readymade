@@ -12,6 +12,7 @@ pub struct MountTarget {
 
 impl MountTarget {
     fn mount(&self, root: &Path) -> std::io::Result<()> {
+        std::fs::create_dir_all(root)?;
         let target = self
             .mountpoint
             .strip_prefix("/")
@@ -74,4 +75,44 @@ impl MountTargets {
     fn umount_all(&self, root: &Path) -> std::io::Result<()> {
         self.0.iter().rev().try_for_each(|m| m.umount(root))
     }
+}
+
+// 1. mount all
+// 2. copy stuff
+// 3. funny setup_system()
+pub fn install_custom(mounttags: &mut MountTargets) -> color_eyre::Result<()> {
+    let destroot = Path::new("/mnt/custom");
+    mounttags.sort_mounts();
+    mounttags.mount_all(destroot)?;
+
+    let copy_source =
+        std::path::PathBuf::from(crate::install::InstallationState::determine_copy_source());
+    if copy_source.is_file() {
+        // TODO: impl callback status progress
+        super::mksys::unsquash_copy(&copy_source, destroot, |_, _| {})?;
+    } else {
+        todo!("impl copy from dir!");
+    }
+
+    let temp_dir = tempfile::tempdir()?.into_path();
+
+    let mut container = tiffin::Container::new(temp_dir);
+
+    for mnt in &mounttags.0 {
+        container.add_mount(
+            tiffin::MountTarget {
+                target: mnt.mountpoint.clone(),
+                flags: sys_mount::MountFlags::empty(),
+                data: None,
+                fstype: None,
+            },
+            mnt.partition.clone(),
+        );
+    }
+
+    let uefi = crate::util::check_uefi();
+    container.run(|| crate::install::_inner_sys_setup(uefi))??;
+
+    mounttags.umount_all(destroot)?;
+    Ok(())
 }
