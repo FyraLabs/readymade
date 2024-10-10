@@ -1,6 +1,8 @@
 //! QoL Utilities for Readymade
 
 use std::path::Path;
+
+use tracing::{info, warn};
 pub const LIVE_BASE: &str = "/dev/mapper/live-base";
 pub const ROOTFS_BASE: &str = "/run/rootfsbase";
 
@@ -13,6 +15,58 @@ pub const ROOTFS_BASE: &str = "/run/rootfsbase";
 pub fn check_uefi() -> bool {
     std::fs::metadata("/sys/firmware/efi").is_ok()
 }
+
+/// Helper function to install GRUB2 on a legacy BIOS system.
+///
+/// This function runs `grub2-mkconfig` and `grub2-install` to install GRUB2 on a legacy BIOS system.
+///
+/// NOTE: To successfully install GRUB on a legacy BIOS system, you need to be running on
+/// an IBM PC-compatible system with an older BIOS firmware. If you are running on a UEFI system,
+/// please refer to the standard UEFI installation method.
+///
+/// You will also require a small, blank GPT partition for the BIOS boot partition so the MBR headers
+/// have a place to live. This partition should be at least 1MB in size.
+///
+/// This function will attempt to generate a GRUB configuration and then write the bootloader directly to the header
+/// of the disk, which should be allocated to that small BIOS boot partition.
+///
+/// # Arguments
+///
+/// * `disk` - The path to the disk to install GRUB2 on.
+///
+/// * `root` - The path to the root directory of the installed system.
+pub fn grub2_install_bios<P: AsRef<Path>>(disk: P, root: P) -> Result<(), std::io::Error> {
+    let boot_directory = root.as_ref().join("boot");
+
+    info!("Generating GRUB2 configuration...");
+    // this should probably be run inside a chroot... but we'll see
+    // todo: Maybe actually enter a chroot using tiffin?
+    let res = run_as_root(&format!(
+        "grub2-mkconfig -o {}/grub/grub.cfg",
+        &boot_directory.display()
+    ));
+
+    if let Err(e) = res {
+        warn!("Failed to generate GRUB2 configuration: {}", e);
+
+        // Check if the file still exists
+        if !boot_directory.join("grub/grub.cfg").exists() {
+            return Err(e);
+        }
+    }
+    info!("Blessing the disk with GRUB2...");
+    let res = run_as_root(&format!(
+        "grub2-install --target=i386-pc --recheck --boot-directory={} {}",
+        &boot_directory.display(),
+        disk.as_ref().display()
+    ));
+
+    res?;
+
+    Ok(())
+}
+
+
 
 // macro to wrap around cmd_lib::run_fun! to prepend pkexec if not root
 
