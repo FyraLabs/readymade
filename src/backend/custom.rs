@@ -94,6 +94,8 @@ pub fn install_custom(mounttags: &mut MountTargets) -> color_eyre::Result<()> {
         todo!("impl copy from dir!");
     }
 
+    mounttags.umount_all(destroot)?;
+
     let temp_dir = tempfile::tempdir()?.into_path();
 
     let mut container = tiffin::Container::new(temp_dir);
@@ -113,6 +115,5 @@ pub fn install_custom(mounttags: &mut MountTargets) -> color_eyre::Result<()> {
     let uefi = crate::util::check_uefi();
     container.run(|| crate::install::_inner_sys_setup(uefi))??;
 
-    mounttags.umount_all(destroot)?;
     Ok(())
 }
