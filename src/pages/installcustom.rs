@@ -94,16 +94,16 @@ impl SimpleComponent for InstallCustomPage {
                 .output(InstallCustomPageOutput::Navigate(action))
                 .unwrap(),
             InstallCustomPageMsg::AddRow => {
-                // FIXME: the dialog just doesn't appear at all…?
                 let out = sender.input_sender();
                 let dialog = AddDialog::builder();
-                dialog
+                let mut ctrl = dialog
                     .launch(AddDialog {
                         index: self.choose_mount_factory.len(),
                         ..AddDialog::default()
                     })
-                    .forward(out, InstallCustomPageMsg::UpdateRow)
-                    .detach_runtime();
+                    .forward(out, InstallCustomPageMsg::UpdateRow);
+                ctrl.detach_runtime();
+                ctrl.widget().present();
             }
             InstallCustomPageMsg::UpdateRow(msg) => {
                 let mut guard = self.choose_mount_factory.guard();
@@ -200,31 +200,64 @@ impl SimpleComponent for AddDialog {
 
     view! {
         libhelium::Window {
-            #[wrap(Some)]
-            set_child = &gtk::FlowBox {
-                set_orientation: gtk::Orientation::Vertical,
-                set_max_children_per_line: 2,
-                append = &gtk::Label {
-                    set_label: &gettext("Partition"),
-                },
-                #[local_ref]
-                append = partlist -> gtk::DropDown {
-                    set_enable_search: true,
-                },
-                append = &gtk::Label {
-                    set_label: &gettext("Mount at"),
-                },
-                #[name = "tf_at"]
-                append = &libhelium::TextField {
-                    add_css_class: "monospace",
+            set_title: Some("Mount Target"),
+            set_default_width: 300,
+            set_default_height: 250,
+            set_vexpand: true,
 
+            #[wrap(Some)]
+            set_child = &gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_vexpand: true,
+                set_spacing: 4,
+                set_margin_all: 8,
+
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Horizontal,
+                    set_hexpand: true,
+                    set_spacing: 6,
+
+                    gtk::Label {
+                        set_label: &gettext("Partition"),
+                    },
+                    #[local_ref]
+                    partlist -> gtk::DropDown {
+                        set_enable_search: true,
+                    },
                 },
-                append = &gtk::Label {
-                    set_label: &gettext("Mount options"),
+
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Horizontal,
+                    set_hexpand: true,
+                    set_spacing: 3,
+
+                    gtk::Label {
+                        set_label: &gettext("Mount at"),
+                    },
+                    #[name = "tf_at"]
+                    libhelium::TextField {
+                        add_css_class: "monospace",
+
+                    },
                 },
-                #[name = "tf_opts"]
-                append = &libhelium::TextField {
-                    add_css_class: "monospace",
+
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Horizontal,
+                    set_hexpand: true,
+                    set_spacing: 3,
+
+                    gtk::Label {
+                        set_label: &gettext("Mount options"),
+                    },
+                    #[name = "tf_opts"]
+                    libhelium::TextField {
+                        add_css_class: "monospace",
+                    },
+                },
+
+                libhelium::OverlayButton {
+                    set_label: Some("OK"),
+                    // TODO: connect_clicked
                 },
             },
             connect_close_request[sender, model] => move |_| {
@@ -242,8 +275,8 @@ impl SimpleComponent for AddDialog {
     ) -> ComponentParts<Self> {
         tracing::trace!(?init, "Spawned AddDialog");
         // populate partition dropdown list
-        let disk = crate::INSTALLATION_STATE.read().destination_disk.clone();
-        let disk = disk.unwrap().devpath.to_string_lossy().to_string();
+        let disk = (crate::INSTALLATION_STATE.read().destination_disk.clone()).unwrap();
+        let disk = disk.devpath.file_name().unwrap().to_str().unwrap();
         let partlist = lsblk::BlockDevice::list().unwrap();
         let partlist = (partlist.iter())
             .filter(|b| b.is_part() && b.disk_name().is_ok_and(|d| d == disk))

@@ -153,7 +153,8 @@ impl SimpleComponent for DestinationPage {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let mut disks = FactoryVecDeque::builder()
-            .launch(gtk::FlowBox::default()).detach();
+            .launch(gtk::FlowBox::default())
+            .detach();
 
         let disks_data = crate::disks::detect_os();
 

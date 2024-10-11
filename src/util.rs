@@ -18,6 +18,8 @@ pub fn check_uefi() -> bool {
 
 /// Helper function to install GRUB2 on a legacy BIOS system.
 ///
+/// You should run this inside a [`tiffin::Container`].
+///
 /// This function runs `grub2-mkconfig` and `grub2-install` to install GRUB2 on a legacy BIOS system.
 ///
 /// NOTE: To successfully install GRUB on a legacy BIOS system, you need to be running on
@@ -33,40 +35,25 @@ pub fn check_uefi() -> bool {
 /// # Arguments
 ///
 /// * `disk` - The path to the disk to install GRUB2 on.
-///
-/// * `root` - The path to the root directory of the installed system.
-pub fn grub2_install_bios<P: AsRef<Path>>(disk: P, root: P) -> Result<(), std::io::Error> {
-    let boot_directory = root.as_ref().join("boot");
-
+pub fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> std::io::Result<()> {
     info!("Generating GRUB2 configuration...");
     // this should probably be run inside a chroot... but we'll see
-    // todo: Maybe actually enter a chroot using tiffin?
-    let res = run_as_root(&format!(
-        "grub2-mkconfig -o {}/grub/grub.cfg",
-        &boot_directory.display()
-    ));
-
-    if let Err(e) = res {
-        warn!("Failed to generate GRUB2 configuration: {}", e);
+    if let Err(e) = run_as_root("grub2-mkconfig -o /boot/grub/grub.cfg") {
+        warn!("Failed to generate GRUB2 configuration: {e}");
 
         // Check if the file still exists
-        if !boot_directory.join("grub/grub.cfg").exists() {
+        if !Path::new("/boot/grub/grub.cfg").exists() {
             return Err(e);
         }
     }
     info!("Blessing the disk with GRUB2...");
-    let res = run_as_root(&format!(
-        "grub2-install --target=i386-pc --recheck --boot-directory={} {}",
-        &boot_directory.display(),
+    run_as_root(&format!(
+        "grub2-install --target=i386-pc --recheck --boot-directory=/boot {}",
         disk.as_ref().display()
-    ));
-
-    res?;
+    ))?;
 
     Ok(())
 }
-
-
 
 // macro to wrap around cmd_lib::run_fun! to prepend pkexec if not root
 

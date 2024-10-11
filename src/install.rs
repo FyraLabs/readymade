@@ -319,6 +319,10 @@ pub fn _inner_sys_setup(uefi: bool) -> Result<()> {
                 bail!("grub2-mkconfig failed with exit code {:?}", grub_cmd_status.code());
             }
         });
+    } else {
+        stage!("Installing BIOS Grub2" {
+            util::grub2_install_bios(crate::INSTALLATION_STATE.read().destination_disk.as_ref().unwrap().devpath.as_path())?;
+        });
     }
 
     stage!("Cleaning up /boot partition..." {
