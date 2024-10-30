@@ -162,9 +162,35 @@ impl InstallationState {
         setup_system(repart_out)?;
 
         if let InstallationType::ChromebookInstall = inst_type {
+            // FIXME: don't dd?
+            Self::dd_submarine(blockdev)?;
             InstallationType::set_cgpt_flags(blockdev)?;
         }
         tracing::info!("install() finished");
+        Ok(())
+    }
+
+    #[tracing::instrument]
+    fn dd_submarine(blockdev: &Path) -> Result<()> {
+        tracing::debug!("dd-ing submarine…");
+        if !Command::new("dd")
+            .arg("if=/usr/share/submarine/submarine.kpart")
+            .arg(format!(
+                "of=/dev/{}",
+                lsblk::BlockDevice::list()?
+                    .into_iter()
+                    .find(|d| d.is_part()
+                        && d.disk_name().ok().as_deref() == blockdev.to_str()
+                        && d.name.ends_with('2'))
+                    .ok_or_else(|| eyre!("Failed to find submarine partition"))?
+                    .name
+            ))
+            .arg("status=progress")
+            .status()?
+            .success()
+        {
+            return Err(eyre!("Failed to dd submarine, non-zero exit code"));
+        }
         Ok(())
     }
 
