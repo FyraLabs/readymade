@@ -905,6 +905,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glib-build-tools"
+version = "0.17.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a65d79efe318ef2cbbbb37032b125866fd82c34ea44c816132621bbc552e716"
+
+[[package]]
 name = "glib-macros"
 version = "0.18.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1881,6 +1887,7 @@ dependencies = [
  "const_format",
  "crossbeam-queue",
  "gettext-rs",
+ "glib-build-tools",
  "gnome-desktop",
  "itertools 0.13.0",
  "libhelium",

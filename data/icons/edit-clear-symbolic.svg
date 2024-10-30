@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   version="1.1"
+   viewBox="0 0 16 16"
+   id="svg9"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs3">
+    <style
+       id="current-color-scheme"
+       type="text/css">.ColorScheme-Text {
+        color:#363636;
+      }</style>
+  </defs>
+  <path
+     class="ColorScheme-Text"
+     d="m 6.2499752,2 a -1.0001,1.0001 0 0 0 -0.68945,0.27539 l -4.63089997,4.4121 -0.61914,0.58789 a -1.0001,1.0001 0 0 0 0,1.4492 l 0.61914,0.58789 4.63089997,4.4121 a -1.0001,1.0001 0 0 0 0.68945,0.27539 h 8.7499998 a -1.0001,1.0001 0 0 0 1,-1 v -10 a -1.0001,1.0001 0 0 0 -1,-1 H 6.2499752 Z m 0,1 H 14.999975 V 13 H 6.2499752 L 1.6190752,8.5898 0.99993523,7.99996 1.6190752,7.41012 l 4.6309,-4.4102 z"
+     fill="currentColor"
+     id="path5"
+     style="fill:#241f31" />
+  <path
+     style="color:#000000;fill:#241f31;stroke-linecap:round;stroke-linejoin:round;-inkscape-stroke:none"
+     d="m 12.499675,5 a -0.5,0.5 0 0 1 0.353516,0.1464844 -0.5,0.5 0 0 1 0,0.7070312 L 7.8531908,10.853516 a -0.5,0.5 0 0 1 -0.7070312,0 -0.5,0.5 0 0 1 0,-0.707032 L 12.14616,5.1464844 A -0.5,0.5 0 0 1 12.499675,5 Z"
+     id="path863" />
+  <path
+     style="color:#000000;fill:#241f31;stroke-linecap:round;stroke-linejoin:round;-inkscape-stroke:none"
+     d="m 7.8531908,5.1464844 5.0000002,4.9999996 a -0.5,0.5 0 0 1 0,0.707032 -0.5,0.5 0 0 1 -0.707031,0 L 7.1461596,5.8535156 a -0.5,0.5 0 0 1 0,-0.7070312 -0.5,0.5 0 0 1 0.7070312,0 z"
+     id="path865" />
+</svg>

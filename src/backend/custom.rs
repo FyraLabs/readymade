@@ -5,6 +5,8 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Default)]
 pub struct MountTarget {
+    #[doc(hidden)]
+    pub index: usize,
     pub partition: PathBuf,
     pub mountpoint: PathBuf,
     pub options: String,

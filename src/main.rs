@@ -146,7 +146,10 @@ impl SimpleComponent for AppModel {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         // TODO: make libhelium force this
-        let settings = gtk::Settings::for_display(&gtk::gdk::Display::default().unwrap());
+        let display = gtk::gdk::Display::default().unwrap();
+        let settings = gtk::Settings::for_display(&display);
+
+        initialize_custom_icons(display);
         settings.set_gtk_icon_theme_name(Some("Hydrogen"));
 
         let model = Self::_default(sender);
@@ -220,6 +223,13 @@ fn main() -> Result<()> {
     tracing::debug!("Starting Readymade");
     RelmApp::from_app(app).run::<AppModel>(());
     Ok(())
+}
+
+fn initialize_custom_icons(display: gtk::gdk::Display) {
+    gtk::gio::resources_register_include!("icons.gresource").unwrap();
+
+    let theme = gtk::IconTheme::for_display(&display);
+    theme.add_resource_path("/com/FyraLabs/Readymade/icons");
 }
 
 /// Returns a logging guard.

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+    <gresource prefix="com/FyraLabs/Readymade/icons/symbolic/actions/">
+        <file preprocess="xml-stripblanks" alias="document-edit-symbolic.svg">icons/document-edit-symbolic.svg</file>
+        <file preprocess="xml-stripblanks" alias="edit-clear-symbolic.svg">icons/edit-clear-symbolic.svg</file>
+    </gresource>
+</gresources>

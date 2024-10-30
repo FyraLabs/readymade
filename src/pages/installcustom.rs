@@ -11,7 +11,9 @@ pub struct InstallCustomPage {
 #[derive(Debug)]
 pub enum InstallCustomPageMsg {
     AddRow,
+    #[allow(private_interfaces)]
     UpdateRow(AddDialog),
+    RowOutput(ChooseMountOutput),
     #[doc(hidden)]
     Navigate(NavigationAction),
 }
@@ -43,6 +45,7 @@ impl SimpleComponent for InstallCustomPage {
                 gtk::ScrolledWindow {
                     #[local_ref]
                     mounts -> gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
                         add_css_class: "content-list",
                         set_vexpand: true,
                         set_hexpand: true,
@@ -77,7 +80,7 @@ impl SimpleComponent for InstallCustomPage {
     ) -> ComponentParts<Self> {
         let choose_mount_factory = FactoryVecDeque::builder()
             .launch(gtk::Box::default())
-            .detach();
+            .forward(sender.input_sender(), InstallCustomPageMsg::RowOutput);
 
         let model = Self {
             choose_mount_factory,
@@ -107,11 +110,46 @@ impl SimpleComponent for InstallCustomPage {
             }
             InstallCustomPageMsg::UpdateRow(msg) => {
                 let mut guard = self.choose_mount_factory.guard();
-                let obj = guard.get_mut(msg.index).unwrap();
+                let Some(obj) = guard.get_mut(msg.index) else {
+                    // new entry
+                    guard.push_back((msg.partition.into(), msg.mountpoint.into(), msg.mountopts));
+                    return;
+                };
                 obj.partition = PathBuf::from(msg.partition);
                 obj.mountpoint = PathBuf::from(msg.mountpoint);
                 obj.options = msg.mountopts;
             }
+            InstallCustomPageMsg::RowOutput(action) => match action {
+                ChooseMountOutput::Edit(index) => {
+                    let Some(crate::backend::custom::MountTarget {
+                        partition,
+                        mountpoint,
+                        options,
+                        ..
+                    }) = self.choose_mount_factory.get(index)
+                    else {
+                        unreachable!()
+                    };
+
+                    let dialog = AddDialog::builder();
+                    let mut ctrl = dialog
+                        .launch(AddDialog {
+                            index,
+                            partition: partition.display().to_string(),
+                            mountpoint: mountpoint.display().to_string(),
+                            mountopts: options.to_string(),
+                        })
+                        .forward(sender.input_sender(), InstallCustomPageMsg::UpdateRow);
+                    ctrl.detach_runtime();
+                    ctrl.widget().present();
+                }
+                ChooseMountOutput::Remove(index) => {
+                    self.choose_mount_factory
+                        .guard()
+                        .remove(index)
+                        .expect("can't remove requested row");
+                }
+            },
         }
     }
 }
@@ -121,12 +159,14 @@ impl SimpleComponent for InstallCustomPage {
 
 #[derive(Debug)]
 pub enum ChooseMountMsg {
+    Edit,
     Remove,
 }
 
 #[derive(Debug)]
 pub enum ChooseMountOutput {
-    Remove,
+    Edit(usize),
+    Remove(usize),
 }
 
 #[relm4::factory(pub)]
@@ -140,16 +180,24 @@ impl FactoryComponent for ChooseMount {
     view! {
         gtk::Box {
             set_orientation: gtk::Orientation::Horizontal,
+            set_spacing: 16,
+
             gtk::Label {
                 set_label: &format!("{} ← {}{}", self.mountpoint.display(), self.partition.display(), if self.options.is_empty() { String::new() } else { format!(" [{}]", self.options) }),
                 add_css_class: "monospace",
             },
 
-            // TODO: edit btn
+            libhelium::Button {
+                set_icon_name: "document-edit-symbolic",
+                set_tooltip: &gettext("Remove mountpoint"),
+                add_css_class: "suggested-action",
+                connect_clicked => ChooseMountMsg::Edit,
+            },
 
             libhelium::Button {
-                set_icon_name: "delete",
+                set_icon_name: "edit-clear-symbolic",
                 set_tooltip: &gettext("Remove mountpoint"),
+                add_css_class: "destructive-action",
                 connect_clicked => ChooseMountMsg::Remove,
             },
         }
@@ -157,10 +205,11 @@ impl FactoryComponent for ChooseMount {
 
     fn init_model(
         (partition, mountpoint, options): Self::Init,
-        _index: &Self::Index,
+        index: &Self::Index,
         _sender: FactorySender<Self>,
     ) -> Self {
         Self {
+            index: index.current_index(),
             partition,
             mountpoint,
             options,
@@ -169,7 +218,10 @@ impl FactoryComponent for ChooseMount {
 
     fn update(&mut self, message: Self::Input, sender: FactorySender<Self>) {
         match message {
-            ChooseMountMsg::Remove => sender.output(ChooseMountOutput::Remove).unwrap(),
+            ChooseMountMsg::Remove => sender
+                .output(ChooseMountOutput::Remove(self.index))
+                .unwrap(),
+            ChooseMountMsg::Edit => sender.output(ChooseMountOutput::Edit(self.index)).unwrap(),
         }
     }
 }
@@ -190,6 +242,7 @@ enum AddDialogMsg {
     ChangedPart(String),
     ChangedMnpt(String),
     ChangedOpts(String),
+    Close(libhelium::Window),
 }
 
 #[relm4::component]
@@ -199,6 +252,7 @@ impl SimpleComponent for AddDialog {
     type Output = Self;
 
     view! {
+        #[name(window)]
         libhelium::Window {
             set_title: Some("Mount Target"),
             set_default_width: 300,
@@ -255,15 +309,11 @@ impl SimpleComponent for AddDialog {
                     },
                 },
 
+                #[name(btn)]
                 libhelium::OverlayButton {
                     set_label: Some("OK"),
-                    // TODO: connect_clicked
+                    connect_clicked[sender, window] => move |_| sender.input(AddDialogMsg::Close(window.clone())),
                 },
-            },
-            connect_close_request[sender, model] => move |_| {
-                sender.output(model.clone()).unwrap();
-                tracing::trace!(?model, "connect_close_request()");
-                gtk::glib::Propagation::Proceed
             },
         }
     }
@@ -286,16 +336,19 @@ impl SimpleComponent for AddDialog {
             &gtk::DropDown::from_strings(&partvec.iter().filter_map(|s| s.to_str()).collect_vec());
 
         let (sd0, sd1, sd2) = (sender.clone(), sender.clone(), sender.clone());
+        let partvec0 = partvec.clone();
         // connect signal for the dropdown
         partlist.connect_selected_notify(move |dropdown| {
             sd0.input(AddDialogMsg::ChangedPart(
                 #[allow(clippy::indexing_slicing)]
-                partvec[dropdown.selected() as usize].display().to_string(),
+                partvec0[dropdown.selected() as usize].display().to_string(),
             ));
         });
 
-        let model = init;
+        let mut model = init;
         let widgets = view_output!();
+        let window = widgets.window.clone();
+        widgets.btn.connect_clicked(move |_| window.close());
         // connect signal for textfields
         widgets
             .tf_at
@@ -304,15 +357,20 @@ impl SimpleComponent for AddDialog {
         widgets
             .tf_opts
             .internal_entry()
-            .connect_changed(move |en| sd2.input(AddDialogMsg::ChangedMnpt(en.text().to_string())));
+            .connect_changed(move |en| sd2.input(AddDialogMsg::ChangedOpts(en.text().to_string())));
+        model.partition = partvec[partlist.selected() as usize].display().to_string();
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             AddDialogMsg::ChangedPart(part) => self.partition = part,
             AddDialogMsg::ChangedMnpt(mnpt) => self.mountpoint = mnpt,
             AddDialogMsg::ChangedOpts(opts) => self.mountopts = opts,
+            AddDialogMsg::Close(window) => {
+                sender.output(std::mem::take(self)).unwrap();
+                window.close();
+            }
         }
     }
 }

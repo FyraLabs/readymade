@@ -61,6 +61,9 @@ backhand = "0.18.0"
 git = "https://github.com/FyraLabs/distinst"
 branch = "master"
 
+[build-dependencies]
+glib-build-tools = "0.17.10"
+
 [lints.clippy]
 cargo = { level = "warn", priority = -1 }
 complexity = { level = "warn", priority = -1 }
