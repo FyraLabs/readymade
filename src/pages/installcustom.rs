@@ -41,33 +41,44 @@ impl SimpleComponent for InstallCustomPage {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
                 set_vexpand: true,
+                set_hexpand: true,
 
                 gtk::ScrolledWindow {
                     #[local_ref]
                     mounts -> gtk::Box {
+                        set_margin_horizontal: 16,
+                        set_spacing: 8,
                         set_orientation: gtk::Orientation::Vertical,
                         add_css_class: "content-list",
                         set_vexpand: true,
                         set_hexpand: true,
                         set_valign: gtk::Align::Center,
-                        set_halign: gtk::Align::Center,
+                        set_halign: gtk::Align::Fill,
                     }
                 },
 
                 gtk::Box {
-                    set_vexpand: false,
-                    set_hexpand: true,
-                    set_orientation: gtk::Orientation::Horizontal,
+                    set_vexpand: true,
+                },
 
-                    gtk::Box {
-                        set_hexpand: true,
-                    },
+                // FIXME: help me position this button!!!!
+                libhelium::Button {
+                    set_is_iconic: true,
+                    set_valign: gtk::Align::End,
+                    set_halign: gtk::Align::Start,
 
-                    libhelium::OverlayButton {
-                        set_typeb: libhelium::OverlayButtonTypeButton::Primary,
-                        set_icon: "list-add",
-                        connect_clicked => InstallCustomPageMsg::AddRow,
-                    },
+                    // set_typeb: libhelium::OverlayButtonTypeButton::Secondary,
+                    set_icon: Some("list-add"),
+                    connect_clicked => InstallCustomPageMsg::AddRow,
+                },
+
+                libhelium::OverlayButton {
+                    set_valign: gtk::Align::End,
+                    set_halign: gtk::Align::End,
+
+                    set_typeb: libhelium::OverlayButtonTypeButton::Primary,
+                    set_icon: "check-plain-symbolic",
+                    connect_clicked => InstallCustomPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Confirmation)),
                 },
             },
         }
@@ -92,6 +103,7 @@ impl SimpleComponent for InstallCustomPage {
     }
 
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
+        tracing::trace!(?message, "InstallCustomPage::update");
         match message {
             InstallCustomPageMsg::Navigate(action) => sender
                 .output(InstallCustomPageOutput::Navigate(action))
@@ -110,35 +122,29 @@ impl SimpleComponent for InstallCustomPage {
             }
             InstallCustomPageMsg::UpdateRow(msg) => {
                 let mut guard = self.choose_mount_factory.guard();
-                let Some(obj) = guard.get_mut(msg.index) else {
+                let (i, obj) = (msg.index, msg.into());
+                if guard.len() > i {
+                    guard.insert(i, obj);
+                    guard.remove(i.wrapping_add(1));
+                } else {
                     // new entry
-                    guard.push_back((msg.partition.into(), msg.mountpoint.into(), msg.mountopts));
-                    return;
-                };
-                obj.partition = PathBuf::from(msg.partition);
-                obj.mountpoint = PathBuf::from(msg.mountpoint);
-                obj.options = msg.mountopts;
+                    guard.push_back(obj);
+                }
             }
             InstallCustomPageMsg::RowOutput(action) => match action {
                 ChooseMountOutput::Edit(index) => {
-                    let Some(crate::backend::custom::MountTarget {
-                        partition,
-                        mountpoint,
-                        options,
-                        ..
-                    }) = self.choose_mount_factory.get(index)
+                    let Some(mnt_target) = self.choose_mount_factory.get(index)
                     else {
                         unreachable!()
                     };
 
+                    tracing::trace!(?mnt_target, "Edit MountTarget");
+
+                    let mut add_dialog = AddDialog::from(mnt_target);
+                    add_dialog.index = index;
                     let dialog = AddDialog::builder();
                     let mut ctrl = dialog
-                        .launch(AddDialog {
-                            index,
-                            partition: partition.display().to_string(),
-                            mountpoint: mountpoint.display().to_string(),
-                            mountopts: options.to_string(),
-                        })
+                        .launch(add_dialog)
                         .forward(sender.input_sender(), InstallCustomPageMsg::UpdateRow);
                     ctrl.detach_runtime();
                     ctrl.widget().present();
@@ -148,6 +154,7 @@ impl SimpleComponent for InstallCustomPage {
                         .guard()
                         .remove(index)
                         .expect("can't remove requested row");
+                    self.choose_mount_factory.broadcast(ChooseMountMsg::Removed(index));
                 }
             },
         }
@@ -157,10 +164,11 @@ impl SimpleComponent for InstallCustomPage {
 // ────────────────────────────────────────────────────────────────────────────
 // ChooseMount (row in main page)
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ChooseMountMsg {
     Edit,
     Remove,
+    Removed(usize),
 }
 
 #[derive(Debug)]
@@ -175,16 +183,23 @@ impl FactoryComponent for ChooseMount {
     type Input = ChooseMountMsg;
     type Output = ChooseMountOutput;
     type CommandOutput = ();
-    type Init = (PathBuf, PathBuf, String);
+    type Init = Self;
 
     view! {
         gtk::Box {
+            set_halign: gtk::Align::Fill,
+            set_hexpand: true,
             set_orientation: gtk::Orientation::Horizontal,
             set_spacing: 16,
 
             gtk::Label {
                 set_label: &format!("{} ← {}{}", self.mountpoint.display(), self.partition.display(), if self.options.is_empty() { String::new() } else { format!(" [{}]", self.options) }),
                 add_css_class: "monospace",
+            },
+
+            gtk::Box {
+                set_halign: gtk::Align::Fill,
+                set_hexpand: true,
             },
 
             libhelium::Button {
@@ -203,17 +218,9 @@ impl FactoryComponent for ChooseMount {
         }
     }
 
-    fn init_model(
-        (partition, mountpoint, options): Self::Init,
-        index: &Self::Index,
-        _sender: FactorySender<Self>,
-    ) -> Self {
-        Self {
-            index: index.current_index(),
-            partition,
-            mountpoint,
-            options,
-        }
+    fn init_model(mut init: Self::Init, index: &Self::Index, _sender: FactorySender<Self>) -> Self {
+        init.index = index.current_index();
+        init
     }
 
     fn update(&mut self, message: Self::Input, sender: FactorySender<Self>) {
@@ -222,6 +229,7 @@ impl FactoryComponent for ChooseMount {
                 .output(ChooseMountOutput::Remove(self.index))
                 .unwrap(),
             ChooseMountMsg::Edit => sender.output(ChooseMountOutput::Edit(self.index)).unwrap(),
+            ChooseMountMsg::Removed(i) => if self.index > i {self.index -= 1},
         }
     }
 }
@@ -276,6 +284,7 @@ impl SimpleComponent for AddDialog {
                     },
                     #[local_ref]
                     partlist -> gtk::DropDown {
+                        set_halign: gtk::Align::End,
                         set_enable_search: true,
                     },
                 },
@@ -290,6 +299,9 @@ impl SimpleComponent for AddDialog {
                     },
                     #[name = "tf_at"]
                     libhelium::TextField {
+                        set_halign: gtk::Align::Fill,
+                        set_hexpand: true,
+                        set_is_outline: true,
                         add_css_class: "monospace",
 
                     },
@@ -305,6 +317,9 @@ impl SimpleComponent for AddDialog {
                     },
                     #[name = "tf_opts"]
                     libhelium::TextField {
+                        set_halign: gtk::Align::Fill,
+                        set_hexpand: true,
+                        set_is_outline: true,
                         add_css_class: "monospace",
                     },
                 },
@@ -359,6 +374,17 @@ impl SimpleComponent for AddDialog {
             .internal_entry()
             .connect_changed(move |en| sd2.input(AddDialogMsg::ChangedOpts(en.text().to_string())));
         model.partition = partvec[partlist.selected() as usize].display().to_string();
+
+        // override settings from init
+        if let Some(index) = partvec
+            .iter()
+            .position(|part| part.display().to_string() == model.partition)
+        {
+            partlist.set_selected(index as u32);
+        }
+        widgets.tf_at.internal_entry().set_text(&model.mountpoint);
+        widgets.tf_opts.internal_entry().set_text(&model.mountopts);
+
         ComponentParts { model, widgets }
     }
 
@@ -373,4 +399,63 @@ impl SimpleComponent for AddDialog {
             }
         }
     }
+}
+
+impl From<&AddDialog> for ChooseMount {
+    fn from(
+        AddDialog {
+            partition,
+            mountpoint,
+            mountopts,
+            index,
+        }: &AddDialog,
+    ) -> Self {
+        Self {
+            index: *index,
+            partition: PathBuf::from(partition),
+            mountpoint: PathBuf::from(mountpoint),
+            options: mountopts.clone(),
+        }
+    }
+}
+
+impl From<&ChooseMount> for AddDialog {
+    fn from(ChooseMount { index, partition, mountpoint, options }: &ChooseMount) -> Self {
+        Self {
+            index: *index,
+            partition: partition.display().to_string(),
+            mountpoint: mountpoint.display().to_string(),
+            mountopts: options.clone(),
+        }
+    }
+}
+
+impl From<AddDialog> for ChooseMount {
+    fn from(
+        AddDialog {
+            partition,
+            mountpoint,
+            mountopts,
+            index,
+        }: AddDialog,
+    ) -> Self {
+        Self {
+            index,
+            partition: PathBuf::from(partition),
+            mountpoint: PathBuf::from(mountpoint),
+            options: mountopts,
+        }
+    }
+}
+
+impl From<ChooseMount> for AddDialog {
+    fn from(ChooseMount { index, partition, mountpoint, options }: ChooseMount) -> Self {
+        Self {
+            index,
+            partition: partition.display().to_string(),
+            mountpoint: mountpoint.display().to_string(),
+            mountopts: options,
+        }
+    }
+
 }
