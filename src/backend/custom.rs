@@ -1,9 +1,8 @@
-use itertools::Itertools;
 use std::path::Component;
 use std::path::Path;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct MountTarget {
     #[doc(hidden)]
     pub index: usize,
@@ -42,8 +41,8 @@ impl MountTarget {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct MountTargets(Vec<MountTarget>);
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct MountTargets(pub Vec<MountTarget>);
 
 impl MountTargets {
     //? https://github.com/FyraLabs/tiffin/blob/3d09faf3127f644fbd441af78d039b1acaba5847/src/lib.rs#L117C1-L130C6

@@ -38,6 +38,7 @@ pub struct InstallationState {
     pub langlocale: Option<String>,
     pub destination_disk: Option<DiskInit>,
     pub installation_type: Option<InstallationType>,
+    pub mounttags: Option<crate::backend::custom::MountTargets>,
 }
 
 // TODO: remove this after have support for anything other than chromebook
@@ -52,6 +53,7 @@ impl Default for InstallationState {
             } else {
                 None
             },
+            mounttags: Option::default(),
         }
     }
 }
@@ -147,6 +149,11 @@ impl InstallationState {
             .installation_type
             .as_ref()
             .expect("A valid installation type should be set before calling install()");
+
+        if let InstallationType::Custom = inst_type {
+            let mut mounttags = self.mounttags.clone().unwrap();
+            return crate::backend::custom::install_custom(&mut mounttags);
+        }
         let blockdev = &self
             .destination_disk
             .as_ref()

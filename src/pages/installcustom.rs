@@ -5,7 +5,7 @@ use relm4::factory::FactoryVecDeque;
 use crate::{backend::custom::MountTarget as ChooseMount, prelude::*, NavigationAction};
 
 pub struct InstallCustomPage {
-    choose_mount_factory: FactoryVecDeque<ChooseMount>,
+    pub choose_mount_factory: FactoryVecDeque<ChooseMount>,
 }
 
 #[derive(Debug)]
@@ -133,8 +133,7 @@ impl SimpleComponent for InstallCustomPage {
             }
             InstallCustomPageMsg::RowOutput(action) => match action {
                 ChooseMountOutput::Edit(index) => {
-                    let Some(mnt_target) = self.choose_mount_factory.get(index)
-                    else {
+                    let Some(mnt_target) = self.choose_mount_factory.get(index) else {
                         unreachable!()
                     };
 
@@ -154,7 +153,8 @@ impl SimpleComponent for InstallCustomPage {
                         .guard()
                         .remove(index)
                         .expect("can't remove requested row");
-                    self.choose_mount_factory.broadcast(ChooseMountMsg::Removed(index));
+                    self.choose_mount_factory
+                        .broadcast(ChooseMountMsg::Removed(index));
                 }
             },
         }
@@ -229,7 +229,11 @@ impl FactoryComponent for ChooseMount {
                 .output(ChooseMountOutput::Remove(self.index))
                 .unwrap(),
             ChooseMountMsg::Edit => sender.output(ChooseMountOutput::Edit(self.index)).unwrap(),
-            ChooseMountMsg::Removed(i) => if self.index > i {self.index -= 1},
+            ChooseMountMsg::Removed(i) => {
+                if self.index > i {
+                    self.index -= 1
+                }
+            }
         }
     }
 }
@@ -420,7 +424,14 @@ impl From<&AddDialog> for ChooseMount {
 }
 
 impl From<&ChooseMount> for AddDialog {
-    fn from(ChooseMount { index, partition, mountpoint, options }: &ChooseMount) -> Self {
+    fn from(
+        ChooseMount {
+            index,
+            partition,
+            mountpoint,
+            options,
+        }: &ChooseMount,
+    ) -> Self {
         Self {
             index: *index,
             partition: partition.display().to_string(),
@@ -449,7 +460,14 @@ impl From<AddDialog> for ChooseMount {
 }
 
 impl From<ChooseMount> for AddDialog {
-    fn from(ChooseMount { index, partition, mountpoint, options }: ChooseMount) -> Self {
+    fn from(
+        ChooseMount {
+            index,
+            partition,
+            mountpoint,
+            options,
+        }: ChooseMount,
+    ) -> Self {
         Self {
             index,
             partition: partition.display().to_string(),
@@ -457,5 +475,4 @@ impl From<ChooseMount> for AddDialog {
             mountopts: options,
         }
     }
-
 }
