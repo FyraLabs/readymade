@@ -3,5 +3,7 @@
     <gresource prefix="com/FyraLabs/Readymade/icons/symbolic/actions/">
         <file preprocess="xml-stripblanks" alias="document-edit-symbolic.svg">icons/document-edit-symbolic.svg</file>
         <file preprocess="xml-stripblanks" alias="edit-clear-symbolic.svg">icons/edit-clear-symbolic.svg</file>
+        <file preprocess="xml-stripblanks" alias="go-next.svg">icons/go-next.svg</file>
+        <file preprocess="xml-stripblanks" alias="errornext.svg">icons/errornext.svg</file>
     </gresource>
 </gresources>

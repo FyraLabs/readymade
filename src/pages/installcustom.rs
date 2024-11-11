@@ -6,6 +6,7 @@ use crate::{backend::custom::MountTarget as ChooseMount, prelude::*, NavigationA
 
 pub struct InstallCustomPage {
     pub choose_mount_factory: FactoryVecDeque<ChooseMount>,
+    pub bottom: libhelium::BottomBar,
 }
 
 #[derive(Debug)]
@@ -33,7 +34,7 @@ impl SimpleComponent for InstallCustomPage {
         libhelium::ViewMono {
             #[wrap(Some)]
             set_title = &gtk::Label {
-                set_label: &gettext("Custom"),
+                set_label: &gettext("Custom Installation"),
                 set_css_classes: &["view-title"],
             },
             set_vexpand: true,
@@ -62,23 +63,28 @@ impl SimpleComponent for InstallCustomPage {
                 },
 
                 // FIXME: help me position this button!!!!
-                libhelium::Button {
-                    set_is_iconic: true,
-                    set_valign: gtk::Align::End,
-                    set_halign: gtk::Align::Start,
-
-                    // set_typeb: libhelium::OverlayButtonTypeButton::Secondary,
-                    set_icon: Some("list-add"),
-                    connect_clicked => InstallCustomPageMsg::AddRow,
-                },
 
                 libhelium::OverlayButton {
                     set_valign: gtk::Align::End,
                     set_halign: gtk::Align::End,
 
                     set_typeb: libhelium::OverlayButtonTypeButton::Primary,
-                    set_icon: "check-plain-symbolic",
+                    set_icon: "go-next",
                     connect_clicked => InstallCustomPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Confirmation)),
+                },
+
+                #[local_ref]
+                bottom -> libhelium::BottomBar {
+                    set_title: &gettext("Partitions and Mountpoints"),
+                    set_description: &gettext("%s definition(s)").replace("%s", "0"),
+
+                    prepend_button[libhelium::BottomBarPosition::Left] = &libhelium::Button {
+                        set_is_iconic: true,
+                        set_tooltip: &gettext("Add a new definition/row"),
+
+                        set_icon: Some("list-add"),
+                        connect_clicked => InstallCustomPageMsg::AddRow,
+                    },
                 },
             },
         }
@@ -95,9 +101,11 @@ impl SimpleComponent for InstallCustomPage {
 
         let model = Self {
             choose_mount_factory,
+            bottom: libhelium::BottomBar::default(),
         };
 
         let mounts = model.choose_mount_factory.widget();
+        let bottom = &model.bottom;
         let widgets = view_output!();
         ComponentParts { model, widgets }
     }
@@ -130,6 +138,8 @@ impl SimpleComponent for InstallCustomPage {
                     // new entry
                     guard.push_back(obj);
                 }
+                drop(guard);
+                self.bottom.set_description(&gettext("%s definition(s)").replace("%s", &self.choose_mount_factory.len().to_string()));
             }
             InstallCustomPageMsg::RowOutput(action) => match action {
                 ChooseMountOutput::Edit(index) => {
@@ -155,6 +165,8 @@ impl SimpleComponent for InstallCustomPage {
                         .expect("can't remove requested row");
                     self.choose_mount_factory
                         .broadcast(ChooseMountMsg::Removed(index));
+
+                    self.bottom.set_description(&gettext("%s definition(s)").replace("%s", &self.choose_mount_factory.len().to_string()));
                 }
             },
         }
@@ -231,7 +243,7 @@ impl FactoryComponent for ChooseMount {
             ChooseMountMsg::Edit => sender.output(ChooseMountOutput::Edit(self.index)).unwrap(),
             ChooseMountMsg::Removed(i) => {
                 if self.index > i {
-                    self.index -= 1
+                    self.index -= 1;
                 }
             }
         }
