@@ -166,7 +166,7 @@ impl InstallationState {
         });
 
         tracing::info!("Copying files done, Setting up system...");
-        setup_system(repart_out)?;
+        self.setup_system(repart_out)?;
 
         if let InstallationType::ChromebookInstall = inst_type {
             // FIXME: don't dd?
@@ -174,6 +174,149 @@ impl InstallationState {
             InstallationType::set_cgpt_flags(blockdev)?;
         }
         tracing::info!("install() finished");
+        Ok(())
+    }
+
+    #[tracing::instrument]
+    fn setup_system(&self, output: RepartOutput) -> Result<()> {
+        let mut container = output.to_container()?;
+
+        // The reason we're checking for UEFI here is because we want to check the current
+        // system's boot mode before we install GRUB, not check inside the container
+        let uefi = util::check_uefi();
+        container.run(|| self._inner_sys_setup(uefi))?
+    }
+
+    #[tracing::instrument]
+    fn _inner_sys_setup(&self, uefi: bool) -> Result<()> {
+        if uefi {
+            // The reason why we don't do grub2-install here is because for
+            // Fedora specifically, the install script simply plops in
+            // a pre-built GRUB binary in the ESP that looks for the stage 1
+            // config in /boot/efi/EFI/fedora/grub.cfg
+            // The following config then redirects to the actual stage 2 config located
+            // in /boot/grub2/grub.cfg
+            // This is actually done to support BLS entries properly on their end
+
+            // todo: Add support for systemd-boot
+            std::fs::create_dir_all("/boot/efi/EFI/fedora")?;
+
+            stage!("Generating stage 1 grub.cfg in ESP..." {
+                let mut grub_cfg = std::fs::File::create("/boot/efi/EFI/fedora/grub.cfg")?;
+                // let's search for an xbootldr label
+                // because we never know what the device will be
+                // see the compile time included config file
+                grub_cfg.write_all(include_bytes!("../templates/fedora-grub.cfg"))?;
+            });
+
+            stage!("Generating stage 2 grub.cfg in /boot/grub2/grub.cfg..." {
+                let grub_cmd_status = Command::new("grub2-mkconfig")
+                    .arg("-o")
+                    .arg("/boot/grub2/grub.cfg")
+                    .status()?;
+
+                if !grub_cmd_status.success() {
+                    bail!("grub2-mkconfig failed with exit code {:?}", grub_cmd_status.code());
+                }
+            });
+        } else {
+            stage!("Installing BIOS Grub2" {
+                util::grub2_install_bios(self.destination_disk.as_ref().unwrap().devpath.as_path())?;
+            });
+        }
+
+        stage!("Cleaning up /boot partition..." {
+            for file in std::fs::read_dir("/boot")?.flatten().map(|entry| entry.path()) {
+                let file_name = file.file_name().unwrap().to_str().unwrap();
+                if file_name.starts_with("initramfs") || file_name.starts_with("vmlinuz") {
+                    tracing::debug!(?file, "Removing kernel file");
+                    std::fs::remove_file(file)?;
+                }
+            }
+
+            for file in std::fs::read_dir("/boot/loader/entries")?.flatten().map(|entry| entry.path()) {
+                tracing::debug!(?file, "Removing BLS entry");
+                std::fs::remove_file(file)?;
+            }
+        });
+
+        // Reinstall kernel
+        //
+        // Here we're going to reinstall the kernel with an initramfs optimized
+        // for the new system configuration. We'll be doing this by using kernel-install
+        //
+        // which runs all the necessary hooks to generate the initramfs and install the kernel properly.
+        //
+        // As a bonus, it also generates the BLS entries for us.
+        stage!("Reinstalling kernel" {
+            // list all kernels in /lib/modules
+            // suggestion: Switch to using kernel-install --json=short for parsing
+            let kernel_vers = std::fs::read_dir("/lib/modules")?
+                .map(|entry| entry.unwrap().file_name())
+                .collect_vec();
+
+            tracing::info!(?kernel_vers, "Kernel versions found");
+
+            // We're gonna just install the first kernel we find, so let's do that
+            let kver = kernel_vers.first().unwrap().to_str().unwrap();
+
+            // install kernel
+
+            let kernel_install_cmd_status = Command::new("kernel-install")
+                .arg("add")
+                .arg(kver)
+                .arg(format!("/lib/modules/{kver}/vmlinuz"))
+                .arg("--verbose")
+                .status()?;
+
+            if !kernel_install_cmd_status.success() {
+                bail!("kernel-install failed with exit code {:?}", kernel_install_cmd_status.code());
+            }
+        });
+        // if systemd_version()? <= 256 {
+        //     stage!("Generating /etc/fstab..." {
+        //         let mut fstab = std::fs::File::create("/etc/fstab")?;
+        //         fstab.write_all(output.generate_fstab().as_bytes())?;
+        //     });
+        // }
+
+        stage!("Regenerating initramfs" {
+            // We assume the installation wouldn't be used on another system (false only if you install
+            // on something like a USB stick anyway)
+            // → reduce size of initramfs aggressively for faster boot times
+            //
+            // on my system this reduces the size from 170M down to 43M.
+            // — mado
+            let dracut_cmd_status = Command::new("dracut").args([
+                "--force",
+                "--parallel",
+                "--regenerate-all",
+                "--hostonly",
+                "--strip",
+                "--aggressive-strip",
+            ]).status()?;
+
+            if !dracut_cmd_status.success() {
+                bail!("dracut failed with exit code {:?}", dracut_cmd_status.code());
+            }
+        });
+
+        stage!("Initializing system" {
+            _initialize_system()?;
+        });
+
+        stage!("Setting SELinux contexts..." {
+            let setfiles_cmd_status = Command::new("setfiles")
+                .args(["-e", "/proc", "-e", "/sys"])
+                .arg("/etc/selinux/targeted/contexts/files/file_contexts")
+                .arg("/")
+                .status()?;
+
+            if !setfiles_cmd_status.success() {
+                bail!("dracut failed with exit code {:?}", setfiles_cmd_status.code());
+            }
+        });
+
         Ok(())
     }
 
@@ -308,149 +451,6 @@ impl InstallationState {
         tracing::debug!(out, "systemd-repart finished");
         Ok(serde_json::from_str(out)?)
     }
-}
-
-#[tracing::instrument]
-pub fn setup_system(output: RepartOutput) -> Result<()> {
-    let mut container = output.to_container()?;
-
-    // The reason we're checking for UEFI here is because we want to check the current
-    // system's boot mode before we install GRUB, not check inside the container
-    let uefi = util::check_uefi();
-    container.run(|| _inner_sys_setup(uefi))?
-}
-
-#[tracing::instrument]
-pub fn _inner_sys_setup(uefi: bool) -> Result<()> {
-    if uefi {
-        // The reason why we don't do grub2-install here is because for
-        // Fedora specifically, the install script simply plops in
-        // a pre-built GRUB binary in the ESP that looks for the stage 1
-        // config in /boot/efi/EFI/fedora/grub.cfg
-        // The following config then redirects to the actual stage 2 config located
-        // in /boot/grub2/grub.cfg
-        // This is actually done to support BLS entries properly on their end
-
-        // todo: Add support for systemd-boot
-        std::fs::create_dir_all("/boot/efi/EFI/fedora")?;
-
-        stage!("Generating stage 1 grub.cfg in ESP..." {
-            let mut grub_cfg = std::fs::File::create("/boot/efi/EFI/fedora/grub.cfg")?;
-            // let's search for an xbootldr label
-            // because we never know what the device will be
-            // see the compile time included config file
-            grub_cfg.write_all(include_bytes!("../templates/fedora-grub.cfg"))?;
-        });
-
-        stage!("Generating stage 2 grub.cfg in /boot/grub2/grub.cfg..." {
-            let grub_cmd_status = Command::new("grub2-mkconfig")
-                .arg("-o")
-                .arg("/boot/grub2/grub.cfg")
-                .status()?;
-
-            if !grub_cmd_status.success() {
-                bail!("grub2-mkconfig failed with exit code {:?}", grub_cmd_status.code());
-            }
-        });
-    } else {
-        stage!("Installing BIOS Grub2" {
-            util::grub2_install_bios(crate::INSTALLATION_STATE.read().destination_disk.as_ref().unwrap().devpath.as_path())?;
-        });
-    }
-
-    stage!("Cleaning up /boot partition..." {
-        for file in std::fs::read_dir("/boot")?.flatten().map(|entry| entry.path()) {
-            let file_name = file.file_name().unwrap().to_str().unwrap();
-            if file_name.starts_with("initramfs") || file_name.starts_with("vmlinuz") {
-                tracing::debug!(?file, "Removing kernel file");
-                std::fs::remove_file(file)?;
-            }
-        }
-
-        for file in std::fs::read_dir("/boot/loader/entries")?.flatten().map(|entry| entry.path()) {
-            tracing::debug!(?file, "Removing BLS entry");
-            std::fs::remove_file(file)?;
-        }
-    });
-
-    // Reinstall kernel
-    //
-    // Here we're going to reinstall the kernel with an initramfs optimized
-    // for the new system configuration. We'll be doing this by using kernel-install
-    //
-    // which runs all the necessary hooks to generate the initramfs and install the kernel properly.
-    //
-    // As a bonus, it also generates the BLS entries for us.
-    stage!("Reinstalling kernel" {
-        // list all kernels in /lib/modules
-        // suggestion: Switch to using kernel-install --json=short for parsing
-        let kernel_vers = std::fs::read_dir("/lib/modules")?
-            .map(|entry| entry.unwrap().file_name())
-            .collect_vec();
-
-        tracing::info!(?kernel_vers, "Kernel versions found");
-
-        // We're gonna just install the first kernel we find, so let's do that
-        let kver = kernel_vers.first().unwrap().to_str().unwrap();
-
-        // install kernel
-
-        let kernel_install_cmd_status = Command::new("kernel-install")
-            .arg("add")
-            .arg(kver)
-            .arg(format!("/lib/modules/{kver}/vmlinuz"))
-            .arg("--verbose")
-            .status()?;
-
-        if !kernel_install_cmd_status.success() {
-            bail!("kernel-install failed with exit code {:?}", kernel_install_cmd_status.code());
-        }
-    });
-    // if systemd_version()? <= 256 {
-    //     stage!("Generating /etc/fstab..." {
-    //         let mut fstab = std::fs::File::create("/etc/fstab")?;
-    //         fstab.write_all(output.generate_fstab().as_bytes())?;
-    //     });
-    // }
-
-    stage!("Regenerating initramfs" {
-        // We assume the installation wouldn't be used on another system (false only if you install
-        // on something like a USB stick anyway)
-        // → reduce size of initramfs aggressively for faster boot times
-        //
-        // on my system this reduces the size from 170M down to 43M.
-        // — mado
-        let dracut_cmd_status = Command::new("dracut").args([
-            "--force",
-            "--parallel",
-            "--regenerate-all",
-            "--hostonly",
-            "--strip",
-            "--aggressive-strip",
-        ]).status()?;
-
-        if !dracut_cmd_status.success() {
-            bail!("dracut failed with exit code {:?}", dracut_cmd_status.code());
-        }
-    });
-
-    stage!("Initializing system" {
-        _initialize_system()?;
-    });
-
-    stage!("Setting SELinux contexts..." {
-        let setfiles_cmd_status = Command::new("setfiles")
-            .args(["-e", "/proc", "-e", "/sys"])
-            .arg("/etc/selinux/targeted/contexts/files/file_contexts")
-            .arg("/")
-            .status()?;
-
-        if !setfiles_cmd_status.success() {
-            bail!("dracut failed with exit code {:?}", setfiles_cmd_status.code());
-        }
-    });
-
-    Ok(())
 }
 
 /// Initialize the system after installation
