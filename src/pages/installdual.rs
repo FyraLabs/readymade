@@ -3,6 +3,8 @@ use crate::{prelude::*, NavigationAction};
 pub struct InstallDualPage {
     paned: gtk::Paned,
     total_size: u32,
+    min_other_allocation: u32,
+    min_ultramarine_allocation: u32,
     other_allocation: u32,
     ultramarine_allocation: u32,
 }
@@ -42,12 +44,16 @@ impl SimpleComponent for InstallDualPage {
                     set_valign: gtk::Align::Center,
                     set_resize_start_child: true,
                     set_resize_end_child: true,
-                    inline_css: "border: 1px solid blue; border-radius: 6px;",
+                    set_shrink_start_child: false,
+                    set_shrink_end_child: false,
+                    inline_css: "border: 2px solid blue; border-radius: 6px;",
                     connect_position_notify => InstallDualPageMsg::HandleResize,
                     #[wrap(Some)]
                     set_start_child = &gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
-                        inline_css: "padding-top: 6px; padding-bottom: 6px;",
+                        inline_css: "padding-top: 16px; padding-bottom: 16px;",
+                        #[watch]
+                        set_size_request: ((model.paned.width() as f32 * (model.min_other_allocation as f32 / model.total_size as f32)) as i32, -1),
                         gtk::Label {
                             set_label: &gettext("Other OS"),
                         },
@@ -59,8 +65,10 @@ impl SimpleComponent for InstallDualPage {
                     #[wrap(Some)]
                     set_end_child = &gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
+                        inline_css: "padding-top: 16px; padding-bottom: 16px;",
+                        #[watch]
+                        set_size_request: ((model.paned.width() as f32 * (model.min_ultramarine_allocation as f32 / model.total_size as f32)) as i32, -1),
                         gtk::Label {
-                            inline_css: "padding-top: 6px; padding-bottom: 6px;",
                             set_label: &gettext("Ultramarine"),
                         },
                         gtk::Label {
@@ -81,6 +89,8 @@ impl SimpleComponent for InstallDualPage {
         let model = Self {
             paned: gtk::Paned::new(gtk::Orientation::Horizontal),
             total_size: 500,
+            min_other_allocation: 200,
+            min_ultramarine_allocation: 200,
             other_allocation: 0,
             ultramarine_allocation: 0,
         };
@@ -96,10 +106,14 @@ impl SimpleComponent for InstallDualPage {
                 .output(InstallDualPageOutput::Navigate(action))
                 .unwrap(),
             InstallDualPageMsg::HandleResize => {
-                let slider_percentage =
-                    self.paned.position() as f32 / self.paned.max_position() as f32;
-                self.other_allocation = (slider_percentage * self.total_size as f32) as u32;
-                self.ultramarine_allocation = self.total_size - self.other_allocation;
+                let slider_percentage = self.paned.position() as f32 / self.paned.width() as f32;
+                self.other_allocation =
+                    (((slider_percentage * self.total_size as f32).round()) as u32).clamp(
+                        self.min_other_allocation,
+                        self.total_size - self.min_ultramarine_allocation,
+                    );
+                self.ultramarine_allocation = (self.total_size - self.other_allocation)
+                    .clamp(self.min_ultramarine_allocation, self.total_size);
             }
         }
     }
