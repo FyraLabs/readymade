@@ -54,6 +54,14 @@ You can simply run Readymade by executing the binary. It should be located in `t
 There are also extra PolicyKit rules to skip password prompts for `pkexec` to escalate the process as root.
 Copy the `com.fyralabs.pkexec.readymade.policy` file to `/usr/share/polkit-1/actions/` and restart the PolicyKit service.
 
+In development, it may be useful to specify options to the binary, such as the configuration file path, or the log level. You can do this by setting supported environment variables.
+
+For example, to run with tracing and the ultramarine-chromebook template, run the following command:
+
+```sh
+READYMADE_LOG=trace READYMADE_CONFIG=templates/ultramarine-chromebook.toml cargo run
+```
+
 ## Debugging
 
 Readymade currently defaults to the `error` log level. To set a custom log level, set `READYMADE_LOG`. For example `READYMADE_LOG=trace` will set the log level to trace, which is the most verbose level.
