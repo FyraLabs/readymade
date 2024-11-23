@@ -152,7 +152,7 @@ impl InstallationState {
 
         if let InstallationType::Custom = inst_type {
             let mut mounttags = self.mounttags.clone().unwrap();
-            return crate::backend::custom::install_custom(&mut mounttags);
+            return crate::backend::custom::install_custom(self, &mut mounttags);
         }
         let blockdev = &self
             .destination_disk
@@ -188,7 +188,7 @@ impl InstallationState {
     }
 
     #[tracing::instrument]
-    fn _inner_sys_setup(&self, uefi: bool) -> Result<()> {
+    pub fn _inner_sys_setup(&self, uefi: bool) -> Result<()> {
         if uefi {
             // The reason why we don't do grub2-install here is because for
             // Fedora specifically, the install script simply plops in

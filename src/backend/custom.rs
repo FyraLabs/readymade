@@ -81,7 +81,10 @@ impl MountTargets {
 // 1. mount all
 // 2. copy stuff
 // 3. funny setup_system()
-pub fn install_custom(mounttags: &mut MountTargets) -> color_eyre::Result<()> {
+pub fn install_custom(
+    state: &crate::install::InstallationState,
+    mounttags: &mut MountTargets,
+) -> color_eyre::Result<()> {
     let destroot = Path::new("/mnt/custom");
     mounttags.sort_mounts();
     mounttags.mount_all(destroot)?;
@@ -114,7 +117,7 @@ pub fn install_custom(mounttags: &mut MountTargets) -> color_eyre::Result<()> {
     }
 
     let uefi = crate::util::check_uefi();
-    container.run(|| crate::install::_inner_sys_setup(uefi))??;
+    container.run(|| state._inner_sys_setup(uefi))??;
 
     Ok(())
 }
