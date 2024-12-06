@@ -69,6 +69,10 @@ impl InstallationState {
             command.arg(format!("REPART_COPY_SOURCE={value}"));
         }
 
+        if let Ok(value) = std::env::var("READYMADE_DRY_RUN") {
+            command.arg(format!("READYMADE_DRY_RUN={value}"));
+        }
+
         command.arg(format!(
             "READYMADE_LOG={}",
             std::env::var("READYMADE_LOG").as_deref().unwrap_or("trace")
