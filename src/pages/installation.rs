@@ -51,10 +51,42 @@ impl Component for InstallationPage {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
 
-                gtk::Box {
+                // gtk::Box {
+                //     set_vexpand: true,
+                //     gtk::Label {
+                //         set_label: "Some sort of ad/feature thing here idk."
+                //     },
+                // },
+
+                gtk::Grid {
                     set_vexpand: true,
-                    gtk::Label {
-                        set_label: "Some sort of ad/feature thing here idk."
+                    set_hexpand: true,
+                    set_row_spacing: 4,
+                    set_column_spacing: 4,
+
+                    attach[0, 0, 1, 1] = &gtk::Box {
+                        set_vexpand: true,
+                        set_hexpand: true,
+
+                        gtk::Label {
+                            set_label: "Meow 1"
+                        }
+                    },
+                    attach[0, 1, 1, 1] = &gtk::Box {
+                        set_vexpand: true,
+                        set_hexpand: true,
+
+                        gtk::Label {
+                            set_label: "Meow 2"
+                        }
+                    },
+                    attach[1, 0, 1, 2] = &gtk::Box {
+                        set_vexpand: true,
+                        set_hexpand: true,
+
+                        gtk::Label {
+                            set_label: "Meow 3"
+                        }
                     },
                 },
 
