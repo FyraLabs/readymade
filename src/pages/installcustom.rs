@@ -139,7 +139,10 @@ impl SimpleComponent for InstallCustomPage {
                     guard.push_back(obj);
                 }
                 drop(guard);
-                self.bottom.set_description(&gettext("%s definition(s)").replace("%s", &self.choose_mount_factory.len().to_string()));
+                self.bottom.set_description(
+                    &gettext("%s definition(s)")
+                        .replace("%s", &self.choose_mount_factory.len().to_string()),
+                );
             }
             InstallCustomPageMsg::RowOutput(action) => match action {
                 ChooseMountOutput::Edit(index) => {
@@ -166,7 +169,10 @@ impl SimpleComponent for InstallCustomPage {
                     self.choose_mount_factory
                         .broadcast(ChooseMountMsg::Removed(index));
 
-                    self.bottom.set_description(&gettext("%s definition(s)").replace("%s", &self.choose_mount_factory.len().to_string()));
+                    self.bottom.set_description(
+                        &gettext("%s definition(s)")
+                            .replace("%s", &self.choose_mount_factory.len().to_string()),
+                    );
                 }
             },
         }
