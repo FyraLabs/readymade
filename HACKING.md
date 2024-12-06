@@ -62,6 +62,15 @@ For example, to run with tracing and the ultramarine-chromebook template, run th
 READYMADE_LOG=trace READYMADE_CONFIG=templates/ultramarine-chromebook.toml cargo run
 ```
 
+Additionally, you may want to create a virtual disk to install to during development:
+
+```sh
+fallocate -l 8G install.img # Create a blank 8GB file
+sudo losetup --partscan --show -f install.img # Attach the file to a free loop device, take note of the outputted device.
+```
+
+Note how loop devices become valid install targets within debug builds, select the one corresponding to the device noted in the prior commands.
+
 ## Debugging
 
 Readymade currently defaults to the `error` log level. To set a custom log level, set `READYMADE_LOG`. For example `READYMADE_LOG=trace` will set the log level to trace, which is the most verbose level.
