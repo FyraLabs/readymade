@@ -4,7 +4,6 @@ use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 use std::fmt::Write;
 
 const BUG_REPORT_LINK: &str = "https://github.com/FyraLabs/readymade/issues";
-const BUG_REPORT_MSG: &str = "If you believe the failure is caused by a bug in this installer, we would appreciate a bug report. You may click the button below to open up the issue tracking webpage.";
 
 #[derive(Debug, Default)]
 pub struct FailurePage {
@@ -22,6 +21,8 @@ pub enum FailurePageMsg {
 pub enum FailurePageOutput {
     Navigate(NavigationAction),
 }
+
+// TODO: Logs should be hidden behind a dropdown or other button
 
 #[relm4::component(pub)]
 impl SimpleComponent for FailurePage {
@@ -42,22 +43,6 @@ impl SimpleComponent for FailurePage {
             append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 4,
-
-                gtk::Label {
-                    #[watch]
-                    set_label: &gettext("The installation process failed."),
-                    set_justify: gtk::Justification::Center,
-                    set_max_width_chars: 60,
-                    set_wrap: true
-                },
-
-                gtk::Label {
-                    #[watch]
-                    set_label: &gettext(BUG_REPORT_MSG),
-                    set_justify: gtk::Justification::Center,
-                    set_max_width_chars: 60,
-                    set_wrap: true
-                },
 
                 gtk::ScrolledWindow {
                     gtk::TextView {
