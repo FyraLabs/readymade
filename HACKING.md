@@ -62,6 +62,9 @@ For example, to run with tracing and the ultramarine-chromebook template, run th
 READYMADE_LOG=trace READYMADE_CONFIG=templates/ultramarine-chromebook.toml cargo run
 ```
 
+You can also set `READYMADE_DRY_RUN` to configure if whether the install is a dry-run, this will cause an installation failure.
+Please note that this variable is set to `1` by default, within development builds.
+
 Additionally, you may want to create a virtual disk to install to during development:
 
 ```sh
