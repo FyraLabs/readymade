@@ -65,8 +65,8 @@ READYMADE_LOG=trace READYMADE_CONFIG=templates/ultramarine-chromebook.toml cargo
 Additionally, you may want to create a virtual disk to install to during development:
 
 ```sh
-fallocate -l 8G install.img # Create a blank 8GB file
-sudo losetup --partscan --show -f install.img # Attach the file to a free loop device, take note of the outputted device.
+fallocate -l 8G test.img # Create a blank 8GB file
+sudo losetup --partscan --show -f test.img # Attach the file to a free loop device, take note of the outputted device.
 ```
 
 Note how loop devices become valid install targets within debug builds, select the one corresponding to the device noted in the prior commands.
