@@ -37,16 +37,11 @@ impl SimpleComponent for FailurePage {
                 set_css_classes: &["view-title"]
             },
             set_vexpand: true,
-            set_hexpand: true,
-            // set_halign: gtk::Align::Center,
-            // set_valign: gtk::Align::Center,
+            set_hexpand: false,
 
             append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
-                set_vexpand: true,
-                set_hexpand: true,
-                set_halign: gtk::Align::Center,
-                set_valign: gtk::Align::Center,
+                set_spacing: 4,
 
                 gtk::Label {
                     #[watch]
@@ -64,18 +59,22 @@ impl SimpleComponent for FailurePage {
                     set_wrap: true
                 },
 
-                gtk::TextView {
-                    inline_css: "monospace: true",
-                    add_css_class: "text-view",
+                gtk::ScrolledWindow {
+                    gtk::TextView {
+                        set_vexpand: true,
 
-                    set_buffer: Some(&model.buffer),
+                        inline_css: "monospace: true",
+                        add_css_class: "text-view",
+
+                        set_buffer: Some(&model.buffer),
+                    },
                 },
 
                 // TODO: box for displaying logs
 
                 gtk::Box {
-                    set_spacing: 8,
-                    set_halign: gtk::Align::Center,
+                    set_spacing: 4,
+                    set_orientation: gtk::Orientation::Horizontal,
 
                     libhelium::Button {
                         set_is_textual: true,
@@ -83,6 +82,10 @@ impl SimpleComponent for FailurePage {
                         set_label: &gettext("Close"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
                         connect_clicked => FailurePageMsg::Navigate(NavigationAction::Quit)
+                    },
+
+                    gtk::Box {
+                        set_hexpand: true,
                     },
 
                     libhelium::Button {
