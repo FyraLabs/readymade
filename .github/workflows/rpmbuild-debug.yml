@@ -15,7 +15,7 @@ jobs:
       - name: Install dependencies
         run: |
           dnf up -y
-          dnf install dnf4
+          dnf install dnf-plugins-core
           # builddep is broken with dnf5 for some reason
           dnf4 builddep -y ci/readymade.spec
           dnf in -y rpmdevtools git rpm-build
