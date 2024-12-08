@@ -58,10 +58,6 @@ impl SimpleComponent for InstallCustomPage {
                     }
                 },
 
-                gtk::Box {
-                    set_vexpand: true,
-                },
-
                 // FIXME: help me position this button!!!!
 
                 libhelium::OverlayButton {
@@ -395,7 +391,9 @@ impl SimpleComponent for AddDialog {
             .tf_opts
             .internal_entry()
             .connect_changed(move |en| sd2.input(AddDialogMsg::ChangedOpts(en.text().to_string())));
-        model.partition = partvec[partlist.selected() as usize].display().to_string();
+        if !partvec.is_empty() {
+            model.partition = partvec[partlist.selected() as usize].display().to_string();
+        }
 
         // override settings from init
         if let Some(index) = partvec

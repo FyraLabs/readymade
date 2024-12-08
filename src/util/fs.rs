@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use color_eyre::{eyre::eyre, Section};
+
 /// Ignore errors about nonexisting files.
 pub fn exist_then<T: Default>(r: std::io::Result<T>) -> std::io::Result<T> {
     match r {
@@ -20,7 +22,7 @@ pub fn exist_then_read_dir<A: AsRef<Path>>(
     }
 }
 
-pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> Result<(), std::io::Error> {
+pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     use rayon::iter::{ParallelBridge, ParallelIterator};
 
     let to = to.as_ref();
@@ -28,13 +30,32 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> Result<(), st
     from.as_ref()
         .read_dir()?
         .par_bridge()
-        .try_for_each(|dir_entry| -> std::io::Result<()> {
+        .try_for_each(|dir_entry| -> color_eyre::Result<()> {
             let dir_entry = dir_entry?;
             let to = to.join(dir_entry.file_name());
-            if dir_entry.file_type()?.is_dir() {
+            let metadata = dir_entry.path().symlink_metadata().map_err(|e| {
+                eyre!("can't grab metadata")
+                    .note(format!("Path : {}", dir_entry.path().display()))
+                    .wrap_err(e)
+            })?;
+            if metadata.is_dir() {
                 copy_dir(dir_entry.path(), to)?;
+            } else if metadata.is_symlink() {
+                let link = std::fs::read_link(dir_entry.path())?;
+                std::os::unix::fs::symlink(&link, &to).map_err(|e| {
+                    eyre!("can't symlink")
+                        .note(format!("From : {}", dir_entry.path().display()))
+                        .note(format!("To   : {}", to.display()))
+                        .note(format!("Link : {}", link.display()))
+                        .wrap_err(e)
+                })?;
             } else {
-                std::fs::copy(dir_entry.path(), to)?;
+                std::fs::copy(dir_entry.path(), &to).map_err(|e| {
+                    eyre!("can't copy file")
+                        .note(format!("From : {}", dir_entry.path().display()))
+                        .note(format!("To   : {}", to.display()))
+                        .wrap_err(e)
+                })?;
             }
             Ok(())
         })

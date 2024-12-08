@@ -95,7 +95,8 @@ pub fn install_custom(
         // TODO: impl callback status progress
         super::mksys::unsquash_copy(&copy_source, destroot, |_, _| {})?;
     } else {
-        todo!("impl copy from dir!");
+        tracing::info!(?copy_source, ?destroot, "Copying directory");
+        crate::util::fs::copy_dir(&copy_source, destroot)?;
     }
 
     mounttags.umount_all(destroot)?;

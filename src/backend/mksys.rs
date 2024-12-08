@@ -14,6 +14,7 @@ pub fn unsquash_copy<F: FnMut(usize, usize)>(
     destroot: &Path,
     mut callback: F,
 ) -> Result<()> {
+    tracing::info!("Expanding squashfs");
     let squashimg = std::io::BufReader::new(std::fs::File::open(squashfs)?);
     let fs = FilesystemReader::from_reader(squashimg)?;
     let num_files = fs.files().count(); // WARN: might be expensive?

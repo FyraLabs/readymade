@@ -158,6 +158,7 @@ impl SimpleComponent for InstallationTypePage {
                     .unwrap();
             }
             InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom) => {
+                INSTALLATION_STATE.write().installation_type = Some(InstallationType::Custom);
                 sender
                     .output(InstallationTypePageOutput::Navigate(
                         NavigationAction::GoTo(Page::InstallCustom),

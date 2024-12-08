@@ -163,8 +163,8 @@ impl SimpleComponent for AppModel {
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             AppMsg::StartInstallation => {
-                if let Some(InstallationType::Custom) = INSTALLATION_STATE.read().installation_type
-                {
+                let value = INSTALLATION_STATE.read().installation_type;
+                if let Some(InstallationType::Custom) = value {
                     INSTALLATION_STATE.write().mounttags =
                         Some(crate::backend::custom::MountTargets(
                             self.install_custom_page
