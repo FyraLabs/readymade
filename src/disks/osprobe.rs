@@ -42,7 +42,7 @@ impl OSProbe {
 
         let scan = tracing::info_span!("Scanning for OS").in_scope(|| {
             tracing::info!("Scanning for OS with os-prober");
-            (crate::util::run_as_root("os-prober").ok())
+            (crate::util::sys::run_as_root("os-prober").ok())
                 .map(|x| x.trim().to_owned())
                 .filter(|x| !x.is_empty())
         });

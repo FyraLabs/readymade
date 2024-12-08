@@ -1,7 +1,6 @@
 use color_eyre::eyre::bail;
 use color_eyre::eyre::eyre;
 use color_eyre::{Result, Section};
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::io::BufRead;
 use std::io::BufReader;
@@ -13,12 +12,12 @@ use std::{
 };
 use tee_readwrite::TeeReader;
 
-use crate::util::{exist_then, exist_then_read_dir};
 use crate::{
+    backend::postinstall::PostInstallModule,
     backend::repart_output::RepartOutput,
+    consts::{LIVE_BASE, ROOTFS_BASE},
     pages::destination::DiskInit,
-    stage,
-    util::{self, LIVE_BASE},
+    stage, util,
 };
 
 const REPART_DIR: &str = "/usr/share/readymade/repart-cfgs/";
@@ -39,6 +38,7 @@ pub struct InstallationState {
     pub destination_disk: Option<DiskInit>,
     pub installation_type: Option<InstallationType>,
     pub mounttags: Option<crate::backend::custom::MountTargets>,
+    pub postinstall: Vec<crate::backend::postinstall::Module>,
 }
 
 // TODO: remove this after have support for anything other than chromebook
@@ -54,6 +54,7 @@ impl Default for InstallationState {
                 None
             },
             mounttags: Option::default(),
+            postinstall: crate::CONFIG.read().postinstall.clone(),
         }
     }
 }
@@ -185,141 +186,20 @@ impl InstallationState {
     fn setup_system(&self, output: RepartOutput) -> Result<()> {
         let mut container = output.to_container()?;
 
-        // The reason we're checking for UEFI here is because we want to check the current
-        // system's boot mode before we install GRUB, not check inside the container
-        let uefi = util::check_uefi();
-        container.run(|| self._inner_sys_setup(uefi))?
+        container.run(|| self._inner_sys_setup())?
     }
 
     #[tracing::instrument]
-    pub fn _inner_sys_setup(&self, uefi: bool) -> Result<()> {
-        if uefi {
-            // The reason why we don't do grub2-install here is because for
-            // Fedora specifically, the install script simply plops in
-            // a pre-built GRUB binary in the ESP that looks for the stage 1
-            // config in /boot/efi/EFI/fedora/grub.cfg
-            // The following config then redirects to the actual stage 2 config located
-            // in /boot/grub2/grub.cfg
-            // This is actually done to support BLS entries properly on their end
+    pub fn _inner_sys_setup(&self) -> Result<()> {
+        // We will run the specified postinstall modules now
+        let context = crate::backend::postinstall::Context {
+            destination_disk: self.destination_disk.as_ref().unwrap().devpath.clone(),
+            uefi: util::sys::check_uefi(),
+        };
 
-            // todo: Add support for systemd-boot
-            std::fs::create_dir_all("/boot/efi/EFI/fedora")?;
-
-            stage!("Generating stage 1 grub.cfg in ESP..." {
-                let mut grub_cfg = std::fs::File::create("/boot/efi/EFI/fedora/grub.cfg")?;
-                // let's search for an xbootldr label
-                // because we never know what the device will be
-                // see the compile time included config file
-                grub_cfg.write_all(include_bytes!("../templates/fedora-grub.cfg"))?;
-            });
-
-            stage!("Generating stage 2 grub.cfg in /boot/grub2/grub.cfg..." {
-                let grub_cmd_status = Command::new("grub2-mkconfig")
-                    .arg("-o")
-                    .arg("/boot/grub2/grub.cfg")
-                    .status()?;
-
-                if !grub_cmd_status.success() {
-                    bail!("grub2-mkconfig failed with exit code {:?}", grub_cmd_status.code());
-                }
-            });
-        } else {
-            stage!("Installing BIOS Grub2" {
-                util::grub2_install_bios(self.destination_disk.as_ref().unwrap().devpath.as_path())?;
-            });
+        for module in &self.postinstall {
+            module.run(&context)?;
         }
-
-        stage!("Cleaning up /boot partition..." {
-            for file in std::fs::read_dir("/boot")?.flatten().map(|entry| entry.path()) {
-                let file_name = file.file_name().unwrap().to_str().unwrap();
-                if file_name.starts_with("initramfs") || file_name.starts_with("vmlinuz") {
-                    tracing::debug!(?file, "Removing kernel file");
-                    std::fs::remove_file(file)?;
-                }
-            }
-
-            for file in std::fs::read_dir("/boot/loader/entries")?.flatten().map(|entry| entry.path()) {
-                tracing::debug!(?file, "Removing BLS entry");
-                std::fs::remove_file(file)?;
-            }
-        });
-
-        // Reinstall kernel
-        //
-        // Here we're going to reinstall the kernel with an initramfs optimized
-        // for the new system configuration. We'll be doing this by using kernel-install
-        //
-        // which runs all the necessary hooks to generate the initramfs and install the kernel properly.
-        //
-        // As a bonus, it also generates the BLS entries for us.
-        stage!("Reinstalling kernel" {
-            // list all kernels in /lib/modules
-            // suggestion: Switch to using kernel-install --json=short for parsing
-            let kernel_vers = std::fs::read_dir("/lib/modules")?
-                .map(|entry| entry.unwrap().file_name())
-                .collect_vec();
-
-            tracing::info!(?kernel_vers, "Kernel versions found");
-
-            // We're gonna just install the first kernel we find, so let's do that
-            let kver = kernel_vers.first().unwrap().to_str().unwrap();
-
-            // install kernel
-
-            let kernel_install_cmd_status = Command::new("kernel-install")
-                .arg("add")
-                .arg(kver)
-                .arg(format!("/lib/modules/{kver}/vmlinuz"))
-                .arg("--verbose")
-                .status()?;
-
-            if !kernel_install_cmd_status.success() {
-                bail!("kernel-install failed with exit code {:?}", kernel_install_cmd_status.code());
-            }
-        });
-        // if systemd_version()? <= 256 {
-        //     stage!("Generating /etc/fstab..." {
-        //         let mut fstab = std::fs::File::create("/etc/fstab")?;
-        //         fstab.write_all(output.generate_fstab().as_bytes())?;
-        //     });
-        // }
-
-        stage!("Regenerating initramfs" {
-            // We assume the installation wouldn't be used on another system (false only if you install
-            // on something like a USB stick anyway)
-            // → reduce size of initramfs aggressively for faster boot times
-            //
-            // on my system this reduces the size from 170M down to 43M.
-            // — mado
-            let dracut_cmd_status = Command::new("dracut").args([
-                "--force",
-                "--parallel",
-                "--regenerate-all",
-                "--hostonly",
-                "--strip",
-                "--aggressive-strip",
-            ]).status()?;
-
-            if !dracut_cmd_status.success() {
-                bail!("dracut failed with exit code {:?}", dracut_cmd_status.code());
-            }
-        });
-
-        stage!("Initializing system" {
-            _initialize_system()?;
-        });
-
-        stage!("Setting SELinux contexts..." {
-            let setfiles_cmd_status = Command::new("setfiles")
-                .args(["-e", "/proc", "-e", "/sys"])
-                .arg("/etc/selinux/targeted/contexts/files/file_contexts")
-                .arg("/")
-                .status()?;
-
-            if !setfiles_cmd_status.success() {
-                bail!("dracut failed with exit code {:?}", setfiles_cmd_status.code());
-            }
-        });
 
         Ok(())
     }
@@ -362,19 +242,19 @@ impl InstallationState {
 
         // environment variable override. This is documented in HACKING.md
 
-        std::env::var("REPART_COPY_SOURCE").map_or_else(|_| if std::fs::metadata(crate::util::ROOTFS_BASE)
+        std::env::var("REPART_COPY_SOURCE").map_or_else(|_| if std::fs::metadata(ROOTFS_BASE)
             .map(|m| m.is_dir())
             .unwrap_or(false)
         {
             tracing::info!(
                 "Using {} as copy source, as it exists presumably due to raw rootfs in dracut",
-                crate::util::ROOTFS_BASE
+                ROOTFS_BASE
             );
-            crate::util::ROOTFS_BASE.to_owned()
+            ROOTFS_BASE.to_owned()
         }
         // if we can mount /dev/mapper/live-base, we'll use that as the copy source
         else {
-            match Self::mount_dev(crate::util::LIVE_BASE) {
+            match Self::mount_dev(LIVE_BASE) {
                 Ok(mount) => {
                     let m = mount.target_path().to_string_lossy().to_string();
                     tracing::info!("Mounted live-base at {m}");
@@ -455,36 +335,6 @@ impl InstallationState {
         tracing::debug!(out, "systemd-repart finished");
         Ok(serde_json::from_str(out)?)
     }
-}
-
-/// Initialize the system after installation
-/// This function is moved to a separate function to allow for cleaner code
-#[tracing::instrument]
-fn _initialize_system() -> color_eyre::Result<()> {
-    exist_then(std::fs::remove_file("/var/lib/systemd/random-seed"))?;
-    // We're gonna make an empty machine-id file so that systemd can generate a new one
-    std::fs::File::create("/etc/machine-id")?;
-
-    // wipe NetworkManager state
-    exist_then(std::fs::remove_dir_all(
-        "/etc/NetworkManager/system-connections",
-    ))?;
-    std::fs::create_dir_all("/etc/NetworkManager/system-connections")?;
-
-    // todo: Copy over NetworkManager state from current livesys
-
-    // wipe temporary RPM database
-    exist_then_read_dir("/var/lib/rpm")?
-        .filter(|entry| entry.file_name().to_string_lossy().starts_with("__db"))
-        .map(|entry| entry.path())
-        .try_for_each(std::fs::remove_file)?;
-
-    // wipe temporary dnf cache
-    exist_then(std::fs::remove_dir_all("/var/cache/dnf"))?;
-
-    // todo: set locale and timezone from config
-
-    Ok(())
 }
 
 impl InstallationType {

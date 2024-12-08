@@ -1,11 +1,8 @@
-//! Disks scanning module for `readymade`
-
-// todo: figure out a way to find installed OS on disks and its partitions
-
 mod osprobe;
 
-use osprobe::OSProbe;
 use std::collections::HashMap;
+
+use osprobe::OSProbe;
 
 use crate::pages::destination::DiskInit;
 
@@ -51,6 +48,7 @@ pub fn detect_os() -> Vec<DiskInit> {
         })
         .collect()
 }
+
 #[cfg(test)]
 #[cfg(target_os = "linux")]
 #[test]
