@@ -27,7 +27,8 @@ pub trait PostInstallModule {
 }
 
 #[enum_dispatch]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(tag = "module")]
 pub enum Module {
     SELinux,
     Dracut,

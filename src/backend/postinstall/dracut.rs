@@ -3,7 +3,7 @@ use color_eyre::{eyre::bail, Result};
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Dracut;
 
 impl PostInstallModule for Dracut {

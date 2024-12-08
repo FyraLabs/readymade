@@ -3,3 +3,21 @@ allowed_installtypes = ["wholedisk", "custom"]
 
 [distro]
 name = "Ultramarine Linux"
+
+[[postinstall]]
+module = "GRUB2"
+
+[[postinstall]]
+module = "CleanupBoot"
+
+[[postinstall]]
+module = "ReinstallKernel"
+
+[[postinstall]]
+module = "Dracut"
+
+[[postinstall]]
+module = "PrepareFedora"
+
+[[postinstall]]
+module = "SELinux"

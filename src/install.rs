@@ -55,14 +55,7 @@ impl Default for InstallationState {
                 None
             },
             mounttags: Option::default(),
-            postinstall: vec![
-                crate::backend::postinstall::grub2::GRUB2.into(),
-                crate::backend::postinstall::cleanup_boot::CleanupBoot.into(),
-                crate::backend::postinstall::reinstall_kernel::ReinstallKernel.into(),
-                crate::backend::postinstall::dracut::Dracut.into(),
-                crate::backend::postinstall::prepare_fedora::PrepareFedora.into(),
-                crate::backend::postinstall::selinux::SELinux.into(),
-            ],
+            postinstall: crate::CONFIG.read().postinstall.clone(),
         }
     }
 }

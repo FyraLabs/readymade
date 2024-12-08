@@ -6,7 +6,7 @@ use crate::util::{exist_then, exist_then_read_dir};
 
 use super::{Context, PostInstallModule};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PrepareFedora;
 
 impl PostInstallModule for PrepareFedora {

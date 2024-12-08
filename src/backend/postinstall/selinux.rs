@@ -4,7 +4,7 @@ use std::process::Command;
 
 use super::{Context, PostInstallModule};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct SELinux;
 
 impl PostInstallModule for SELinux {

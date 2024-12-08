@@ -5,6 +5,8 @@ use serde::Deserialize;
 use serde_valid::toml::FromTomlStr;
 use serde_valid::Validate;
 
+use crate::backend::postinstall::Module;
+
 const DEFAULT_CFG_PATH: &str = "/etc/readymade.toml";
 
 #[derive(Deserialize, Validate, Default, Debug, Clone, PartialEq, Eq)]
@@ -26,8 +28,9 @@ fn _default_icon() -> String {
 
 #[derive(Deserialize, Validate, Default, Debug, Clone, PartialEq, Eq)]
 pub struct ReadymadeConfig {
-    pub install: Install,
     pub distro: Distro,
+    pub install: Install,
+    pub postinstall: Vec<Module>,
 }
 
 /// # Errors
@@ -58,22 +61,48 @@ mod tests {
         assert_eq!(
             ReadymadeConfig::from_toml_str(
                 r#"
+                [distro]
+                name = "Ultramarine Linux"
+
                 [install]
                 allowed_installtypes = ["chromebookinstall"]
 
-                [distro]
-                name = "Ultramarine Linux"
+                [[postinstall]]
+                module = "GRUB2"
+
+                [[postinstall]]
+                module = "CleanupBoot"
+
+                [[postinstall]]
+                module = "ReinstallKernel"
+
+                [[postinstall]]
+                module = "Dracut"
+
+                [[postinstall]]
+                module = "PrepareFedora"
+
+                [[postinstall]]
+                module = "SELinux"
                 "#
             )
             .unwrap(),
             ReadymadeConfig {
-                install: Install {
-                    allowed_installtypes: vec![crate::install::InstallationType::ChromebookInstall],
-                },
                 distro: Distro {
                     name: "Ultramarine Linux".into(),
                     icon: "fedora-logo-icon".into(),
                 },
+                install: Install {
+                    allowed_installtypes: vec![crate::install::InstallationType::ChromebookInstall],
+                },
+                postinstall: vec![
+                    crate::backend::postinstall::grub2::GRUB2.into(),
+                    crate::backend::postinstall::cleanup_boot::CleanupBoot.into(),
+                    crate::backend::postinstall::reinstall_kernel::ReinstallKernel.into(),
+                    crate::backend::postinstall::dracut::Dracut.into(),
+                    crate::backend::postinstall::prepare_fedora::PrepareFedora.into(),
+                    crate::backend::postinstall::selinux::SELinux.into(),
+                ]
             },
         );
     }

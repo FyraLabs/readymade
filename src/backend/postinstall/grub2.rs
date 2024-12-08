@@ -52,7 +52,7 @@ fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> std::io::Result<()> {
     Ok(())
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct GRUB2;
 
 impl PostInstallModule for GRUB2 {
