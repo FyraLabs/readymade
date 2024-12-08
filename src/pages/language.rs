@@ -57,11 +57,11 @@ impl relm4::factory::FactoryComponent for LanguageRow {
     }
 
     fn init_model(
-        value: Self::Init,
+        init: Self::Init,
         _index: &relm4::factory::DynamicIndex,
         _sender: relm4::FactorySender<Self>,
     ) -> Self {
-        Self::from(value)
+        Self::from(init)
     }
 }
 

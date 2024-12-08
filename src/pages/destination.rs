@@ -49,8 +49,8 @@ impl FactoryComponent for DiskInit {
         }
     }
 
-    fn init_model(value: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
-        value
+    fn init_model(init: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
+        init
     }
 }
 

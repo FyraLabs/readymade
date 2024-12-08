@@ -178,14 +178,8 @@ impl SimpleComponent for AppModel {
                 self.installation_page
                     .emit(InstallationPageMsg::StartInstallation);
             }
-            AppMsg::Navigate(NavigationAction::GoTo(page)) => {
-                self.page = page;
-                // FIXME: welcome page doesn't automatically update under diff language
-                if page == Page::Welcome {
-                    self.welcome_page
-                        .emit(pages::welcome::WelcomePageMsg::Refresh);
-                }
-            }
+            AppMsg::Navigate(NavigationAction::GoTo(page)) => self.page = page,
+
             // FIXME: The following code is commented out because it'd trigger relm4 to drop the
             // RegionPage and LanguagePage, and somehow during quitting, it triggers the signal
             // `:selected_children_changed` which causes the program to crash upon accessing the

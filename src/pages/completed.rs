@@ -37,6 +37,8 @@ impl SimpleComponent for CompletedPage {
                 set_spacing: 4,
                 set_vexpand: true,
                 set_hexpand: true,
+                set_halign: gtk::Align::Center,
+                set_valign: gtk::Align::Center,
 
                 gtk::Label {
                     #[watch]
