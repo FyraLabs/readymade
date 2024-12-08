@@ -157,7 +157,7 @@ impl SimpleComponent for LanguagePage {
             .detach();
 
         let mut btns = btnfactory.guard();
-        crate::backend::l10n::list_langs()
+        crate::util::l10n::list_langs()
             .into_iter()
             .sorted_by(|(_, x), (_, y)| x.cmp(y))
             .for_each(|x| _ = btns.push_back(x));

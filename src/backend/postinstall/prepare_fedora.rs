@@ -2,7 +2,7 @@ use color_eyre::{eyre::bail, Result};
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 
-use crate::util::{exist_then, exist_then_read_dir};
+use crate::util::fs::{exist_then, exist_then_read_dir};
 
 use super::{Context, PostInstallModule};
 

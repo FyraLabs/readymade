@@ -12,13 +12,12 @@ use std::{
 };
 use tee_readwrite::TeeReader;
 
-use crate::util::{exist_then, exist_then_read_dir};
 use crate::{
     backend::postinstall::PostInstallModule,
     backend::repart_output::RepartOutput,
+    consts::{LIVE_BASE, ROOTFS_BASE},
     pages::destination::DiskInit,
-    stage,
-    util::{self, LIVE_BASE},
+    stage, util,
 };
 
 const REPART_DIR: &str = "/usr/share/readymade/repart-cfgs/";
@@ -195,7 +194,7 @@ impl InstallationState {
         // We will run the specified postinstall modules now
         let context = crate::backend::postinstall::Context {
             destination_disk: self.destination_disk.as_ref().unwrap().devpath.clone(),
-            uefi: util::check_uefi(),
+            uefi: util::sys::check_uefi(),
         };
 
         for module in &self.postinstall {
@@ -243,19 +242,19 @@ impl InstallationState {
 
         // environment variable override. This is documented in HACKING.md
 
-        std::env::var("REPART_COPY_SOURCE").map_or_else(|_| if std::fs::metadata(crate::util::ROOTFS_BASE)
+        std::env::var("REPART_COPY_SOURCE").map_or_else(|_| if std::fs::metadata(ROOTFS_BASE)
             .map(|m| m.is_dir())
             .unwrap_or(false)
         {
             tracing::info!(
                 "Using {} as copy source, as it exists presumably due to raw rootfs in dracut",
-                crate::util::ROOTFS_BASE
+                ROOTFS_BASE
             );
-            crate::util::ROOTFS_BASE.to_owned()
+            ROOTFS_BASE.to_owned()
         }
         // if we can mount /dev/mapper/live-base, we'll use that as the copy source
         else {
-            match Self::mount_dev(crate::util::LIVE_BASE) {
+            match Self::mount_dev(LIVE_BASE) {
                 Ok(mount) => {
                     let m = mount.target_path().to_string_lossy().to_string();
                     tracing::info!("Mounted live-base at {m}");
