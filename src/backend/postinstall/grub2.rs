@@ -6,10 +6,7 @@ use std::path::Path;
 use std::process::Command;
 use tracing::{info, warn};
 
-use crate::{
-    stage,
-    util::{self, run_as_root},
-};
+use crate::{stage, util::sys::run_as_root};
 
 use super::{Context, PostInstallModule};
 
