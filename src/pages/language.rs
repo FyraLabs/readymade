@@ -3,6 +3,7 @@ use crate::NavigationAction;
 use relm4::RelmIterChildrenExt;
 use relm4::{ComponentParts, RelmWidgetExt, SharedState, SimpleComponent};
 use std::rc::Rc;
+use std::sync::LazyLock;
 
 static SEARCH_STATE: SharedState<gtk::glib::GString> = SharedState::new();
 // This is a list of languages sorted by total speakers:
@@ -14,6 +15,15 @@ static SEARCH_STATE: SharedState<gtk::glib::GString> = SharedState::new();
 const POPULAR_LANGS: [&str; 9] = [
     "en_US", "zh_CN", "zh_TW", "hi_IN", "es_ES", "ar_AE", "fr_FR", "pt_BR", "de_DE",
 ];
+
+static LOCALES: std::sync::LazyLock<Vec<&str>> = LazyLock::new(|| {
+    glob::glob("/usr/share/locale/*/LC_MESSAGES/com.fyralabs.Readymade.mo")
+        .expect("can't read locale dir glob")
+        .filter_map_ok(|dir| dir.components().nth(3))
+        .flatten()
+        .map(|s| -> &'static str { Box::leak(Box::from(s.as_os_str().to_str())) })
+        .collect()
+});
 
 #[derive(Debug)]
 struct LanguageRow {
@@ -218,8 +228,24 @@ impl SimpleComponent for LanguagePage {
                 if let Some(row) = self.btnfactory.widget().selected_row() {
                     #[allow(clippy::cast_sign_loss)]
                     let language = self.btnfactory.get(row.index() as usize).unwrap();
-                    gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, &*language.locale)
-                        .unwrap();
+                    // fuck libgnome-desktop
+                    let locale = match language
+                        .locale
+                        .split_once('.')
+                        .map_or(&*language.locale, |(left, _)| left)
+                    {
+                        locale if LOCALES.contains(&locale) => locale,
+                        "zh_CN" => "zh_Hans",
+                        "zh_TW" => "zh_Hant",
+                        "hi_IN" => "hi",
+                        "es_ES" => "es",
+                        "ar_AE" => "ar",
+                        "fr_FR" => "fr",
+                        "de_DE" => "de",
+                        locale => return tracing::warn!(locale, "unidentifiable locale"),
+                    };
+                    tracing::info!(locale, "Using selected locale");
+                    gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, locale).unwrap();
                     crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.clone());
                 }
             }

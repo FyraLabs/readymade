@@ -1911,6 +1911,7 @@ dependencies = [
  "crossbeam-queue",
  "gettext-rs",
  "glib-build-tools",
+ "glob",
  "gnome-desktop",
  "itertools 0.13.0",
  "libhelium",
