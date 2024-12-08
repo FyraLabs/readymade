@@ -116,8 +116,7 @@ pub fn install_custom(
         );
     }
 
-    let uefi = crate::util::check_uefi();
-    container.run(|| state._inner_sys_setup(uefi))??;
+    container.run(|| state._inner_sys_setup())??;
 
     Ok(())
 }

@@ -56,6 +56,7 @@ tee_readwrite = "0.2.0"
 serde_ini = "0.2.0"
 nix = { version = "0.29.0", features = ["mount"] }
 backhand = "0.18.0"
+enum_dispatch = "0.3.13"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"

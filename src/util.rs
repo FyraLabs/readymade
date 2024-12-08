@@ -16,45 +16,6 @@ pub fn check_uefi() -> bool {
     std::fs::metadata("/sys/firmware/efi").is_ok()
 }
 
-/// Helper function to install GRUB2 on a legacy BIOS system.
-///
-/// You should run this inside a [`tiffin::Container`].
-///
-/// This function runs `grub2-mkconfig` and `grub2-install` to install GRUB2 on a legacy BIOS system.
-///
-/// NOTE: To successfully install GRUB on a legacy BIOS system, you need to be running on
-/// an IBM PC-compatible system with an older BIOS firmware. If you are running on a UEFI system,
-/// please refer to the standard UEFI installation method.
-///
-/// You will also require a small, blank GPT partition for the BIOS boot partition so the MBR headers
-/// have a place to live. This partition should be at least 1MB in size.
-///
-/// This function will attempt to generate a GRUB configuration and then write the bootloader directly to the header
-/// of the disk, which should be allocated to that small BIOS boot partition.
-///
-/// # Arguments
-///
-/// * `disk` - The path to the disk to install GRUB2 on.
-pub fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> std::io::Result<()> {
-    info!("Generating GRUB2 configuration...");
-    // this should probably be run inside a chroot... but we'll see
-    if let Err(e) = run_as_root("grub2-mkconfig -o /boot/grub/grub.cfg") {
-        warn!("Failed to generate GRUB2 configuration: {e}");
-
-        // Check if the file still exists
-        if !Path::new("/boot/grub/grub.cfg").exists() {
-            return Err(e);
-        }
-    }
-    info!("Blessing the disk with GRUB2...");
-    run_as_root(&format!(
-        "grub2-install --target=i386-pc --recheck --boot-directory=/boot {}",
-        disk.as_ref().display()
-    ))?;
-
-    Ok(())
-}
-
 // macro to wrap around cmd_lib::run_fun! to prepend pkexec if not root
 
 #[cfg(target_os = "linux")]
