@@ -4,6 +4,59 @@ use color_eyre::Result;
 use relm4::{Component, ComponentParts, ComponentSender};
 use std::time::Duration;
 
+#[relm4::widget_template(pub)]
+impl WidgetTemplate for BentoCard {
+    view! {
+        gtk::Box {
+            set_vexpand: true,
+            set_hexpand: true,
+            set_orientation: gtk::Orientation::Vertical,
+
+            inline_css: "border-radius: 16px; background: url('file:///home/lea/Downloads/viewports-light.png') no-repeat center; background-size: cover",
+
+            gtk::Box {
+                set_spacing: 4,
+                set_halign: gtk::Align::Fill,
+                set_valign: gtk::Align::End,
+                set_vexpand: true,
+
+                add_css_class: "content-block",
+                inline_css: "border-top-left-radius: 0px; border-top-right-radius: 0px;",
+
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_hexpand: true,
+                    set_halign: gtk::Align::Start,
+
+                    #[name = "icon"]
+                    gtk::Image {
+                        set_halign: gtk::Align::Start,
+                        set_icon_name: Some("dialog-question-symbolic"),
+                        inline_css: "-gtk-icon-size: 28px",
+                        set_margin_bottom: 8,
+                    },
+                    #[name = "title"]
+                    gtk::Label {
+                        set_halign: gtk::Align::Start,
+                        inline_css: "font-weight: 600; font-size: 16px"
+                    },
+                    #[name = "description"]
+                    gtk::Label {
+                        set_halign: gtk::Align::Start,
+                    }
+                },
+
+                gtk::Image {
+                    set_valign: gtk::Align::End,
+                    set_halign: gtk::Align::End,
+                    set_icon_name: Some("go-next-symbolic"),
+                    inline_css: "-gtk-icon-size: 28px",
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct InstallationPage {
     progress_bar: gtk::ProgressBar,
@@ -62,31 +115,67 @@ impl Component for InstallationPage {
                 gtk::Grid {
                     set_vexpand: true,
                     set_hexpand: true,
-                    set_row_spacing: 4,
-                    set_column_spacing: 4,
+                    set_row_spacing: 8,
+                    set_column_spacing: 8,
 
-                    attach[0, 0, 1, 1] = &gtk::Box {
-                        set_vexpand: true,
-                        set_hexpand: true,
-
-                        gtk::Label {
-                            set_label: "Meow 1"
+                    #[template]
+                    attach[0, 0, 1, 2] = &BentoCard {
+                        #[template_child]
+                        icon {
+                            set_icon_name: Some("explore-symbolic"),
+                        },
+                        #[template_child]
+                        title {
+                            set_label: &gettext("Welcome to Ultramarine Linux!"),
+                        },
+                        #[template_child]
+                        description {
+                            set_label: &gettext("Get to know your new operating system."),
                         }
                     },
-                    attach[0, 1, 1, 1] = &gtk::Box {
-                        set_vexpand: true,
-                        set_hexpand: true,
-
-                        gtk::Label {
-                            set_label: "Meow 2"
+                    #[template]
+                    attach[0, 2, 1, 2] = &BentoCard {
+                        #[template_child]
+                        icon {
+                            set_icon_name: Some("applications-development-symbolic"),
+                        },
+                        #[template_child]
+                        title {
+                            set_label: &gettext("Contribute to Ultramarine"),
+                        },
+                        #[template_child]
+                        description {
+                            set_label: &gettext("Learn how to contribute your time, money, or hardware."),
                         }
                     },
-                    attach[1, 0, 1, 2] = &gtk::Box {
-                        set_vexpand: true,
-                        set_hexpand: true,
-
-                        gtk::Label {
-                            set_label: "Meow 3"
+                    #[template]
+                    attach[1, 0, 1, 3] = &BentoCard {
+                        #[template_child]
+                        icon {
+                            set_icon_name: Some("chat-symbolic"),
+                        },
+                        #[template_child]
+                        title {
+                            set_label: &gettext("Need help?"),
+                        },
+                        #[template_child]
+                        description {
+                            set_label: &gettext("Ask in one of our chats!"),
+                        }
+                    },
+                    #[template]
+                    attach[1, 3, 1, 1] = &BentoCard {
+                        #[template_child]
+                        icon {
+                            set_icon_name: Some("power-profile-power-saver-symbolic"),
+                        },
+                        #[template_child]
+                        title {
+                            set_label: &gettext("Sponsor Fyra Labs"),
+                        },
+                        #[template_child]
+                        description {
+                            set_label: &gettext("Sponsorships help us ship better software, faster."),
                         }
                     },
                 },
