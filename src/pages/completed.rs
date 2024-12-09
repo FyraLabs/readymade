@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::NavigationAction;
+use crate::INSTALLATION_STATE;
 use gettextrs::gettext;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
@@ -10,6 +11,7 @@ pub struct CompletedPage;
 pub enum CompletedPageMsg {
     Reboot,
     Close,
+    Update,
 }
 
 #[derive(Debug)]
@@ -27,6 +29,7 @@ impl SimpleComponent for CompletedPage {
         libhelium::ViewMono {
             #[wrap(Some)]
             set_title = &gtk::Label {
+                #[watch]
                 set_label: &gettext("Completed"),
                 set_css_classes: &["view-title"]
             },
@@ -81,6 +84,8 @@ impl SimpleComponent for CompletedPage {
 
         let widgets = view_output!();
 
+        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| CompletedPageMsg::Update);
+
         ComponentParts { model, widgets }
     }
 
@@ -95,6 +100,7 @@ impl SimpleComponent for CompletedPage {
             CompletedPageMsg::Close => sender
                 .output(CompletedPageOutput::Navigate(NavigationAction::Quit))
                 .unwrap(),
+            CompletedPageMsg::Update => {}
         }
     }
 }

@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::NavigationAction;
+use crate::INSTALLATION_STATE;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 use std::fmt::Write;
 
@@ -15,6 +16,7 @@ pub enum FailurePageMsg {
     Navigate(NavigationAction),
     ReportBug,
     Err(String),
+    Update,
 }
 
 #[derive(Debug)]
@@ -34,6 +36,7 @@ impl SimpleComponent for FailurePage {
         libhelium::ViewMono {
             #[wrap(Some)]
             set_title = &gtk::Label {
+                #[watch]
                 set_label: &gettext("Installation Failure"),
                 set_css_classes: &["view-title"]
             },
@@ -94,6 +97,8 @@ impl SimpleComponent for FailurePage {
 
         let widgets = view_output!();
 
+        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| FailurePageMsg::Update);
+
         ComponentParts { model, widgets }
     }
 
@@ -104,6 +109,7 @@ impl SimpleComponent for FailurePage {
                 open::that(BUG_REPORT_LINK).unwrap();
             }
             FailurePageMsg::Navigate(nav) => _ = sender.output(FailurePageOutput::Navigate(nav)),
+            FailurePageMsg::Update => {}
         }
     }
 }

@@ -41,6 +41,7 @@ impl Component for InstallationPage {
         libhelium::ViewMono {
             #[wrap(Some)]
             set_title = &gtk::Label {
+                #[watch]
                 set_label: &gettext("Installation"),
                 set_css_classes: &["view-title"]
             },
