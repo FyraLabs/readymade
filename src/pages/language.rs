@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::NavigationAction;
+use crate::INSTALLATION_STATE;
 use relm4::RelmIterChildrenExt;
 use relm4::{ComponentParts, RelmWidgetExt, SharedState, SimpleComponent};
 use std::rc::Rc;
@@ -77,6 +78,7 @@ pub enum LanguagePageMsg {
     Navigate(NavigationAction),
     #[doc(hidden)]
     Selected,
+    Update,
 }
 
 #[derive(Debug)]
@@ -94,6 +96,7 @@ impl SimpleComponent for LanguagePage {
         libhelium::ViewMono {
             #[wrap(Some)]
             set_title = &gtk::Label {
+                #[watch]
                 set_label: &gettext("Language"),
                 set_css_classes: &["view-title"]
             },
@@ -110,6 +113,7 @@ impl SimpleComponent for LanguagePage {
                     set_margin_top: 6,
                     set_margin_bottom: 6,
                     set_prefix_icon: Some("system-search-symbolic"),
+                    #[watch]
                     set_placeholder_text: Some(&gettext("Search Language/Locale…")),
                 },
                 gtk::ScrolledWindow {
@@ -206,6 +210,8 @@ impl SimpleComponent for LanguagePage {
             .widget()
             .select_row(btnfactory.widget().iter_children().next().as_ref());
 
+        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| LanguagePageMsg::Update);
+
         ComponentParts { model, widgets }
     }
 
@@ -224,6 +230,7 @@ impl SimpleComponent for LanguagePage {
                     crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.clone());
                 }
             }
+            LanguagePageMsg::Update => {}
         }
     }
 }

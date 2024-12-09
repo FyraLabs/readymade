@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::NavigationAction;
+use crate::INSTALLATION_STATE;
 use gettextrs::gettext;
 use relm4::{ComponentParts, ComponentSender, SimpleComponent};
 
@@ -10,6 +11,7 @@ pub struct CompletedPage;
 pub enum CompletedPageMsg {
     Reboot,
     Close,
+    Update,
 }
 
 #[derive(Debug)]
@@ -27,6 +29,7 @@ impl SimpleComponent for CompletedPage {
         libhelium::ViewMono {
             #[wrap(Some)]
             set_title = &gtk::Label {
+                #[watch]
                 set_label: &gettext("Completed"),
                 set_css_classes: &["view-title"]
             },
@@ -37,20 +40,30 @@ impl SimpleComponent for CompletedPage {
                 set_spacing: 4,
                 set_vexpand: true,
                 set_hexpand: true,
-                set_halign: gtk::Align::Center,
-                set_valign: gtk::Align::Center,
 
-                gtk::Label {
-                    #[watch]
-                    set_label: &gettext("Installation complete. You may reboot now and enjoy your fresh system."),
-                    set_justify: gtk::Justification::Center,
-                    set_max_width_chars: 60,
-                    set_wrap: true
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_spacing: 16,
+                    set_vexpand: true,
+                    set_valign: gtk::Align::Center,
+                    set_halign: gtk::Align::Center,
+
+                    gtk::Image {
+                        set_icon_name: Some(&crate::CONFIG.read().distro.icon),
+                        inline_css: "-gtk-icon-size: 128px",
+                    },
+
+                    gtk::Label {
+                        #[watch]
+                        set_label: &gettext("Installation complete. You may reboot now and enjoy your fresh system."),
+                        set_justify: gtk::Justification::Center,
+                        set_max_width_chars: 60,
+                        set_wrap: true
+                    },
                 },
 
                 gtk::Box {
-                    set_spacing: 8,
-                    set_halign: gtk::Align::Center,
+                    set_spacing: 4,
 
                     libhelium::Button {
                         set_is_textual: true,
@@ -58,6 +71,10 @@ impl SimpleComponent for CompletedPage {
                         set_label: &gettext("Close"),
                         inline_css: "padding-left: 48px; padding-right: 48px",
                         connect_clicked => CompletedPageMsg::Close,
+                    },
+
+                    gtk::Box {
+                        set_hexpand: true,
                     },
 
                     libhelium::Button {
@@ -81,6 +98,8 @@ impl SimpleComponent for CompletedPage {
 
         let widgets = view_output!();
 
+        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| CompletedPageMsg::Update);
+
         ComponentParts { model, widgets }
     }
 
@@ -95,6 +114,7 @@ impl SimpleComponent for CompletedPage {
             CompletedPageMsg::Close => sender
                 .output(CompletedPageOutput::Navigate(NavigationAction::Quit))
                 .unwrap(),
+            CompletedPageMsg::Update => {}
         }
     }
 }

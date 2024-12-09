@@ -27,6 +27,7 @@ impl SimpleComponent for InstallationTypePage {
         libhelium::ViewMono {
             #[wrap(Some)]
             set_title = &gtk::Label {
+                #[watch]
                 set_label: &gettext("Installation Type"),
                 set_css_classes: &["view-title"]
             },

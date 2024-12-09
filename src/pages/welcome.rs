@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::NavigationAction;
+use crate::INSTALLATION_STATE;
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 pub struct WelcomePage;
@@ -8,6 +9,7 @@ pub struct WelcomePage;
 pub enum WelcomePageMsg {
     #[doc(hidden)]
     Navigate(NavigationAction),
+    Update,
 }
 
 #[derive(Debug)]
@@ -92,6 +94,8 @@ impl SimpleComponent for WelcomePage {
         let model = Self {};
         let widgets = view_output!();
 
+        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| WelcomePageMsg::Update);
+
         ComponentParts { model, widgets }
     }
 
@@ -100,6 +104,7 @@ impl SimpleComponent for WelcomePage {
             WelcomePageMsg::Navigate(action) => {
                 sender.output(WelcomePageOutput::Navigate(action)).unwrap();
             }
+            WelcomePageMsg::Update => {}
         }
     }
 }
