@@ -7,12 +7,10 @@ use std::time::Duration;
 #[relm4::widget_template(pub)]
 impl WidgetTemplate for BentoCard {
     view! {
-        gtk::Box {
+        gtk::Button {
             set_vexpand: true,
             set_hexpand: true,
-            set_orientation: gtk::Orientation::Vertical,
-
-            inline_css: "border-radius: 16px; background: url('file:///home/lea/Downloads/viewports-light.png') no-repeat center; background-size: cover",
+            inline_css: "padding: unset; border-radius: 16px; background-repeat: no-repeat; background-position: center; background-size: cover",
 
             gtk::Box {
                 set_spacing: 4,
@@ -64,6 +62,7 @@ pub struct InstallationPage {
 
 #[derive(Debug)]
 pub enum InstallationPageMsg {
+    Open(String),
     StartInstallation,
     #[doc(hidden)]
     Navigate(NavigationAction),
@@ -103,14 +102,7 @@ impl Component for InstallationPage {
             append = &gtk::Box {
                 set_hexpand: true,
                 set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 4,
-
-                // gtk::Box {
-                //     set_vexpand: true,
-                //     gtk::Label {
-                //         set_label: "Some sort of ad/feature thing here idk."
-                //     },
-                // },
+                set_spacing: 16,
 
                 gtk::Grid {
                     set_vexpand: true,
@@ -120,6 +112,9 @@ impl Component for InstallationPage {
 
                     #[template]
                     attach[0, 0, 1, 2] = &BentoCard {
+                        inline_css: "background-image: url('file:///home/lea/Downloads/viewports-light.png')",
+                        connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/welcome/".to_string()),
+
                         #[template_child]
                         icon {
                             set_icon_name: Some("explore-symbolic"),
@@ -135,21 +130,9 @@ impl Component for InstallationPage {
                     },
                     #[template]
                     attach[0, 2, 1, 2] = &BentoCard {
-                        #[template_child]
-                        icon {
-                            set_icon_name: Some("applications-development-symbolic"),
-                        },
-                        #[template_child]
-                        title {
-                            set_label: &gettext("Contribute to Ultramarine"),
-                        },
-                        #[template_child]
-                        description {
-                            set_label: &gettext("Learn how to contribute your time, money, or hardware."),
-                        }
-                    },
-                    #[template]
-                    attach[1, 0, 1, 3] = &BentoCard {
+                        inline_css: "background-image: url('file:///home/lea/Downloads/viewports-light.png')",
+                        connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/community/community/".to_string()),
+
                         #[template_child]
                         icon {
                             set_icon_name: Some("chat-symbolic"),
@@ -164,7 +147,28 @@ impl Component for InstallationPage {
                         }
                     },
                     #[template]
+                    attach[1, 0, 1, 3] = &BentoCard {
+                        inline_css: "background-image: url('file:///home/lea/Downloads/viewports-light.png')",
+                        connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/contributing/contributorguide/".to_string()),
+
+                        #[template_child]
+                        icon {
+                            set_icon_name: Some("applications-development-symbolic"),
+                        },
+                        #[template_child]
+                        title {
+                            set_label: &gettext("Contribute to Ultramarine"),
+                        },
+                        #[template_child]
+                        description {
+                            set_label: &gettext("Learn how to contribute your time, money, or hardware."),
+                        }
+                    },
+                    #[template]
                     attach[1, 3, 1, 1] = &BentoCard {
+                        inline_css: "background-image: url('file:///home/lea/Downloads/viewports-light.png')",
+                        connect_clicked => InstallationPageMsg::Open("https://github.com/sponsors/FyraLabs".to_string()),
+
                         #[template_child]
                         icon {
                             set_icon_name: Some("power-profile-power-saver-symbolic"),
@@ -180,13 +184,18 @@ impl Component for InstallationPage {
                     },
                 },
 
-                gtk::Label {
-                    #[watch]
-                    set_label: &*gettext("Installing base system...")
-                },
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
 
-                #[local_ref]
-                progress_bar -> gtk::ProgressBar {}
+                    gtk::Label {
+                        set_halign: gtk::Align::Start,
+                        #[watch]
+                        set_label: &*gettext("Installing base system...")
+                    },
+
+                    #[local_ref]
+                    progress_bar -> gtk::ProgressBar {}
+                }
             }
         }
     }
@@ -212,8 +221,13 @@ impl Component for InstallationPage {
     }
 
     #[tracing::instrument]
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, _: &Self::Root) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, widget: &Self::Root) {
         match message {
+            InstallationPageMsg::Open(uri) => gtk::UriLauncher::new(&uri).launch(
+                widget.toplevel_window().as_ref(),
+                gtk::gio::Cancellable::NONE,
+                |_| {},
+            ),
             InstallationPageMsg::StartInstallation => {
                 sender.spawn_oneshot_command(|| {
                     let state = INSTALLATION_STATE.read();
