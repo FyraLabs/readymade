@@ -92,8 +92,8 @@ msgid ""
 "Either test %s from this installer or start the installation now. You can "
 "always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
-"现在可以于此试用 %s 或立即安装。您可以在任何时候从选单中选择「Installer」返"
-"回此版面。"
+"现在可以于此试用 %s 或立即安装。您可以在任何时候从选单中选择「Installer」返回"
+"此版面。"
 
 #: src/pages/welcome.rs:31 src/pages/welcome.rs:61
 msgid "Welcome to %s"

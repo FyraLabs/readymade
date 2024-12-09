@@ -24,7 +24,8 @@ msgstr "完成"
 
 #: src/pages/completed.rs:37
 msgid "Installation complete. You may reboot now and enjoy your fresh system."
-msgstr "インストールが終わりました。再起動して新しいシステムをお楽しみください。"
+msgstr ""
+"インストールが終わりました。再起動して新しいシステムをお楽しみください。"
 
 #: src/pages/completed.rs:49 src/pages/failure.rs:62
 msgid "Close"
@@ -92,8 +93,8 @@ msgid ""
 "Either test %s from this installer or start the installation now. You can "
 "always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
-"%s はここからインストールできます。システムを使ってみたら後からインストール"
-"する場合は、メニューから再度このインストーラーを起動してください。"
+"%s はここからインストールできます。システムを使ってみたら後からインストールす"
+"る場合は、メニューから再度このインストーラーを起動してください。"
 
 #: src/pages/welcome.rs:31 src/pages/welcome.rs:61
 msgid "Welcome to %s"
