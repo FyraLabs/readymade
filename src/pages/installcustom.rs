@@ -6,7 +6,6 @@ use crate::{backend::custom::MountTarget as ChooseMount, prelude::*, NavigationA
 
 pub struct InstallCustomPage {
     pub choose_mount_factory: FactoryVecDeque<ChooseMount>,
-    pub bottom: libhelium::BottomBar,
 }
 
 #[derive(Debug)]
@@ -69,10 +68,11 @@ impl SimpleComponent for InstallCustomPage {
                     connect_clicked => InstallCustomPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Confirmation)),
                 },
 
-                #[local_ref]
-                bottom -> libhelium::BottomBar {
+                libhelium::BottomBar {
                     set_title: &gettext("Partitions and Mountpoints"),
-                    set_description: &gettext("%s definition(s)").replace("%s", "0"),
+
+                    #[watch]
+                    set_description: &gettext("%s definition(s)").replace("%s", &model.choose_mount_factory.len().to_string()),
 
                     prepend_button[libhelium::BottomBarPosition::Left] = &libhelium::Button {
                         set_is_iconic: true,
@@ -97,11 +97,9 @@ impl SimpleComponent for InstallCustomPage {
 
         let model = Self {
             choose_mount_factory,
-            bottom: libhelium::BottomBar::default(),
         };
 
         let mounts = model.choose_mount_factory.widget();
-        let bottom = &model.bottom;
         let widgets = view_output!();
         ComponentParts { model, widgets }
     }
@@ -113,16 +111,11 @@ impl SimpleComponent for InstallCustomPage {
                 .output(InstallCustomPageOutput::Navigate(action))
                 .unwrap(),
             InstallCustomPageMsg::AddRow => {
-                let out = sender.input_sender();
-                let dialog = AddDialog::builder();
-                let mut ctrl = dialog
-                    .launch(AddDialog {
-                        index: self.choose_mount_factory.len(),
-                        ..AddDialog::default()
-                    })
-                    .forward(out, InstallCustomPageMsg::UpdateRow);
-                ctrl.detach_runtime();
-                ctrl.widget().present();
+                AddDialog {
+                    index: self.choose_mount_factory.len(),
+                    ..AddDialog::default()
+                }
+                .make_window(sender.input_sender(), InstallCustomPageMsg::UpdateRow);
             }
             InstallCustomPageMsg::UpdateRow(msg) => {
                 let mut guard = self.choose_mount_factory.guard();
@@ -134,41 +127,25 @@ impl SimpleComponent for InstallCustomPage {
                     // new entry
                     guard.push_back(obj);
                 }
-                drop(guard);
-                self.bottom.set_description(
-                    &gettext("%s definition(s)")
-                        .replace("%s", &self.choose_mount_factory.len().to_string()),
-                );
             }
             InstallCustomPageMsg::RowOutput(action) => match action {
                 ChooseMountOutput::Edit(index) => {
-                    let Some(mnt_target) = self.choose_mount_factory.get(index) else {
-                        unreachable!()
-                    };
+                    let mnt_target = (self.choose_mount_factory.get(index))
+                        .expect("request to edit nonexistent row");
 
                     tracing::trace!(?mnt_target, "Edit MountTarget");
 
-                    let mut add_dialog = AddDialog::from(mnt_target);
-                    add_dialog.index = index;
-                    let dialog = AddDialog::builder();
-                    let mut ctrl = dialog
-                        .launch(add_dialog)
-                        .forward(sender.input_sender(), InstallCustomPageMsg::UpdateRow);
-                    ctrl.detach_runtime();
-                    ctrl.widget().present();
+                    AddDialog {
+                        index,
+                        ..mnt_target.into()
+                    }
+                    .make_window(sender.input_sender(), InstallCustomPageMsg::UpdateRow);
                 }
                 ChooseMountOutput::Remove(index) => {
-                    self.choose_mount_factory
-                        .guard()
-                        .remove(index)
+                    (self.choose_mount_factory.guard().remove(index))
                         .expect("can't remove requested row");
                     self.choose_mount_factory
                         .broadcast(ChooseMountMsg::Removed(index));
-
-                    self.bottom.set_description(
-                        &gettext("%s definition(s)")
-                            .replace("%s", &self.choose_mount_factory.len().to_string()),
-                    );
                 }
             },
         }
@@ -281,8 +258,8 @@ impl SimpleComponent for AddDialog {
         #[name(window)]
         libhelium::Window {
             set_title: Some("Mount Target"),
-            set_default_width: 300,
-            set_default_height: 250,
+            set_default_width: 400,
+            set_default_height: 325,
             set_vexpand: true,
 
             #[wrap(Some)]
@@ -291,6 +268,10 @@ impl SimpleComponent for AddDialog {
                 set_vexpand: true,
                 set_spacing: 4,
                 set_margin_all: 8,
+                set_margin_top: 0,
+
+                // NOTE: so that the window can actually be closed
+                libhelium::AppBar {},
 
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
@@ -304,6 +285,7 @@ impl SimpleComponent for AddDialog {
                     partlist -> gtk::DropDown {
                         set_halign: gtk::Align::End,
                         set_enable_search: true,
+                        add_css_class: "monospace",
                     },
                 },
 
@@ -342,10 +324,15 @@ impl SimpleComponent for AddDialog {
                     },
                 },
 
-                #[name(btn)]
                 libhelium::OverlayButton {
-                    set_label: Some("OK"),
+                    // set_halign: gtk::Align::End,
+                    // set_valign: gtk::Align::End,
+                    set_icon: "list-add",
+                    // set_is_iconic: true,
                     connect_clicked[sender, window] => move |_| sender.input(AddDialogMsg::Close(window.clone())),
+
+                    #[watch]
+                    set_sensitive: !model.partition.is_empty() && !model.mountpoint.is_empty(),
                 },
             },
         }
@@ -380,8 +367,6 @@ impl SimpleComponent for AddDialog {
 
         let mut model = init;
         let widgets = view_output!();
-        let window = widgets.window.clone();
-        widgets.btn.connect_clicked(move |_| window.close());
         // connect signal for textfields
         widgets
             .tf_at
@@ -490,5 +475,23 @@ impl From<ChooseMount> for AddDialog {
             mountpoint: mountpoint.display().to_string(),
             mountopts: options,
         }
+    }
+}
+
+impl AddDialog {
+    fn make_window<X, F>(self, sender: &relm4::Sender<X>, transform: F) -> Controller<Self>
+    where
+        X: 'static,
+        F: Fn(Self) -> X + 'static,
+    {
+        let root_window = relm4::main_application().window_by_id(*crate::ROOT_WINDOW_ID.read());
+        let root_window = root_window.as_ref();
+        let mut ctrl = Self::builder().launch(self).forward(sender, transform);
+        // WARN: by design yes this is a memleak but we have no choice
+        ctrl.detach_runtime();
+        ctrl.widget().set_transient_for(root_window);
+        libhelium::prelude::WindowExt::set_parent(ctrl.widget(), root_window);
+        ctrl.widget().present();
+        ctrl
     }
 }
