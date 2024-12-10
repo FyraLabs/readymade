@@ -1,7 +1,6 @@
 use super::{Context, PostInstallModule};
-use color_eyre::{eyre::bail, Result};
+use color_eyre::Result;
 use serde::{Deserialize, Serialize};
-use std::process::Command;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct CleanupBoot;
