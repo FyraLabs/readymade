@@ -81,6 +81,7 @@ impl SimpleComponent for DestinationPage {
         libhelium::ViewMono {
             #[wrap(Some)]
             set_title = &gtk::Label {
+                #[watch]
                 set_label: &gettext("Destination"),
                 set_css_classes: &["view-title"]
             },

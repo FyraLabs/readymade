@@ -7,32 +7,32 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-07-25 10:42+0000\n"
-"PO-Revision-Date: 2024-07-25 21:11+0800\n"
+"PO-Revision-Date: 2024-12-09 00:19+0000\n"
 "Last-Translator: madomado <madonuko@outlook.com>\n"
-"Language-Team: Chinese (Simplified) <https://weblate.fyralabs.com/projects/"
-"tauOS/readymade/zh_Hans/>\n"
-"Language: zh\n"
+"Language-Team: Chinese (Simplified Han script) <https://weblate.fyralabs.com/"
+"projects/tauOS/readymade/zh_Hans/>\n"
+"Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Poedit 3.4.4\n"
+"X-Generator: Weblate 5.8.1\n"
 
 #: src/pages/completed.rs:31
 msgid "Completed"
-msgstr ""
+msgstr "完成"
 
 #: src/pages/completed.rs:37
 msgid "Installation complete. You may reboot now and enjoy your fresh system."
-msgstr ""
+msgstr "安装完成。您可以在重启计算机后享用新颖的系统。"
 
 #: src/pages/completed.rs:49 src/pages/failure.rs:62
 msgid "Close"
-msgstr ""
+msgstr "关闭"
 
 #: src/pages/completed.rs:56
 msgid "Reboot"
-msgstr ""
+msgstr "重启"
 
 #: src/pages/confirmation.rs:33
 msgid "Confirmation"
@@ -56,18 +56,16 @@ msgid "Next"
 msgstr "下一页"
 
 #: src/pages/failure.rs:34
-#, fuzzy
-#| msgid "Installation Type"
 msgid "Installation Failure"
-msgstr "安装类型"
+msgstr "安装失败"
 
 #: src/pages/failure.rs:40
 msgid "The installation process failed."
-msgstr ""
+msgstr "安装失败。"
 
 #: src/pages/failure.rs:69
 msgid "Report a bug"
-msgstr ""
+msgstr "报告问题"
 
 #: src/pages/installation.rs:44
 msgid "Installation"
@@ -83,19 +81,19 @@ msgstr "安装类型"
 
 #: src/pages/installationtype.rs:90
 msgid "Chromebook"
-msgstr ""
+msgstr "Chromebook"
 
 #: src/pages/language.rs:80
 msgid "Language"
-msgstr ""
+msgstr "语言"
 
 #: src/pages/welcome.rs:27 src/pages/welcome.rs:68
 msgid ""
 "Either test %s from this installer or start the installation now. You can "
 "always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
-"现在可以于此试用 %s 或立即安装。您可以在任何时候从选单中选择「Installer」返"
-"回此版面。"
+"现在可以于此试用 %s 或立即安装。您可以在任何时候从选单中选择「Installer」返回"
+"此版面。"
 
 #: src/pages/welcome.rs:31 src/pages/welcome.rs:61
 msgid "Welcome to %s"

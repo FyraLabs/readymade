@@ -41,7 +41,8 @@ msgstr "Khởi động lại"
 msgid "Confirmation"
 msgstr "Xác nhận"
 
-#: src/pages/confirmation.rs:100 src/pages/destination.rs:111 src/pages/installationtype.rs:103
+#: src/pages/confirmation.rs:100 src/pages/destination.rs:111
+#: src/pages/installationtype.rs:103
 msgid "Previous"
 msgstr "Trước"
 
@@ -90,7 +91,9 @@ msgid "Language"
 msgstr "Ngôn ngữ"
 
 #: src/pages/welcome.rs:27 src/pages/welcome.rs:68
-msgid "Either test %s from this installer or start the installation now. You can always return to this screen by selecting \"Installer\" in the menu."
+msgid ""
+"Either test %s from this installer or start the installation now. You can "
+"always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
 "Trải nghiệm thử %s từ trình cài đặt này hoặc bắt đầu quá trình tải xuống "
 "ngay lập tức. Bạn luôn có thể quay lại màn hình này bằng cách chọn \"Trình "

@@ -152,7 +152,7 @@ impl SimpleComponent for AppModel {
         let settings = gtk::Settings::for_display(&display);
         *ROOT_WINDOW_ID.write() = root.id();
 
-        initialize_custom_icons(display);
+        initialize_custom_icons(&display);
         settings.set_gtk_icon_theme_name(Some("Hydrogen"));
 
         let model = Self::_default(sender);
@@ -162,8 +162,8 @@ impl SimpleComponent for AppModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
-        match msg {
+    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+        match message {
             AppMsg::StartInstallation => {
                 let value = INSTALLATION_STATE.read().installation_type;
                 if let Some(InstallationType::Custom) = value {
@@ -235,10 +235,10 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn initialize_custom_icons(display: gtk::gdk::Display) {
+fn initialize_custom_icons(display: &gtk::gdk::Display) {
     gtk::gio::resources_register_include!("icons.gresource").unwrap();
 
-    let theme = gtk::IconTheme::for_display(&display);
+    let theme = gtk::IconTheme::for_display(display);
     theme.add_resource_path("/com/FyraLabs/Readymade/icons");
 }
 

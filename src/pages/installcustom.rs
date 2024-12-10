@@ -2,7 +2,9 @@ use std::path::PathBuf;
 
 use relm4::factory::FactoryVecDeque;
 
-use crate::{backend::custom::MountTarget as ChooseMount, prelude::*, NavigationAction};
+use crate::{
+    backend::custom::MountTarget as ChooseMount, prelude::*, NavigationAction, INSTALLATION_STATE,
+};
 
 pub struct InstallCustomPage {
     pub choose_mount_factory: FactoryVecDeque<ChooseMount>,
@@ -16,6 +18,7 @@ pub enum InstallCustomPageMsg {
     RowOutput(ChooseMountOutput),
     #[doc(hidden)]
     Navigate(NavigationAction),
+    Update,
 }
 
 #[derive(Debug)]
@@ -33,6 +36,7 @@ impl SimpleComponent for InstallCustomPage {
         libhelium::ViewMono {
             #[wrap(Some)]
             set_title = &gtk::Label {
+                #[watch]
                 set_label: &gettext("Custom Installation"),
                 set_css_classes: &["view-title"],
             },
@@ -69,6 +73,7 @@ impl SimpleComponent for InstallCustomPage {
                 },
 
                 libhelium::BottomBar {
+                    #[watch]
                     set_title: &gettext("Partitions and Mountpoints"),
 
                     #[watch]
@@ -76,6 +81,7 @@ impl SimpleComponent for InstallCustomPage {
 
                     prepend_button[libhelium::BottomBarPosition::Left] = &libhelium::Button {
                         set_is_iconic: true,
+                        #[watch]
                         set_tooltip: &gettext("Add a new definition/row"),
 
                         set_icon: Some("list-add"),
@@ -101,6 +107,9 @@ impl SimpleComponent for InstallCustomPage {
 
         let mounts = model.choose_mount_factory.widget();
         let widgets = view_output!();
+
+        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| InstallCustomPageMsg::Update);
+
         ComponentParts { model, widgets }
     }
 
@@ -148,6 +157,7 @@ impl SimpleComponent for InstallCustomPage {
                         .broadcast(ChooseMountMsg::Removed(index));
                 }
             },
+            InstallCustomPageMsg::Update => {}
         }
     }
 }
@@ -195,6 +205,7 @@ impl FactoryComponent for ChooseMount {
 
             libhelium::Button {
                 set_icon_name: "document-edit-symbolic",
+                #[watch]
                 set_tooltip: &gettext("Remove mountpoint"),
                 add_css_class: "suggested-action",
                 connect_clicked => ChooseMountMsg::Edit,
@@ -202,6 +213,7 @@ impl FactoryComponent for ChooseMount {
 
             libhelium::Button {
                 set_icon_name: "edit-clear-symbolic",
+                #[watch]
                 set_tooltip: &gettext("Remove mountpoint"),
                 add_css_class: "destructive-action",
                 connect_clicked => ChooseMountMsg::Remove,
@@ -279,6 +291,7 @@ impl SimpleComponent for AddDialog {
                     set_spacing: 6,
 
                     gtk::Label {
+                        #[watch]
                         set_label: &gettext("Partition"),
                     },
                     #[local_ref]
@@ -295,6 +308,7 @@ impl SimpleComponent for AddDialog {
                     set_spacing: 3,
 
                     gtk::Label {
+                        #[watch]
                         set_label: &gettext("Mount at"),
                     },
                     #[name = "tf_at"]
@@ -313,6 +327,7 @@ impl SimpleComponent for AddDialog {
                     set_spacing: 3,
 
                     gtk::Label {
+                        #[watch]
                         set_label: &gettext("Mount options"),
                     },
                     #[name = "tf_opts"]

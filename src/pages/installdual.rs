@@ -1,4 +1,4 @@
-use crate::{prelude::*, NavigationAction};
+use crate::{prelude::*, NavigationAction, INSTALLATION_STATE};
 
 pub struct InstallDualPage {
     paned: gtk::Paned,
@@ -14,6 +14,7 @@ pub enum InstallDualPageMsg {
     HandleResize,
     #[doc(hidden)]
     Navigate(NavigationAction),
+    Update,
 }
 
 #[derive(Debug)]
@@ -31,6 +32,7 @@ impl SimpleComponent for InstallDualPage {
         libhelium::ViewMono {
             #[wrap(Some)]
             set_title = &gtk::Label {
+                #[watch]
                 set_label: &gettext("Dual Boot"),
                 set_css_classes: &["view-title"],
             },
@@ -55,6 +57,7 @@ impl SimpleComponent for InstallDualPage {
                         #[watch]
                         set_size_request: ((model.paned.width() as f32 * (model.min_other_allocation as f32 / model.total_size as f32)) as i32, -1),
                         gtk::Label {
+                            #[watch]
                             set_label: &gettext("Other OS"),
                         },
                         gtk::Label {
@@ -69,6 +72,7 @@ impl SimpleComponent for InstallDualPage {
                         #[watch]
                         set_size_request: ((model.paned.width() as f32 * (model.min_ultramarine_allocation as f32 / model.total_size as f32)) as i32, -1),
                         gtk::Label {
+                            #[watch]
                             set_label: &gettext("Ultramarine"),
                         },
                         gtk::Label {
@@ -84,7 +88,7 @@ impl SimpleComponent for InstallDualPage {
     fn init(
         (): Self::Init,
         root: Self::Root,
-        _sender: ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = Self {
             paned: gtk::Paned::new(gtk::Orientation::Horizontal),
@@ -97,6 +101,9 @@ impl SimpleComponent for InstallDualPage {
         let paned = model.paned.clone();
 
         let widgets = view_output!();
+
+        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| InstallDualPageMsg::Update);
+
         ComponentParts { model, widgets }
     }
 
@@ -115,6 +122,7 @@ impl SimpleComponent for InstallDualPage {
                 self.ultramarine_allocation = (self.total_size - self.other_allocation)
                     .clamp(self.min_ultramarine_allocation, self.total_size);
             }
+            InstallDualPageMsg::Update => {}
         }
     }
 }
