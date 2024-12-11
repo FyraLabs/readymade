@@ -11,7 +11,7 @@ repository = "https://github.com/FyraLabs/readymade"
 [dependencies]
 color-eyre = "0.6.3"
 # gtk = { version = "0.9", package = "gtk4" }
-relm4 = { version = "0.9", features = ["macros"] }
+relm4 = { version = "0.9", features = ["macros", "gnome_46"] }
 libhelium = { version = "0.10.0", features = ["gtk_v4_10", "v1_6"] }
 # udisks2 = "0.1.0"
 cmd_lib = "1.9.4"

@@ -67,6 +67,12 @@ impl SimpleComponent for ConfirmationPage {
                         }
                     },
 
+                    gtk::Image {
+                        set_icon_name: Some("go-next-symbolic"),
+                        inline_css: "-gtk-icon-size: 64px"
+                    },
+
+
                     gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 2,
@@ -100,6 +106,7 @@ impl SimpleComponent for ConfirmationPage {
                         set_is_pill: true,
                         #[watch]
                         set_label: &gettext("Previous"),
+                        inline_css: "min-width: 96px",
                         connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(
                             if crate::CONFIG.read().install.allowed_installtypes.len() == 1 {
                                 crate::Page::Destination
@@ -117,7 +124,7 @@ impl SimpleComponent for ConfirmationPage {
                         set_is_pill: true,
                         #[watch]
                         set_label: &gettext("Install"),
-                        inline_css: "padding-left: 48px; padding-right: 48px",
+                        inline_css: "min-width: 96px",
                         add_css_class: "destructive-action",
                         connect_clicked => ConfirmationPageMsg::StartInstallation
                     },
