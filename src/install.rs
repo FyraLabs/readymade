@@ -205,15 +205,10 @@ impl InstallationState {
     }
 
     #[tracing::instrument]
-    #[allow(clippy::unwrap_in_result)]
     fn dd_submarine(blockdev: &Path) -> Result<()> {
         tracing::debug!("dd-ing submarine…");
         if !Command::new("dd")
-            .arg(
-                glob::glob("if=/usr/share/submarine/submarine*.bin")?
-                    .next()
-                    .expect("Submarine is not installed")?,
-            )
+            .arg("if=/usr/share/submarine/submarine.kpart")
             .arg(format!(
                 "of=/dev/{}",
                 lsblk::BlockDevice::list()?
