@@ -10,7 +10,7 @@ impl WidgetTemplate for BentoCard {
         gtk::Button {
             set_vexpand: true,
             set_hexpand: true,
-            inline_css: "padding: unset; border-radius: 16px; background-repeat: no-repeat; background-position: center; background-size: cover",
+            add_css_class: "installation-bento-card",
 
             gtk::Box {
                 set_spacing: 4,
@@ -22,7 +22,8 @@ impl WidgetTemplate for BentoCard {
                 inline_css: "border-top-left-radius: 0px; border-top-right-radius: 0px;",
 
                 gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
+                    set_orientation: gtk::Orientation::Horizontal,
+                    set_spacing: 16,
                     set_hexpand: true,
                     set_halign: gtk::Align::Start,
 
@@ -31,25 +32,28 @@ impl WidgetTemplate for BentoCard {
                         set_halign: gtk::Align::Start,
                         set_icon_name: Some("dialog-question-symbolic"),
                         inline_css: "-gtk-icon-size: 28px",
-                        set_margin_bottom: 8,
                     },
-                    #[name = "title"]
-                    gtk::Label {
-                        set_halign: gtk::Align::Start,
-                        inline_css: "font-weight: 600; font-size: 16px"
-                    },
-                    #[name = "description"]
-                    gtk::Label {
-                        set_halign: gtk::Align::Start,
+                    gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
+                        #[name = "title"]
+                        gtk::Label {
+                            set_halign: gtk::Align::Start,
+                            inline_css: "font-weight: 600; font-size: 16px"
+                        },
+                        #[name = "description"]
+                        gtk::Label {
+                            set_halign: gtk::Align::Start,
+                            inline_css: "font-weight: normal; font-size: 14px"
+                        }
                     }
                 },
 
-                gtk::Image {
-                    set_valign: gtk::Align::End,
-                    set_halign: gtk::Align::End,
-                    set_icon_name: Some("go-next-symbolic"),
-                    inline_css: "-gtk-icon-size: 28px",
-                }
+                // gtk::Image {
+                //     set_valign: gtk::Align::End,
+                //     set_halign: gtk::Align::End,
+                //     set_icon_name: Some("go-next-symbolic"),
+                //     inline_css: "-gtk-icon-size: 28px",
+                // }
             }
         }
     }
@@ -111,9 +115,9 @@ impl Component for InstallationPage {
                     set_column_spacing: 8,
 
                     #[template]
-                    attach[0, 0, 1, 2] = &BentoCard {
-                        inline_css: "background-image: url('file:///home/lea/Downloads/viewports-light.png')",
+                    attach[0, 0, 1, 4] = &BentoCard {
                         connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/welcome/".to_string()),
+                        add_css_class: "welcome-card",
 
                         #[template_child]
                         icon {
@@ -129,9 +133,9 @@ impl Component for InstallationPage {
                         }
                     },
                     #[template]
-                    attach[0, 2, 1, 2] = &BentoCard {
-                        inline_css: "background-image: url('file:///home/lea/Downloads/viewports-light.png')",
+                    attach[1, 0, 1, 2] = &BentoCard {
                         connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/community/community/".to_string()),
+                        add_css_class: "help-card",
 
                         #[template_child]
                         icon {
@@ -147,9 +151,9 @@ impl Component for InstallationPage {
                         }
                     },
                     #[template]
-                    attach[1, 0, 1, 3] = &BentoCard {
-                        inline_css: "background-image: url('file:///home/lea/Downloads/viewports-light.png')",
+                    attach[1, 2, 1, 2] = &BentoCard {
                         connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/contributing/contributorguide/".to_string()),
+                        add_css_class: "contribute-card",
 
                         #[template_child]
                         icon {
@@ -164,24 +168,24 @@ impl Component for InstallationPage {
                             set_label: &gettext("Learn how to contribute your time, money, or hardware."),
                         }
                     },
-                    #[template]
-                    attach[1, 3, 1, 1] = &BentoCard {
-                        inline_css: "background-image: url('file:///home/lea/Downloads/viewports-light.png')",
-                        connect_clicked => InstallationPageMsg::Open("https://github.com/sponsors/FyraLabs".to_string()),
+                    // #[template]
+                    // attach[1, 3, 1, 1] = &BentoCard {
+                    //     connect_clicked => InstallationPageMsg::Open("https://github.com/sponsors/FyraLabs".to_string()),
+                    //     add_css_class: "sponsor-card",
 
-                        #[template_child]
-                        icon {
-                            set_icon_name: Some("power-profile-power-saver-symbolic"),
-                        },
-                        #[template_child]
-                        title {
-                            set_label: &gettext("Sponsor Fyra Labs"),
-                        },
-                        #[template_child]
-                        description {
-                            set_label: &gettext("Sponsorships help us ship better software, faster."),
-                        }
-                    },
+                    //     #[template_child]
+                    //     icon {
+                    //         set_icon_name: Some("power-profile-power-saver-symbolic"),
+                    //     },
+                    //     #[template_child]
+                    //     title {
+                    //         set_label: &gettext("Sponsor Fyra Labs"),
+                    //     },
+                    //     #[template_child]
+                    //     description {
+                    //         set_label: &gettext("Sponsorships help us ship better software, faster."),
+                    //     }
+                    // },
                 },
 
                 gtk::Box {
