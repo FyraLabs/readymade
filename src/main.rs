@@ -215,6 +215,8 @@ fn main() -> Result<()> {
     gettextrs::textdomain(APPID)?;
     gettextrs::bind_textdomain_codeset(APPID, "UTF-8")?;
 
+    gtk::gio::resources_register_include!("resources.gresource")?;
+
     let app = libhelium::Application::builder()
         .application_id(APPID)
         .flags(libhelium::gtk::gio::ApplicationFlags::default())
@@ -236,8 +238,6 @@ fn main() -> Result<()> {
 }
 
 fn initialize_custom_icons(display: &gtk::gdk::Display) {
-    gtk::gio::resources_register_include!("icons.gresource").unwrap();
-
     let theme = gtk::IconTheme::for_display(display);
     theme.add_resource_path("/com/FyraLabs/Readymade/icons");
 }
