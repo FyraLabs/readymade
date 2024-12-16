@@ -1,0 +1,24 @@
+.installation-bento-card {
+    padding: unset;
+    border-radius: 16px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+}
+
+.installation-bento-card.welcome-card {
+    background-image: url("viewports-light.png");
+}
+
+.installation-bento-card.help-card {
+    background-image: url("umbrella-light.png");
+}
+
+.installation-bento-card.contribute-card {
+    background-position: bottom;
+    background-image: url("blueprint.png");
+}
+
+.installation-bento-card.sponsor-card {
+    background-image: url("foresty-skies-light.png");
+}
