@@ -1937,6 +1937,7 @@ dependencies = [
  "process_alive",
  "rayon",
  "relm4",
+ "scopeguard",
  "serde",
  "serde_ini",
  "serde_json",
