@@ -7,94 +7,100 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-07-25 10:42+0000\n"
-"PO-Revision-Date: 2024-07-25 21:14+0800\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
+"PO-Revision-Date: 2024-12-14 09:45+0000\n"
+"Last-Translator: Lumineko <bennokaynak@gmail.com>\n"
+"Language-Team: Finnish <https://weblate.fyralabs.com/projects/tauOS/"
+"readymade/fi/>\n"
 "Language: fi\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 3.4.4\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 5.8.1\n"
 
 #: src/pages/completed.rs:31
 msgid "Completed"
-msgstr ""
+msgstr "Valmis"
 
 #: src/pages/completed.rs:37
 msgid "Installation complete. You may reboot now and enjoy your fresh system."
 msgstr ""
+"Asennus on valmis. Voit käynistää uudelleen ja nautia sinun uudesta "
+"järjestemästä."
 
 #: src/pages/completed.rs:49 src/pages/failure.rs:62
 msgid "Close"
-msgstr ""
+msgstr "Lähellå"
 
 #: src/pages/completed.rs:56
 msgid "Reboot"
-msgstr ""
+msgstr "Käynistä uudelleen"
 
 #: src/pages/confirmation.rs:33
 msgid "Confirmation"
-msgstr ""
+msgstr "Varmistus"
 
 #: src/pages/confirmation.rs:100 src/pages/destination.rs:111
 #: src/pages/installationtype.rs:103
 msgid "Previous"
-msgstr ""
+msgstr "Edellinen"
 
 #: src/pages/confirmation.rs:110 src/pages/welcome.rs:88
 msgid "Install"
-msgstr ""
+msgstr "Asemma"
 
 #: src/pages/destination.rs:86
 msgid "Destination"
-msgstr ""
+msgstr "Kohde"
 
 #: src/pages/destination.rs:121 src/pages/language.rs:107
 msgid "Next"
-msgstr ""
+msgstr "Seruraava"
 
 #: src/pages/failure.rs:34
 msgid "Installation Failure"
-msgstr ""
+msgstr "Asennus virhe"
 
 #: src/pages/failure.rs:40
 msgid "The installation process failed."
-msgstr ""
+msgstr "Asennusprosessi epäonnistui"
 
 #: src/pages/failure.rs:69
 msgid "Report a bug"
-msgstr ""
+msgstr "Ilmoita virhe"
 
 #: src/pages/installation.rs:44
 msgid "Installation"
-msgstr ""
+msgstr "Asennus"
 
 #: src/pages/installation.rs:61
 msgid "Installing base system..."
-msgstr ""
+msgstr "Asentamassa kantajärjestelmää..."
 
 #: src/pages/installationtype.rs:31
 msgid "Installation Type"
-msgstr ""
+msgstr "Asennuksen Tyyppi"
 
 #: src/pages/installationtype.rs:90
 msgid "Chromebook"
-msgstr ""
+msgstr "Chromebook"
 
 #: src/pages/language.rs:80
 msgid "Language"
-msgstr ""
+msgstr "Kieli"
 
 #: src/pages/welcome.rs:27 src/pages/welcome.rs:68
 msgid ""
 "Either test %s from this installer or start the installation now. You can "
 "always return to this screen by selecting \"Installer\" in the menu."
 msgstr ""
+"Testaa %s tästä asennusohjelmasta tai aloita asentaminen nyt. Voit aina "
+"halutessasi palata tähän valikkoon valitsemalla \"Asennusohjelma\" valikosta."
 
 #: src/pages/welcome.rs:31 src/pages/welcome.rs:61
 msgid "Welcome to %s"
-msgstr ""
+msgstr "Tervetuloa %s"
 
 #: src/pages/welcome.rs:81
 msgid "Try"
-msgstr ""
+msgstr "Yritä"
