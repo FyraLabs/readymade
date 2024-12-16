@@ -89,31 +89,39 @@ pub fn install_custom(
     mounttags.sort_mounts();
     mounttags.mount_all(destroot)?;
 
-    let copy_source =
-        std::path::PathBuf::from(crate::install::InstallationState::determine_copy_source());
-    if copy_source.is_file() {
-        // TODO: impl callback status progress
-        super::mksys::unsquash_copy(&copy_source, destroot, |_, _| {})?;
-    } else {
-        tracing::info!(?copy_source, ?destroot, "Copying directory");
-        crate::util::fs::copy_dir(&copy_source, destroot)?;
-    }
+    {
+        scopeguard::defer! {
+            if let Err(e) = mounttags.umount_all(destroot) {
+                tracing::error!("Cannot unmount partitions: {e:?}");
+            }
+        };
 
-    mounttags.umount_all(destroot)?;
+        let copy_source = PathBuf::from(crate::install::InstallationState::determine_copy_source());
+        if copy_source.is_file() {
+            // TODO: impl callback status progress
+            super::mksys::unsquash_copy(&copy_source, destroot, |_, _| {})?;
+        } else {
+            tracing::info!(?copy_source, ?destroot, "Copying directory");
+            crate::util::fs::copy_dir(&copy_source, destroot)?;
+        }
+    }
 
     let temp_dir = tempfile::tempdir()?.into_path();
 
     let mut container = tiffin::Container::new(temp_dir);
 
-    for mnt in &mounttags.0 {
+    for MountTarget {
+        partition,
+        mountpoint,
+        ..
+    } in mounttags.0.clone()
+    {
         container.add_mount(
             tiffin::MountTarget {
-                target: mnt.mountpoint.clone(),
-                flags: sys_mount::MountFlags::empty(),
-                data: None,
-                fstype: None,
+                target: mountpoint,
+                ..Default::default()
             },
-            mnt.partition.clone(),
+            partition,
         );
     }
 
