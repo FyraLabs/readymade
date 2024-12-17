@@ -1,6 +1,6 @@
 [package]
 name = "readymade"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "MIT WITH GPL-3.0-or-later"
 description = "The Ado Installer"
