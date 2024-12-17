@@ -1,6 +1,6 @@
 [package]
 name = "readymade"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 license = "MIT WITH GPL-3.0-or-later"
 description = "The Ado Installer"
@@ -10,11 +10,8 @@ repository = "https://github.com/FyraLabs/readymade"
 
 [dependencies]
 color-eyre = "0.6.3"
-# gtk = { version = "0.9", package = "gtk4" }
-relm4 = { version = "0.9", features = [
-    "macros",
-    "gnome_47",
-], default-features = false }
+gtk = { version = "0.9", package = "gtk4", features = ["v4_10"] }
+relm4 = { version = "0.9", features = ["macros"] }
 libhelium = { version = "0.10.0", features = ["gtk_v4_10", "v1_6"] }
 # udisks2 = "0.1.0"
 cmd_lib = "1.9.4"
