@@ -2044,17 +2044,10 @@ dependencies = [
  "gtk4",
  "libadwaita",
  "once_cell",
- "relm4-css",
  "relm4-macros",
  "tokio",
  "tracing",
 ]
-
-[[package]]
-name = "relm4-css"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d3b924557df1cddc687b60b313c4b76620fdbf0e463afa4b29f67193ccf37f9"
 
 [[package]]
 name = "relm4-macros"
