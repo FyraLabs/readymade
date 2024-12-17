@@ -106,7 +106,7 @@ impl SimpleComponent for ConfirmationPage {
                         set_is_pill: true,
                         #[watch]
                         set_label: &gettext("Previous"),
-                        inline_css: "min-width: 96px",
+                        add_css_class: "large-button",
                         connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(
                             if crate::CONFIG.read().install.allowed_installtypes.len() == 1 {
                                 crate::Page::Destination
@@ -124,7 +124,7 @@ impl SimpleComponent for ConfirmationPage {
                         set_is_pill: true,
                         #[watch]
                         set_label: &gettext("Install"),
-                        inline_css: "min-width: 96px",
+                        add_css_class: "large-button",
                         add_css_class: "destructive-action",
                         connect_clicked => ConfirmationPageMsg::StartInstallation
                     },

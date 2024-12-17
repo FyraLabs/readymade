@@ -1,3 +1,7 @@
+.large-button {
+    min-width: 96px;
+}
+
 .installation-bento-card {
     padding: unset;
     border-radius: 16px;

@@ -65,7 +65,7 @@ impl SimpleComponent for WelcomePage {
                     set_is_pill: true,
                     #[watch]
                     set_label: &gettext("Try"),
-                    inline_css: "padding-left: 48px; padding-right: 48px",
+                    add_css_class: "large-button",
                     connect_clicked => WelcomePageMsg::Navigate(NavigationAction::Quit)
                 },
 
@@ -77,8 +77,8 @@ impl SimpleComponent for WelcomePage {
                     set_is_pill: true,
                     #[watch]
                     set_label: &gettext("Install"),
-                    inline_css: "padding-left: 48px; padding-right: 48px",
                     add_css_class: "suggested-action",
+                    add_css_class: "large-button",
                     connect_clicked => WelcomePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
                 }
             }

@@ -126,7 +126,7 @@ impl SimpleComponent for DestinationPage {
                         set_is_pill: true,
                         #[watch]
                         set_label: &gettext("Next"),
-                        inline_css: "padding-left: 48px; padding-right: 48px",
+                        add_css_class: "large-button",
                         connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(
                             if let [x] = crate::CONFIG.read().install.allowed_installtypes[..] {
                                 #[allow(clippy::enum_glob_use)]

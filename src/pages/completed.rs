@@ -69,7 +69,7 @@ impl SimpleComponent for CompletedPage {
                         set_is_textual: true,
                         #[watch]
                         set_label: &gettext("Close"),
-                        inline_css: "padding-left: 48px; padding-right: 48px",
+                        add_css_class: "large-button",
                         connect_clicked => CompletedPageMsg::Close,
                     },
 
@@ -81,7 +81,7 @@ impl SimpleComponent for CompletedPage {
                         set_is_pill: true,
                         #[watch]
                         set_label: &gettext("Reboot"),
-                        inline_css: "padding-left: 48px; padding-right: 48px",
+                        add_css_class: "large-button",
                         connect_clicked => CompletedPageMsg::Reboot,
                     }
                 }
