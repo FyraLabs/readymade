@@ -214,7 +214,11 @@ impl InstallationState {
                 lsblk::BlockDevice::list()?
                     .into_iter()
                     .find(|d| d.is_part()
-                        && d.disk_name().ok().as_deref() == blockdev.to_str()
+                        && d.disk_name().ok().as_deref()
+                            == blockdev
+                                .strip_prefix("/dev/")
+                                .unwrap_or(&PathBuf::from(""))
+                                .to_str()
                         && d.name.ends_with('2'))
                     .ok_or_else(|| eyre!("Failed to find submarine partition"))?
                     .name
