@@ -361,7 +361,7 @@ impl InstallationType {
             .args([
                 "add",
                 "-i",
-                "1",
+                "2",
                 "-t",
                 "kernel",
                 "-P",
