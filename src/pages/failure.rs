@@ -68,7 +68,7 @@ impl SimpleComponent for FailurePage {
                         set_is_textual: true,
                         #[watch]
                         set_label: &gettext("Close"),
-                        inline_css: "padding-left: 48px; padding-right: 48px",
+                        add_css_class: "large-button",
                         connect_clicked => FailurePageMsg::Navigate(NavigationAction::Quit)
                     },
 
@@ -80,7 +80,7 @@ impl SimpleComponent for FailurePage {
                         set_is_pill: true,
                         #[watch]
                         set_label: &gettext("Report a bug"),
-                        inline_css: "padding-left: 48px; padding-right: 48px",
+                        add_css_class: "large-button",
                         connect_clicked => FailurePageMsg::ReportBug,
                     }
                 }

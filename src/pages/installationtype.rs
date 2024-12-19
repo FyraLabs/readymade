@@ -77,7 +77,7 @@ impl SimpleComponent for InstallationTypePage {
                             set_is_pill: true,
                             #[watch]
                             set_label: &gettext("Entire Disk"),
-                            inline_css: "padding-left: 48px; padding-right: 48px",
+                            add_css_class: "large-button",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
                         },
                         libhelium::Button {
@@ -85,7 +85,7 @@ impl SimpleComponent for InstallationTypePage {
                             set_is_pill: true,
                             #[watch]
                             set_label: &gettext("Dual Boot"),
-                            inline_css: "padding-left: 48px; padding-right: 48px",
+                            add_css_class: "large-button",
                             // FIXME:
                             // connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot)
                         },
@@ -94,7 +94,7 @@ impl SimpleComponent for InstallationTypePage {
                             set_is_pill: true,
                             #[watch]
                             set_label: &gettext("Custom"),
-                            inline_css: "padding-left: 48px; padding-right: 48px",
+                            add_css_class: "large-button",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
                         },
                         libhelium::Button {
@@ -102,7 +102,7 @@ impl SimpleComponent for InstallationTypePage {
                             set_is_pill: true,
                             #[watch]
                             set_label: &gettext("Chromebook"),
-                            inline_css: "padding-left: 48px; padding-right: 48px",
+                            add_css_class: "large-button",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::ChromebookInstall)
                         },
                     }

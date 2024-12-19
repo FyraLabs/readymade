@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-07-25 10:42+0000\n"
-"PO-Revision-Date: 2024-07-25 21:14+0800\n"
+"PO-Revision-Date: 2024-12-10 01:45+0000\n"
 "Last-Translator: Cappy <cappy@cappuchino.xyz>\n"
 "Language-Team: Thai <https://weblate.fyralabs.com/projects/tauOS/readymade/"
 "th/>\n"
@@ -16,23 +16,23 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Poedit 3.4.4\n"
+"X-Generator: Weblate 5.8.1\n"
 
 #: src/pages/completed.rs:31
 msgid "Completed"
-msgstr ""
+msgstr "สำเร็จ"
 
 #: src/pages/completed.rs:37
 msgid "Installation complete. You may reboot now and enjoy your fresh system."
-msgstr ""
+msgstr "การติดตั้งเสร็จสมบูรณ์ คุณสามารถรีบูตเครื่องและใช้งานระบบใหม่ของคุณได้"
 
 #: src/pages/completed.rs:49 src/pages/failure.rs:62
 msgid "Close"
-msgstr ""
+msgstr "ปิด"
 
 #: src/pages/completed.rs:56
 msgid "Reboot"
-msgstr ""
+msgstr "รีบูต"
 
 #: src/pages/confirmation.rs:33
 msgid "Confirmation"
@@ -56,18 +56,16 @@ msgid "Next"
 msgstr "ต่อไป"
 
 #: src/pages/failure.rs:34
-#, fuzzy
-#| msgid "Installation Type"
 msgid "Installation Failure"
-msgstr "ประเภทการติดตั้ง"
+msgstr "การติดตั้งล้มเหลว"
 
 #: src/pages/failure.rs:40
 msgid "The installation process failed."
-msgstr ""
+msgstr "การติดตั้งนั้นได้ล้มเหลว"
 
 #: src/pages/failure.rs:69
 msgid "Report a bug"
-msgstr ""
+msgstr "รายงานจุดบกพร่อง"
 
 #: src/pages/installation.rs:44
 msgid "Installation"
@@ -83,11 +81,11 @@ msgstr "ประเภทการติดตั้ง"
 
 #: src/pages/installationtype.rs:90
 msgid "Chromebook"
-msgstr ""
+msgstr "Chromebook"
 
 #: src/pages/language.rs:80
 msgid "Language"
-msgstr ""
+msgstr "ภาษา"
 
 #: src/pages/welcome.rs:27 src/pages/welcome.rs:68
 msgid ""
