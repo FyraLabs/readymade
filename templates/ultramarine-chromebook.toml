@@ -21,3 +21,6 @@ module = "PrepareFedora"
 
 [[postinstall]]
 module = "SELinux"
+
+[[postinstall]]
+module = "Drivers"

@@ -1,6 +1,7 @@
 use cleanup_boot::CleanupBoot;
 use color_eyre::Result;
 use dracut::Dracut;
+use drivers::Drivers;
 use enum_dispatch::enum_dispatch;
 use grub2::GRUB2;
 use prepare_fedora::PrepareFedora;
@@ -11,6 +12,7 @@ use std::path::PathBuf;
 
 pub mod cleanup_boot;
 pub mod dracut;
+pub mod drivers;
 pub mod grub2;
 pub mod prepare_fedora;
 pub mod reinstall_kernel;
@@ -36,4 +38,5 @@ pub enum Module {
     GRUB2,
     CleanupBoot,
     PrepareFedora,
+    Drivers,
 }
