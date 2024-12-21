@@ -1913,7 +1913,7 @@ dependencies = [
 
 [[package]]
 name = "readymade"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "backhand",
  "bytesize",
