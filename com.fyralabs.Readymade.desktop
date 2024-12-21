@@ -1,6 +1,6 @@
 [Desktop Entry]
-Name=Readymade
-GenericName=Install
+Name=Install to Computer
+GenericName=Installer
 Comment=Install the operating system to your computer
 Categories=System;Utility;GNOME;GTK;
 Exec=readymade
