@@ -25,6 +25,9 @@ pub fn detect_os() -> Vec<DiskInit> {
     disks
         .into_iter()
         .filter(lsblk::BlockDevice::is_disk)
+        .filter(|disk| {
+            disk.is_physical() || cfg!(debug_assertions) && disk.name.starts_with("loop")
+        })
         .map(|mut disk| {
             let model = disk
                 .sysfs()
