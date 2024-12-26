@@ -67,6 +67,7 @@ impl Drivers {
             .is_ok_and(|s| s.success())
     }
 
+    // todo: Probably just filter programatically instead of doing this pipeline
     fn get_nvidia_chipset() -> color_eyre::Result<String> {
         String::from_utf8(std::process::Command::new("sh").arg("-c").arg("lspci | grep -i NVIDIA | head -n 1 | cut -d ':' -f 3 | cut -d '[' -f 1 | sed -e 's/^[[:space:]]*//'").stdout(std::process::Stdio::piped()).output().wrap_err("cannot detect nvidia chipset")?.stdout.rsplit(|&c| c == b' ').next().expect("malformatted output from shell").to_vec()).wrap_err("cannot convert shell output to utf8")
     }

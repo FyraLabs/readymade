@@ -59,6 +59,7 @@ backhand = "0.18.0"
 glob = "0.3.1"
 enum_dispatch = "0.3.13"
 scopeguard = "1.2.0"
+regex = "1.11.1"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"
