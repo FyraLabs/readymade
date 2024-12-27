@@ -53,7 +53,29 @@ impl RepartOutput {
     pub fn generate_fstab(&self) -> String {
         let mut fstab = String::new();
 
-        for part in &self.partitions {
+        // sort by mountpoint
+
+        let mut partitions = self.partitions.clone();
+        // sort by mountpoint,
+        // root goes first, then each subdirectory counting the slashes
+        partitions.sort_by(|a, b| {
+            let a_mnt = a.mount_point().unwrap_or_default();
+            let b_mnt = b.mount_point().unwrap_or_default();
+
+            // If either path is root (/), it should go first
+            if a_mnt == "/" {
+                std::cmp::Ordering::Less
+            } else if b_mnt == "/" {
+                std::cmp::Ordering::Greater
+            } else {
+                // Otherwise sort by number of slashes then alphabetically
+                let a_slashes = a_mnt.chars().filter(|&c| c == '/').count();
+                let b_slashes = b_mnt.chars().filter(|&c| c == '/').count();
+                a_slashes.cmp(&b_slashes).then(a_mnt.cmp(&b_mnt))
+            }
+        });
+
+        for part in partitions {
             if let Some(_mntpnt) = part.mount_point() {
                 if let Ok(fstab_entry) = part.fstab_entry() {
                     writeln!(&mut fstab, "{fstab_entry}").unwrap();
@@ -96,7 +118,7 @@ impl std::str::FromStr for RepartOutput {
     }
 }
 
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize, Clone)]
 pub struct RepartPartition {
     // "type"
     #[serde(rename = "type")]
