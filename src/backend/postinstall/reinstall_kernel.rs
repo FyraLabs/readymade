@@ -13,33 +13,6 @@ pub struct ReinstallKernel;
 impl PostInstallModule for ReinstallKernel {
     #[allow(clippy::unwrap_in_result)]
     fn run(&self, context: &Context) -> Result<()> {
-
-        stage!("Correcting Kernel arguments" {
-            let root_uuid = std::process::Command::new("lsblk")
-                .arg("-no")
-                .arg("UUID")
-                .arg(context.destination_disk.as_os_str())
-                .output()?;
-
-            let root_cmdline = format!("root=UUID={} rhgb quiet", String::from_utf8(root_uuid.stdout).unwrap());
-
-            // now append/create the cmdline file in /etc/kernel/cmdline (file)
-
-            let mut file_handle = {
-                if std::fs::metadata("/etc/kernel/cmdline").is_ok() {
-                    std::fs::OpenOptions::new()
-                        .append(true)
-                        .open("/etc/kernel/cmdline")?
-                } else if std::fs::create_dir_all("/etc/kernel").is_err() {
-                    bail!("Failed to create /etc/kernel directory");
-                } else {
-                    std::fs::File::create("/etc/kernel/cmdline")?
-                }
-            };
-
-            std::io::Write::write_all(&mut file_handle, root_cmdline.as_bytes())?;
-        });
-
         let kernel_vers = std::fs::read_dir("/lib/modules")?
             .map(|entry| entry.unwrap().file_name())
             .collect_vec();
@@ -64,6 +37,43 @@ impl PostInstallModule for ReinstallKernel {
                 kernel_install_cmd_status.code()
             );
         }
+
+        // HACK: now let's edit the BLS boot entries
+        // for some reason it points to the wrong root partition UUID
+
+        stage!("Correcting BLS entries" {
+
+            for file in std::fs::read_dir("/boot/loader/entries")?
+            .flatten()
+            .map(|entry| entry.path())
+        {
+            tracing::debug!(?file, "File");
+            // open the file and do some regex editing
+            let root_uuid = std::process::Command::new("lsblk")
+                .arg("-no")
+                .arg("UUID")
+                .arg(context.destination_disk.as_os_str())
+                .output()?;
+
+            // HACK: We're gonna also add `rhgb quiet` to the kernel command line
+            // XXX: Please remove this when we have a proper way to append to cmdline >_<
+            let root_cmdline = format!("root=UUID={} rhgb quiet", String::from_utf8(root_uuid.clone().stdout).unwrap());
+
+            tracing::debug!(?root_uuid, "Root UUID");
+            let file_contents = std::fs::read_to_string(&file)?;
+            tracing::trace!(?file_contents, "File contents");
+            // regex replace the root=UUID=... with the correct UUID
+            let regex = regex::Regex::new("root=UUID=[a-f0-9-]+")?;
+            let new_contents = regex.replace(
+                &file_contents,
+                root_cmdline.as_str(),
+            );
+            tracing::trace!(?new_contents, "New contents");
+
+            std::fs::write(&file, new_contents.as_bytes())?;
+        }
+
+        });
 
         Ok(())
     }
