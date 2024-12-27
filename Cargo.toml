@@ -1,9 +1,9 @@
 [package]
 name = "readymade"
-version = "0.3.1"
+version = "0.3.4"
 edition = "2021"
 license = "MIT WITH GPL-3.0-or-later"
-description = "The Ado Installer"
+description = "Install ready-made distribution images"
 repository = "https://github.com/FyraLabs/readymade"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -59,6 +59,7 @@ backhand = "0.18.0"
 glob = "0.3.1"
 enum_dispatch = "0.3.13"
 scopeguard = "1.2.0"
+tracing-test = "0.2.5"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"

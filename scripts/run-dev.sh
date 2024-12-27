@@ -1,4 +1,10 @@
 #!/bin/bash
 # Run against the dev evnironment setup by setup-dev.sh
 
-RUST_BACKTRACE=full READYMADE_LOG=trace READYMADE_CONFIG=templates/ultramarine-chromebook.toml REPART_COPY_SOURCE=$(pwd)/dev/install_root READYMADE_DRY_RUN=0 cargo run
+export READYMADE_LOG=trace
+export READYMADE_CONFIG=templates/ultramarine-chromebook.toml
+export REPART_COPY_SOURCE=$(pwd)/dev/install_root
+export RUST_BACKTRACE=full
+export READYMADE_DRY_RUN=0
+export READYMADE_REPART_DIR=$(pwd)/templates
+cargo run

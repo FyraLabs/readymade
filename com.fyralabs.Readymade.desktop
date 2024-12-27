@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=Install to Computer
+GenericName=Installer
+Comment=Install the operating system to your computer
+Categories=System;Utility;GNOME;GTK;
+Exec=readymade
+Terminal=false
+Type=Application
+# TODO: Make an icon for Readymade
+Icon=drive-harddisk
+StartupNotify=true
+StartupWMClass=com.fyralabs.Readymade
+# This will hide the desktop file, inside of a live environment, set it to false to show it
+NoDisplay=true

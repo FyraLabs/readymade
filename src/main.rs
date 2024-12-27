@@ -199,8 +199,7 @@ impl SimpleComponent for AppModel {
 #[allow(clippy::missing_errors_doc)]
 #[allow(clippy::missing_panics_doc)]
 fn main() -> Result<()> {
-    let _guard = setup_logs_and_install_panic_hook();
-
+    let _guard = setup_hooks();
     if std::env::args().any(|arg| arg == "--non-interactive") {
         tracing::info!("Running in non-interactive mode");
         // Get installation state from stdin json instead
@@ -209,6 +208,7 @@ fn main() -> Result<()> {
 
         return install_state.install();
     }
+    
 
     *CONFIG.write() = cfg::get_cfg()?;
 
@@ -248,7 +248,15 @@ fn initialize_custom_icons(display: &gtk::gdk::Display) {
 /// - cannot install `color_eyre`
 /// - cannot create readymade tempdir
 #[allow(clippy::cognitive_complexity)]
-fn setup_logs_and_install_panic_hook() -> impl std::any::Any {
+fn setup_hooks() -> impl std::any::Any {
+    for arg in std::env::args(){
+        if arg.starts_with("READYMADE_") || arg.starts_with("REPART_COPY_SOURCE") {
+            let (key, value) = arg.split_once('=').unwrap();
+            println!("Setting env var {key} to {value}");
+            std::env::set_var(key, value);
+        }
+    }
+
     color_eyre::install().expect("install color_eyre");
     let temp_dir = tempfile::Builder::new()
         .prefix("readymade-logs")
