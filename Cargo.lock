@@ -1937,7 +1937,6 @@ dependencies = [
  "paste",
  "process_alive",
  "rayon",
- "regex",
  "relm4",
  "scopeguard",
  "serde",
