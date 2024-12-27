@@ -155,7 +155,7 @@ mod test {
         let mut cmdline = KernelCmdline::new(&mut file).unwrap();
         cmdline.append("quiet".to_owned());
         println!("{:?}", cmdline.get());
-        assert_eq!(cmdline.get(), vec!["root=UUID=1234", "ro"]);
+        assert_eq!(cmdline.get(), vec!["root=UUID=1234", "ro", "quiet"]);
     }
 
     #[test]
@@ -174,7 +174,10 @@ mod test {
         assert_eq!(cmdline.get(), vec!["root=UUID=5678", "ro", "rhgb", "quiet"]);
 
         cmdline.append_or_replace("root=LABEL=nyaa");
-        assert_eq!(cmdline.get(), vec!["root=LABEL=nyaa", "ro", "rhgb", "quiet"]);
+        assert_eq!(
+            cmdline.get(),
+            vec!["root=LABEL=nyaa", "ro", "rhgb", "quiet"]
+        );
     }
 
     #[test]
