@@ -12,6 +12,7 @@ use std::{
 };
 use tee_readwrite::TeeReader;
 
+use crate::consts::repart_dir;
 use crate::{
     backend::postinstall::PostInstallModule,
     backend::repart_output::RepartOutput,
@@ -19,8 +20,6 @@ use crate::{
     pages::destination::DiskInit,
     stage, util,
 };
-
-const REPART_DIR: &str = "/usr/share/readymade/repart-cfgs/";
 
 #[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -64,10 +63,14 @@ impl InstallationState {
     #[allow(clippy::unwrap_in_result)]
     pub fn install_using_subprocess(&self) -> Result<()> {
         let mut command = Command::new("pkexec");
-        command.arg("env");
+        command.arg(std::env::current_exe()?);
 
         if let Ok(value) = std::env::var("REPART_COPY_SOURCE") {
             command.arg(format!("REPART_COPY_SOURCE={value}"));
+        }
+        
+        if let Ok(value) = std::env::var("READYMADE_REPART_DIR") {
+            command.arg(format!("READYMADE_REPART_DIR={value}"));
         }
 
         if let Ok(value) = std::env::var("READYMADE_DRY_RUN") {
@@ -89,7 +92,7 @@ impl InstallationState {
         let tee_stderr = TeeReader::new(stderr_reader, &mut stderr_logs, false);
 
         command
-            .arg(std::env::current_exe()?)
+            // .arg(std::env::current_exe()?)
             .arg("--non-interactive")
             .stdin(std::process::Stdio::piped())
             .stdout(stdout_writer)
@@ -344,8 +347,8 @@ impl InstallationState {
 impl InstallationType {
     fn cfgdir(&self) -> PathBuf {
         match self {
-            Self::ChromebookInstall => const_format::concatcp!(REPART_DIR, "chromebookinstall"),
-            Self::WholeDisk => const_format::concatcp!(REPART_DIR, "wholedisk"),
+            Self::ChromebookInstall => repart_dir().join("chromebook"),
+            Self::WholeDisk => repart_dir().join("wholedisk"),
             Self::DualBoot(_) => todo!(),
             Self::Custom => unreachable!(),
         }

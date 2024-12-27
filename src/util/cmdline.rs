@@ -5,7 +5,6 @@ use color_eyre::eyre::bail;
 use color_eyre::Result;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::Path;
 
 /// `KernelCmdline` is a helper struct to manage kernel command line arguments.
 /// It serializes the kernel arguments as [`Vec<String>`] and writes them `to /etc/kernel/cmdline`

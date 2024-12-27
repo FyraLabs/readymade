@@ -209,6 +209,15 @@ fn main() -> Result<()> {
 
         return install_state.install();
     }
+    
+    // set envars without prepending env
+    for arg in std::env::args(){
+        if arg.starts_with("READYMADE_")  {
+            let (key, value) = arg.split_once("=").unwrap();
+            tracing::info!("Setting env var {} to {}", key, value);
+            std::env::set_var(key, value);
+        }
+    }
 
     *CONFIG.write() = cfg::get_cfg()?;
 
