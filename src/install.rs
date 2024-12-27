@@ -64,11 +64,12 @@ impl InstallationState {
     pub fn install_using_subprocess(&self) -> Result<()> {
         let mut command = Command::new("pkexec");
         command.arg(std::env::current_exe()?);
+        command.arg("--non-interactive");
 
         if let Ok(value) = std::env::var("REPART_COPY_SOURCE") {
             command.arg(format!("REPART_COPY_SOURCE={value}"));
         }
-        
+
         if let Ok(value) = std::env::var("READYMADE_REPART_DIR") {
             command.arg(format!("READYMADE_REPART_DIR={value}"));
         }
@@ -93,7 +94,6 @@ impl InstallationState {
 
         command
             // .arg(std::env::current_exe()?)
-            .arg("--non-interactive")
             .stdin(std::process::Stdio::piped())
             .stdout(stdout_writer)
             .stderr(stderr_writer);
