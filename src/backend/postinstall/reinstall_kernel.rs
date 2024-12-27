@@ -3,7 +3,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 
-use crate::{stage, util::cmdline::KernelCmdline};
+use crate::stage;
 
 use super::{Context, PostInstallModule};
 
@@ -13,6 +13,7 @@ pub struct ReinstallKernel;
 impl PostInstallModule for ReinstallKernel {
     #[allow(clippy::unwrap_in_result)]
     fn run(&self, context: &Context) -> Result<()> {
+
         stage!("Correcting Kernel arguments" {
             let root_uuid = std::process::Command::new("lsblk")
                 .arg("-no")
@@ -20,22 +21,23 @@ impl PostInstallModule for ReinstallKernel {
                 .arg(context.destination_disk.as_os_str())
                 .output()?;
 
-            let root_cmdline = format!("root=UUID={}", String::from_utf8(root_uuid.stdout).unwrap());
+            let root_cmdline = format!("root=UUID={} rhgb quiet", String::from_utf8(root_uuid.stdout).unwrap());
 
-            let mut kcmdline = KernelCmdline::from_root()?;
+            // now append/create the cmdline file in /etc/kernel/cmdline (file)
 
-            let cmdlines_delta = vec![
-                root_cmdline,
-                "rhgb".into(),
-                "quiet".into(),
-            ];
+            let mut file_handle = {
+                if std::fs::metadata("/etc/kernel/cmdline").is_ok() {
+                    std::fs::OpenOptions::new()
+                        .append(true)
+                        .open("/etc/kernel/cmdline")?
+                } else if std::fs::create_dir_all("/etc/kernel").is_err() {
+                    bail!("Failed to create /etc/kernel directory");
+                } else {
+                    std::fs::File::create("/etc/kernel/cmdline")?
+                }
+            };
 
-            for cmdline in &cmdlines_delta {
-                kcmdline.append_or_replace(cmdline);
-            }
-
-            kcmdline.write()?;
-
+            std::io::Write::write_all(&mut file_handle, root_cmdline.as_bytes())?;
         });
 
         let kernel_vers = std::fs::read_dir("/lib/modules")?
