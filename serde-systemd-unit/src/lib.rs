@@ -408,9 +408,6 @@ key3=value2
         let ini = "[section]\nmode=ReadWrite\nmodes=Read\nmodes=Write\n";
         let test: TestEnum = from_str(ini).unwrap();
         assert_eq!(test.section.mode, Mode::ReadWrite);
-        assert_eq!(
-            test.section.modes,
-            vec![Mode::Read, Mode::Write]
-        );
+        assert_eq!(test.section.modes, vec![Mode::Read, Mode::Write]);
     }
 }
