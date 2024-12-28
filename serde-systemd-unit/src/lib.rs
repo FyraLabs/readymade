@@ -257,8 +257,7 @@ mod tests {
         assert_eq!(ini.sections["Section"]["key"].as_str(), "value");
     }
 
-    // disable this because we don't know if this is correct
-    //#[test]
+    #[test]
     fn test_parse_whitespace_lines() {
         let mut ini = SystemdIni::new();
         ini.parse("[Section]\n  \nkey = value\n  ").unwrap();

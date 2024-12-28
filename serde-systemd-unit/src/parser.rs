@@ -6,13 +6,13 @@ pub(crate) type Err = Vec<chumsky::error::Simple<char>>;
 
 #[must_use]
 fn parser() -> impl Parser<char, IniIntermediate, Error = Simple<char>> {
-    let root_comments = (just('#').or(just(';')))
-        .then(none_of('\n').repeated())
-        .separated_by(just('\n'));
     let empty_lines = just('\n')
-        .then(filter(|c: &char| c.is_whitespace() && *c != '\n').or_not())
+        .then(filter(|c: &char| c.is_whitespace() && *c != '\n').repeated())
         .repeated()
         .ignored();
+    let root_comments = (just('#').or(just(';')))
+        .then(none_of('\n').repeated())
+        .separated_by(empty_lines);
     let newline_or_comment = root_comments
         .clone()
         .allow_leading()
@@ -21,8 +21,8 @@ fn parser() -> impl Parser<char, IniIntermediate, Error = Simple<char>> {
         .or(empty_lines);
 
     (none_of("\n[]").repeated().collect::<String>())
-        .delimited_by(just('['), just(']'))
-        .then_ignore(just('\n').then(filter(|c: &char| c.is_whitespace() && *c != '\n').or_not()))
+        .delimited_by(just('['), just("]\n"))
+        .then_ignore(filter(|c: &char| c.is_whitespace() && *c != '\n').repeated())
         .then_ignore(newline_or_comment.clone())
         .then(
             text::ident()
