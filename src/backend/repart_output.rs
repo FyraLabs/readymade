@@ -51,6 +51,10 @@ impl RepartOutput {
     ///
     /// This function may be deprecated when systemd 256 hits f40, or when
     /// we rebase to f41
+    ///
+    /// # XXX: This will read the config files in the ***CURRENT*** root context
+    /// So you must have the same config files in the chroot, or exit the chroot,
+    /// run this, then re-enter the chroot.
     pub fn generate_fstab(&self) -> color_eyre::Result<String> {
         let mut fstab = String::new();
 
@@ -150,6 +154,9 @@ impl RepartPartition {
 
     /// Generate an FS Table entry for the partition,
     /// Returns a line for /etc/fstab
+    ///
+    /// This will refer to the config file systemd-repart refers to.
+    ///
     #[tracing::instrument]
     pub fn fstab_entry(
         &self,
