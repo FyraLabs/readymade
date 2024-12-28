@@ -2,6 +2,7 @@
 //!
 
 mod de;
+pub mod parser;
 use de::SectionDeserializer;
 use serde::de::IntoDeserializer;
 use std::collections::BTreeMap;

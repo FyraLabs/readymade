@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chumsky = "0.9.3"
 serde = { version = "1.0.217", features = ["derive"] }
 thiserror = "2.0.9"
 
