@@ -28,10 +28,11 @@ impl FactoryComponent for DiskInit {
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
             set_spacing: 2,
+            add_css_class: "mini-content-block",
 
             gtk::Image {
                 set_icon_name: Some("drive-harddisk"),
-                inline_css: "-gtk-icon-size: 128px"
+                set_pixel_size: 128
             },
 
             gtk::Label {
@@ -83,33 +84,32 @@ impl SimpleComponent for DestinationPage {
             set_title = &gtk::Label {
                 #[watch]
                 set_label: &gettext("Destination"),
-                set_css_classes: &["view-title"]
+                add_css_class: "view-title"
             },
             set_vexpand: true,
             set_hexpand: false,
 
             append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 4,
+                set_spacing: 6,
                 gtk::ScrolledWindow {
-                    set_vscrollbar_policy: gtk::PolicyType::Never,
-                    #[local_ref]
-                    disk_list -> gtk::FlowBox {
-                        set_selection_mode: gtk::SelectionMode::Single,
-                        set_orientation: gtk::Orientation::Horizontal,
-                        set_vexpand: true,
-                        set_hexpand: false,
-                        set_valign: gtk::Align::Center,
-                        set_halign: gtk::Align::Center,
-                        set_min_children_per_line: 5,
-                        set_column_spacing: 4,
-                        set_row_spacing: 4,
-                        connect_selected_children_changed => DestinationPageMsg::SelectionChanged,
-                    },
+                        #[local_ref]
+                        disk_list -> gtk::FlowBox {
+                            set_selection_mode: gtk::SelectionMode::Single,
+                            set_orientation: gtk::Orientation::Horizontal,
+                            set_vexpand: true,
+                            set_homogeneous: true,
+                            set_min_children_per_line: 1,
+                            set_max_children_per_line: 7,
+                            set_column_spacing: 6,
+                            set_row_spacing: 6,
+                            add_css_class: "content-flowbox",
+                            connect_selected_children_changed => DestinationPageMsg::SelectionChanged,
+                        },
                 },
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
-                    set_spacing: 4,
+                    set_spacing: 6,
 
                     libhelium::Button {
                         set_is_textual: true,

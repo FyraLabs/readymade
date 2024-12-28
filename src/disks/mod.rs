@@ -24,10 +24,7 @@ pub fn detect_os() -> Vec<DiskInit> {
 
     disks
         .into_iter()
-        .filter(lsblk::BlockDevice::is_disk)
-        .filter(|disk| {
-            disk.is_physical() || cfg!(debug_assertions) && disk.name.starts_with("loop")
-        })
+        .filter(|disk| disk.is_disk() && (cfg!(debug_assertions) || disk.is_physical()))
         .map(|mut disk| {
             let model = disk
                 .sysfs()
@@ -41,7 +38,10 @@ pub fn detect_os() -> Vec<DiskInit> {
                 os_name: osprobe
                     .iter()
                     .filter_map(|(path, osname)| path.to_str().zip(Some(osname)))
-                    .find_map(|(path, osname)| path.starts_with(&disk.name).then_some(osname))
+                    .find_map(|(path, osname)| {
+                        path.starts_with(&disk.fullname.to_str().unwrap())
+                            .then_some(osname)
+                    })
                     .map_or(OSNAME_PLACEHOLDER.to_owned(), ToOwned::to_owned),
                 size: bytesize::ByteSize::kib(disk.capacity().unwrap().unwrap() >> 1),
                 devpath: disk.fullname,
