@@ -1,5 +1,6 @@
 use color_eyre::eyre::bail;
 use color_eyre::eyre::eyre;
+use color_eyre::eyre::Context;
 use color_eyre::{Result, Section};
 use serde::{Deserialize, Serialize};
 use std::io::BufRead;
@@ -189,16 +190,22 @@ impl InstallationState {
     fn setup_system(&self, output: RepartOutput) -> Result<()> {
         let mut container = output.to_container()?;
 
-        container.run(|| self._inner_sys_setup())?
+        let fstab = output.generate_fstab()?;
+
+        container.run(|| self._inner_sys_setup(fstab))??;
+
+        Ok(())
     }
 
     #[tracing::instrument]
-    pub fn _inner_sys_setup(&self) -> Result<()> {
+    pub fn _inner_sys_setup(&self, fstab: String) -> Result<()> {
         // We will run the specified postinstall modules now
         let context = crate::backend::postinstall::Context {
             destination_disk: self.destination_disk.as_ref().unwrap().devpath.clone(),
             uefi: util::sys::check_uefi(),
         };
+
+        std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
 
         for module in &self.postinstall {
             module.run(&context)?;

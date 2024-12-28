@@ -5,6 +5,7 @@ edition = "2021"
 license = "MIT WITH GPL-3.0-or-later"
 description = "Install ready-made distribution images"
 repository = "https://github.com/FyraLabs/readymade"
+publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -30,10 +31,6 @@ lsblk = "0.4.0"
 # serde_ini = "0.2.0"
 # serde-enum-str = "0.4.0"
 const_format = "0.2.32"
-# validator = { version = "0.18.1", features = ["derive"] }
-# either = { version = "1.12.0", features = ["serde"] }
-# uuid = { version = "1.9.1", features = ["serde"] }
-# serde_with = "3.8.1"
 sys-mount = "3.0.1"
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.120"
@@ -53,13 +50,13 @@ toml = "0.8.19"
 serde_valid = { version = "0.24.0", features = ["toml"] }
 os_pipe = "1.2.1"
 tee_readwrite = "0.2.0"
-serde_ini = "0.2.0"
 nix = { version = "0.29.0", features = ["mount"] }
 backhand = "0.18.0"
 glob = "0.3.1"
 enum_dispatch = "0.3.13"
 scopeguard = "1.2.0"
 tracing-test = "0.2.5"
+serde-systemd-unit = { path = "./serde-systemd-unit" }
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"
@@ -114,3 +111,8 @@ unneeded_field_pattern = "warn"
 unwrap_in_result = "warn"
 
 equatable_if_let = "allow"
+
+
+[workspace]
+members = ["serde-systemd-unit"]
+

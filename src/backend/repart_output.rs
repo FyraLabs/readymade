@@ -1,5 +1,6 @@
 use bytesize::ByteSize;
 use color_eyre::eyre::eyre;
+use itertools::Itertools;
 use std::fmt::Write;
 // use lsblk::mountpoints;
 use std::path::PathBuf;
@@ -50,18 +51,20 @@ impl RepartOutput {
     ///
     /// This function may be deprecated when systemd 256 hits f40, or when
     /// we rebase to f41
-    pub fn generate_fstab(&self) -> String {
+    ///
+    /// # XXX: This will read the config files in the ***CURRENT*** root context
+    /// So you must have the same config files in the chroot, or exit the chroot,
+    /// run this, then re-enter the chroot.
+    pub fn generate_fstab(&self) -> color_eyre::Result<String> {
         let mut fstab = String::new();
 
-        // sort by mountpoint
-
-        let mut partitions = self.partitions.clone();
+        let mut partitions = vec![];
+        for part in &self.partitions {
+            partitions.extend(part.mount_point()?.into_iter().map(|mp| (mp, part.clone())));
+        }
         // sort by mountpoint,
         // root goes first, then each subdirectory counting the slashes
-        partitions.sort_by(|a, b| {
-            let a_mnt = a.mount_point().unwrap_or_default();
-            let b_mnt = b.mount_point().unwrap_or_default();
-
+        partitions.sort_by(|((a_mnt, _), _), ((b_mnt, _), _)| {
             // If either path is root (/), it should go first
             if a_mnt == "/" {
                 std::cmp::Ordering::Less
@@ -77,21 +80,15 @@ impl RepartOutput {
 
         tracing::trace!(?partitions, "Sorted partitions");
 
-        for part in partitions {
+        for (mnt, part) in partitions {
             println!("Processing partition: {}", part.node);
-            // println!("Mountpoint: {:?}", part.mount_point());
-            if let Some(_mntpnt) = part.ddi_mountpoint() {
-                tracing::trace!(?part, "Processing partition");
-                let entry = part.fstab_entry();
-                if let Ok(fstab_entry) = entry {
-                    writeln!(&mut fstab, "{fstab_entry}").unwrap();
-                } else if let Err(e) = entry {
-                    tracing::error!(?e, "Error generating fstab entry");
-                }
-            }
+            // if let Some(_mntpnt) = part.ddi_mountpoint() {
+            tracing::trace!(?part, "Processing partition");
+            let entry = part.fstab_entry(mnt)?;
+            writeln!(&mut fstab, "{entry}").unwrap();
         }
 
-        fstab
+        Ok(fstab)
     }
 
     /// Create `tiffin::Container` from the repartitioning output with the mountpoints
@@ -157,8 +154,14 @@ impl RepartPartition {
 
     /// Generate an FS Table entry for the partition,
     /// Returns a line for /etc/fstab
+    ///
+    /// This will refer to the config file systemd-repart refers to.
+    ///
     #[tracing::instrument]
-    pub fn fstab_entry(&self) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn fstab_entry(
+        &self,
+        (mntpoint, mntpoint_opts): (String, Option<String>),
+    ) -> color_eyre::Result<String> {
         const FALLBACK_FS: &str = "auto";
         const FALLBACK_OPTS: &str = "defaults";
         const FALLBACK_DUMP: i32 = 0;
@@ -172,29 +175,12 @@ impl RepartPartition {
         // but in most cases, it should be there if you're running this anyway since
         // the output is generated from the config file on the same run
 
+        // FIXME: handle errors gracefully
         let file_config = std::fs::read_to_string(&self.file)?;
 
-        // todo: gracefully handle errors
-
-        // XXX: This silently fails on multiple `MountPoint` entries,
-        // causing issues with btrfs subvolume mounts...
-        // todo: Somehow handle multiple mount points, maybe write a custom INI-esque parser?
-        let config: RepartConfig = serde_ini::from_str(&file_config)?;
+        let config: RepartConfig = serde_systemd_unit::from_str(&file_config)?;
 
         tracing::trace!("{:#?}", config);
-
-        let tuple = config.partition.mount_point_as_tuple();
-
-        // tracing::trace!(?tuple, "Attempting to get mountpoint from config file");
-
-        let (mntpoint, mntpoint_opts) = tuple.unwrap_or_else(|| {
-            self.ddi_mountpoint().map_or_else(
-                || (String::new(), None),
-                |mntpoint| (mntpoint.to_owned(), None),
-            )
-        });
-
-        // tracing::trace!("Calculated: {mntpoint} {mntpoint_opts:?}");
 
         // get fs type
         let fs_fmt = &config.partition.format;
@@ -266,24 +252,29 @@ impl RepartPartition {
     }
 
     // XXX: This is kinda weird.
-    pub fn mount_point(&self) -> Option<String> {
+    pub fn mount_point(&self) -> color_eyre::Result<Vec<(String, Option<String>)>> {
         // Read the config file or guess from DDI or return None
         let ddi_mountpoint = self.ddi_mountpoint();
         let label = self.label.clone();
         tracing::trace!(?ddi_mountpoint, ?label, "Reading mountpoint from DDI");
 
-        let file_config = std::fs::read_to_string(&self.file).ok()?;
-        let config: RepartConfig = serde_ini::from_str(&file_config).ok()?;
+        let file_config = std::fs::read_to_string(&self.file)?;
+        let config: RepartConfig = serde_systemd_unit::from_str(&file_config)?;
 
         tracing::trace!(?config, "Reading mountpoint from config file");
 
-        let (m, _) = config.partition.mount_point_as_tuple().unwrap_or_else(|| {
-            self.ddi_mountpoint().map_or_else(
-                || (String::new(), None),
-                |mntpoint| (mntpoint.to_owned(), None),
-            )
-        });
-        Some(m).filter(|s| !s.is_empty())
+        let mut it = config
+            .partition
+            .mount_point_as_tuple()
+            .into_iter()
+            .peekable();
+        if it.peek().is_some() {
+            Ok(it.collect())
+        } else if let Some(mntpoint) = self.ddi_mountpoint() {
+            Ok(vec![(mntpoint.to_owned(), None)])
+        } else {
+            Ok(vec![])
+        }
     }
 }
 
@@ -336,7 +327,7 @@ mod tests {
 
         tracing::info!(?fstab);
 
-        assert!(fstab.contains('/'));
+        assert!(fstab.unwrap().contains('/'));
     }
 
     #[test]
@@ -364,7 +355,7 @@ mod tests {
     #[traced_test]
     fn test_fstab() {
         let output = deserialize();
-        let mountpoints = output.generate_fstab();
+        let mountpoints = output.generate_fstab().unwrap();
 
         println!("{mountpoints}");
     }
