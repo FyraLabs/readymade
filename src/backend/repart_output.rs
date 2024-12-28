@@ -51,14 +51,13 @@ impl RepartOutput {
     ///
     /// This function may be deprecated when systemd 256 hits f40, or when
     /// we rebase to f41
-    pub fn generate_fstab(&self) -> String {
+    pub fn generate_fstab(&self) -> color_eyre::Result<String> {
         let mut fstab = String::new();
 
-        let mut partitions = self
-            .partitions
-            .iter()
-            .flat_map(|part| part.mount_point().into_iter().map(|mp| (mp, part.clone())))
-            .collect_vec();
+        let mut partitions = vec![];
+        for part in &self.partitions {
+            partitions.extend(part.mount_point()?.into_iter().map(|mp| (mp, part.clone())));
+        }
         // sort by mountpoint,
         // root goes first, then each subdirectory counting the slashes
         partitions.sort_by(|((a_mnt, _), _), ((b_mnt, _), _)| {
@@ -79,18 +78,13 @@ impl RepartOutput {
 
         for (mnt, part) in partitions {
             println!("Processing partition: {}", part.node);
-            if let Some(_mntpnt) = part.ddi_mountpoint() {
-                tracing::trace!(?part, "Processing partition");
-                let entry = part.fstab_entry(mnt);
-                if let Ok(fstab_entry) = entry {
-                    writeln!(&mut fstab, "{fstab_entry}").unwrap();
-                } else if let Err(e) = entry {
-                    tracing::error!(?e, "Error generating fstab entry");
-                }
-            }
+            // if let Some(_mntpnt) = part.ddi_mountpoint() {
+            tracing::trace!(?part, "Processing partition");
+            let entry = part.fstab_entry(mnt)?;
+            writeln!(&mut fstab, "{entry}").unwrap();
         }
 
-        fstab
+        Ok(fstab)
     }
 
     /// Create `tiffin::Container` from the repartitioning output with the mountpoints
@@ -160,7 +154,7 @@ impl RepartPartition {
     pub fn fstab_entry(
         &self,
         (mntpoint, mntpoint_opts): (String, Option<String>),
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> color_eyre::Result<String> {
         const FALLBACK_FS: &str = "auto";
         const FALLBACK_OPTS: &str = "defaults";
         const FALLBACK_DUMP: i32 = 0;
@@ -251,18 +245,14 @@ impl RepartPartition {
     }
 
     // XXX: This is kinda weird.
-    pub fn mount_point(&self) -> Vec<(String, Option<String>)> {
+    pub fn mount_point(&self) -> color_eyre::Result<Vec<(String, Option<String>)>> {
         // Read the config file or guess from DDI or return None
         let ddi_mountpoint = self.ddi_mountpoint();
         let label = self.label.clone();
         tracing::trace!(?ddi_mountpoint, ?label, "Reading mountpoint from DDI");
 
-        let Ok(file_config) = std::fs::read_to_string(&self.file) else {
-            return vec![];
-        };
-        let Ok(config): Result<RepartConfig, _> = serde_systemd_unit::from_str(&file_config) else {
-            return vec![];
-        };
+        let file_config = std::fs::read_to_string(&self.file)?;
+        let config: RepartConfig = serde_systemd_unit::from_str(&file_config)?;
 
         tracing::trace!(?config, "Reading mountpoint from config file");
 
@@ -272,11 +262,11 @@ impl RepartPartition {
             .into_iter()
             .peekable();
         if it.peek().is_some() {
-            it.collect()
+            Ok(it.collect())
         } else if let Some(mntpoint) = self.ddi_mountpoint() {
-            vec![(mntpoint.to_owned(), None)]
+            Ok(vec![(mntpoint.to_owned(), None)])
         } else {
-            vec![]
+            Ok(vec![])
         }
     }
 }
@@ -330,7 +320,7 @@ mod tests {
 
         tracing::info!(?fstab);
 
-        assert!(fstab.contains('/'));
+        assert!(fstab.unwrap().contains('/'));
     }
 
     #[test]
@@ -358,7 +348,7 @@ mod tests {
     #[traced_test]
     fn test_fstab() {
         let output = deserialize();
-        let mountpoints = output.generate_fstab();
+        let mountpoints = output.generate_fstab().unwrap();
 
         println!("{mountpoints}");
     }
