@@ -319,6 +319,14 @@ key3=value2
         let test: Test2 = from_str(ini).unwrap();
         assert_eq!(test.section2.key3, vec!["value1", "value2"]);
     }
+    #[test]
+    fn test_deserialize_array_single() {
+        let ini = "[section2]
+key3=value1
+";
+        let test: Test2 = from_str(ini).unwrap();
+        assert_eq!(test.section2.key3, vec!["value1"]);
+    }
 
     #[test]
     fn test_deserialize_repart() {

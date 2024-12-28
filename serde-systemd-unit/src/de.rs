@@ -40,9 +40,36 @@ impl<'de, 'a> serde::de::Deserializer<'de> for OptStringDeserializer<'a> {
         EnumDeserializer(self.0).deserialize_enum(name, variants, visitor)
     }
 
+    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        // Create a single-element sequence from the string
+        struct SingleValueSeq<'a>(&'a str);
+
+        impl<'de, 'a> serde::de::SeqAccess<'de> for SingleValueSeq<'a> {
+            type Error = serde::de::value::Error;
+
+            fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
+            where
+                T: serde::de::DeserializeSeed<'de>,
+            {
+                if self.0.is_empty() {
+                    Ok(None)
+                } else {
+                    let value = self.0;
+                    self.0 = "";
+                    seed.deserialize(OptStringDeserializer(value)).map(Some)
+                }
+            }
+        }
+
+        visitor.visit_seq(SingleValueSeq(self.0))
+    }
+
     serde::forward_to_deserialize_any! {
         bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char string
-        bytes byte_buf unit unit_struct newtype_struct seq tuple
+        bytes byte_buf unit unit_struct newtype_struct tuple
         tuple_struct struct ignored_any map
     }
 
@@ -98,8 +125,26 @@ impl<'de> serde::de::Deserializer<'de> for OptVecDeserializer {
         visitor.visit_seq(SeqDeserializer(self.0.into_iter()))
     }
 
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        // When a string is expected but we have a sequence, use the first element
+        match self.0.first() {
+            Some(first) => visitor.visit_str(first),
+            None => Err(serde::de::Error::custom("empty sequence")),
+        }
+    }
+
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        self.deserialize_str(visitor)
+    }
+
     serde::forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string
+        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char
         bytes byte_buf unit unit_struct newtype_struct tuple
         tuple_struct struct enum identifier ignored_any map
     }
