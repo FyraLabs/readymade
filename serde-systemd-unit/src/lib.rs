@@ -1,9 +1,10 @@
 //! Systemd INI-esque configuration file parser, incomplete.
 //!
 
+mod de;
+use de::SectionDeserializer;
 use serde::de::IntoDeserializer;
 use std::collections::BTreeMap;
-
 // we can probably have duplicate keys with different values
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Value {
@@ -12,6 +13,11 @@ pub enum Value {
 }
 
 impl Value {
+    /// Returns the string value or the first element of the array.
+    ///
+    /// # Panics
+    /// Panics if the value is an empty array.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
             Self::String(s) => s,
@@ -19,6 +25,7 @@ impl Value {
         }
     }
 
+    #[must_use]
     pub fn as_array(&self) -> Vec<String> {
         match self {
             Self::String(s) => vec![s.clone()],
@@ -42,10 +49,15 @@ pub struct SystemdIni {
 }
 
 impl SystemdIni {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Parse the given string as a systemd unit file.
+    ///
+    /// # Panics
+    /// Panics if a non-section line doesn't contain an equals sign.
     pub fn parse(&mut self, data: &str) {
         let mut current_section = String::new();
         for line in data.lines() {
@@ -73,7 +85,6 @@ impl SystemdIni {
     }
 }
 
-// todo: Probably implement serde::de::Visitor for this or something
 impl std::str::FromStr for SystemdIni {
     type Err = String;
 
@@ -160,85 +171,6 @@ impl<'de> serde::de::Deserializer<'de> for &'de SystemdIni {
     }
 }
 
-struct SectionDeserializer<'a> {
-    map: &'a std::collections::BTreeMap<String, Value>,
-}
-
-impl<'de, 'a> serde::de::Deserializer<'de> for SectionDeserializer<'a> {
-    type Error = serde::de::value::Error;
-
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        self.deserialize_map(visitor)
-    }
-
-    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        let key = self.map.keys().next();
-        match key {
-            Some(_) => visitor.visit_some(self),
-            None => visitor.visit_none(),
-        }
-    }
-
-    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        struct KeysMap<'a> {
-            iter: std::collections::btree_map::Iter<'a, String, Value>,
-            current: Option<(&'a String, &'a Value)>,
-        }
-
-        impl<'de, 'a> serde::de::MapAccess<'de> for KeysMap<'a> {
-            type Error = serde::de::value::Error;
-
-            fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
-            where
-                K: serde::de::DeserializeSeed<'de>,
-            {
-                if let Some((k, _)) = self.current {
-                    seed.deserialize(k.as_str().into_deserializer()).map(Some)
-                } else if let Some((k, v)) = self.iter.next() {
-                    self.current = Some((k, v));
-                    seed.deserialize(k.as_str().into_deserializer()).map(Some)
-                } else {
-                    Ok(None)
-                }
-            }
-
-            fn next_value_seed<Vv>(&mut self, seed: Vv) -> Result<Vv::Value, Self::Error>
-            where
-                Vv: serde::de::DeserializeSeed<'de>,
-            {
-                if let Some((_, val)) = self.current.take() {
-                    match val {
-                        Value::String(s) => seed.deserialize(s.as_str().into_deserializer()),
-                        Value::Array(arr) => seed.deserialize(arr.clone().into_deserializer()),
-                    }
-                } else {
-                    Err(serde::de::Error::custom("Value missing"))
-                }
-            }
-        }
-
-        visitor.visit_map(KeysMap {
-            iter: self.map.iter(),
-            current: None,
-        })
-    }
-
-    serde::forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string
-        bytes byte_buf unit unit_struct newtype_struct seq tuple
-        tuple_struct struct enum identifier ignored_any
-    }
-}
-
 impl std::fmt::Debug for SystemdIni {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (section, keys) in &self.sections {
@@ -254,6 +186,11 @@ impl std::fmt::Debug for SystemdIni {
     }
 }
 
+/// Deserialize a type from a string containing systemd unit file format.
+///
+/// # Errors
+/// Returns an error if the string cannot be parsed as a valid systemd unit file,
+/// or if the deserialization fails due to missing or incorrectly typed values.
 pub fn from_str<T>(s: &str) -> Result<T, serde::de::value::Error>
 where
     T: for<'de> serde::Deserialize<'de>,
@@ -399,7 +336,28 @@ key3=value2
         let file = include_str!("../test/submarine.conf");
 
         let test: Repart = from_str(file).unwrap();
-        println!("{:#?}", test);
+        println!("{test:#?}");
         assert!(test.partition.copy_blocks.is_some());
+    }
+
+    #[test]
+    fn test_deserialize_option() {
+        #[derive(serde::Deserialize, Debug, PartialEq)]
+        struct TestOption {
+            section: SectionWithOption,
+        }
+
+        #[derive(serde::Deserialize, Debug, PartialEq)]
+        struct SectionWithOption {
+            required: String,
+            optional: Option<String>,
+            missing: Option<String>,
+        }
+
+        let ini = "[section]\nrequired=value\noptional=optvalue\n";
+        let test: TestOption = from_str(ini).unwrap();
+        assert_eq!(test.section.required, "value");
+        assert_eq!(test.section.optional, Some("optvalue".to_owned()));
+        assert_eq!(test.section.missing, None);
     }
 }

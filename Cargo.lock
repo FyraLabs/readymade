@@ -62,7 +62,7 @@ dependencies = [
  "deku",
  "flate2",
  "rustc-hash",
- "thiserror",
+ "thiserror 1.0.69",
  "tracing",
  "xz2",
  "zstd",
@@ -826,7 +826,7 @@ dependencies = [
  "once_cell",
  "pin-project-lite",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -892,7 +892,7 @@ dependencies = [
  "memchr",
  "once_cell",
  "smallvec",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1442,7 +1442,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23071c2379eedb65dd364d7649014fc330b4563a006acedaeb7ccfe768cb67a4"
 dependencies = [
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1949,7 +1949,7 @@ dependencies = [
  "sys-mount",
  "tee_readwrite",
  "tempfile",
- "thiserror",
+ "thiserror 1.0.69",
  "tiffin",
  "toml",
  "tracing",
@@ -2125,6 +2125,7 @@ name = "serde-systemd-unit"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "thiserror 2.0.9",
 ]
 
 [[package]]
@@ -2186,7 +2187,7 @@ dependencies = [
  "serde_json",
  "serde_valid_derive",
  "serde_valid_literal",
- "thiserror",
+ "thiserror 1.0.69",
  "toml",
  "unicode-segmentation",
 ]
@@ -2355,7 +2356,7 @@ dependencies = [
  "libc",
  "loopdev-3",
  "smart-default",
- "thiserror",
+ "thiserror 1.0.69",
  "tracing",
 ]
 
@@ -2447,7 +2448,16 @@ version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.69",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f072643fd0190df67a8bab670c20ef5d8737177d6ac6b2e9a236cb096206b2cc"
+dependencies = [
+ "thiserror-impl 2.0.9",
 ]
 
 [[package]]
@@ -2455,6 +2465,17 @@ name = "thiserror-impl"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.90",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b50fa271071aae2e6ee85f842e2e28ba8cd2c5fb67f11fcb1fd70b276f9e7d4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2588,7 +2609,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3566e8ce28cc0a3fe42519fc80e6b4c943cc4c8cef275620eb8dac2d3d4e06cf"
 dependencies = [
  "crossbeam-channel",
- "thiserror",
+ "thiserror 1.0.69",
  "time",
  "tracing-subscriber",
 ]
