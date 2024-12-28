@@ -178,10 +178,10 @@ impl<'de, 'a> serde::de::Deserializer<'de> for SectionDeserializer<'a> {
     where
         V: serde::de::Visitor<'de>,
     {
-        if self.map.is_empty() {
-            visitor.visit_none()
-        } else {
-            visitor.visit_some(self)
+        let key = self.map.keys().next();
+        match key {
+            Some(_) => visitor.visit_some(self),
+            None => visitor.visit_none(),
         }
     }
 
