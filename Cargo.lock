@@ -2165,6 +2165,7 @@ name = "serde-systemd-unit"
 version = "0.1.0"
 dependencies = [
  "chumsky",
+ "itertools 0.13.0",
  "serde",
  "thiserror 2.0.9",
 ]
