@@ -355,13 +355,13 @@ mod tests {
     #[test]
     fn read_config() {
         let config = include_str!("test/submarine.conf");
-        let res: RepartConfig = serde_ini::from_str(config).unwrap();
+        let res: RepartConfig = serde_systemd_unit::from_str(config).unwrap();
 
         println!("{res:#?}");
         println!("{:?}", res.partition.mount_point_as_tuple());
 
         let config2 = include_str!("test/root.conf");
-        let res2: RepartConfig = serde_ini::from_str(config2).unwrap();
+        let res2: RepartConfig = serde_systemd_unit::from_str(config2).unwrap();
 
         println!("{res2:#?}");
         println!("{:?}", res2.partition.mount_point_as_tuple());
