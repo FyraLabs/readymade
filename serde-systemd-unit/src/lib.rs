@@ -7,7 +7,7 @@ pub mod parser;
 use de::SectionDeserializer;
 use parser::Err;
 use serde::de::IntoDeserializer;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 pub fn parse(s: &str) -> Result<SystemdIni, Err> {
     Ok(SystemdIni {
@@ -38,6 +38,7 @@ pub enum Value {
 }
 
 impl Value {
+    #[must_use]
     pub fn from_vec(v: &[String]) -> Self {
         if let [one] = v {
             Self::String(one.clone())
@@ -87,6 +88,7 @@ impl SystemdIni {
         *self = parse(s)?;
         Ok(())
     }
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -130,7 +132,7 @@ impl<'de> serde::de::Deserializer<'de> for &'de SystemdIni {
             current: Option<(&'a String, &'a HashMap<String, Value>)>,
         }
 
-        impl<'de, 'a> serde::de::MapAccess<'de> for SectionsMap<'a> {
+        impl<'de> serde::de::MapAccess<'de> for SectionsMap<'_> {
             type Error = serde::de::value::Error;
 
             fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
@@ -217,14 +219,15 @@ mod tests {
     #[test]
     fn test_parse_single_section() {
         let mut ini = SystemdIni::new();
-        ini.parse("[Section]\nkey=value");
+        ini.parse("[Section]\nkey=value").unwrap();
         assert_eq!(ini.sections["Section"]["key"].as_str(), "value");
     }
 
     #[test]
     fn test_parse_multiple_sections() {
         let mut ini = SystemdIni::new();
-        ini.parse("[Section1]\nkey1=value1\n[Section2]\nkey2=value2");
+        ini.parse("[Section1]\nkey1=value1\n[Section2]\nkey2=value2")
+            .unwrap();
         assert_eq!(ini.sections["Section1"]["key1"].as_str(), "value1");
         assert_eq!(ini.sections["Section2"]["key2"].as_str(), "value2");
     }
@@ -232,7 +235,7 @@ mod tests {
     #[test]
     fn test_parse_multiple_keys_in_section() {
         let mut ini = SystemdIni::new();
-        ini.parse("[Section]\nkey1=value1\nkey2=value2");
+        ini.parse("[Section]\nkey1=value1\nkey2=value2").unwrap();
         assert_eq!(ini.sections["Section"]["key1"].as_str(), "value1");
         assert_eq!(ini.sections["Section"]["key2"].as_str(), "value2");
     }
@@ -240,7 +243,7 @@ mod tests {
     #[test]
     fn test_parse_duplicate_keys() {
         let mut ini = SystemdIni::new();
-        ini.parse("[Section]\nkey=value1\nkey=value2");
+        ini.parse("[Section]\nkey=value1\nkey=value2").unwrap();
         assert_eq!(
             ini.sections["Section"]["key"].as_array(),
             vec!["value1", "value2"]
@@ -250,7 +253,7 @@ mod tests {
     #[test]
     fn test_parse_empty_lines() {
         let mut ini = SystemdIni::new();
-        ini.parse("[Section]\n\nkey=value\n\n");
+        ini.parse("[Section]\n\nkey=value\n\n").unwrap();
         assert_eq!(ini.sections["Section"]["key"].as_str(), "value");
     }
 
@@ -258,7 +261,7 @@ mod tests {
     //#[test]
     fn test_parse_whitespace_lines() {
         let mut ini = SystemdIni::new();
-        ini.parse("[Section]\n  \nkey = value\n  ");
+        ini.parse("[Section]\n  \nkey = value\n  ").unwrap();
         assert_eq!(ini.sections["Section"]["key"].as_str(), "value");
     }
 
