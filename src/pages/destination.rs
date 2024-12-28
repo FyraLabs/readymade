@@ -28,7 +28,7 @@ impl FactoryComponent for DiskInit {
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
             set_spacing: 2,
-            set_css_classes (["mini-content-block"]),
+            add_css_class: "mini-content-block",
 
             gtk::Image {
                 set_icon_name: Some("drive-harddisk"),
@@ -84,7 +84,7 @@ impl SimpleComponent for DestinationPage {
             set_title = &gtk::Label {
                 #[watch]
                 set_label: &gettext("Destination"),
-                set_css_classes: &["view-title"]
+                add_css_class: "view-title"
             },
             set_vexpand: true,
             set_hexpand: false,
@@ -93,19 +93,17 @@ impl SimpleComponent for DestinationPage {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 6,
                 gtk::ScrolledWindow {
-                    set_vscrollbar_policy: gtk::PolicyType::Never,
                         #[local_ref]
                         disk_list -> gtk::FlowBox {
                             set_selection_mode: gtk::SelectionMode::Single,
                             set_orientation: gtk::Orientation::Horizontal,
                             set_vexpand: true,
-                            set_valign: gtk::Align::Center,
-                            set_halign: gtk::Align::Center,
+                            set_homogeneous: true,
                             set_min_children_per_line: 1,
                             set_max_children_per_line: 7,
                             set_column_spacing: 6,
                             set_row_spacing: 6,
-                            set_css_classes (["content-flowbox"]),
+                            add_css_class: "content-flowbox",
                             connect_selected_children_changed => DestinationPageMsg::SelectionChanged,
                         },
                 },
