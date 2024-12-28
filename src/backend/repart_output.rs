@@ -266,7 +266,11 @@ impl RepartPartition {
 
         tracing::trace!(?config, "Reading mountpoint from config file");
 
-        let mut it = config.partition.mount_point_as_tuple().peekable();
+        let mut it = config
+            .partition
+            .mount_point_as_tuple()
+            .into_iter()
+            .peekable();
         if it.peek().is_some() {
             it.collect()
         } else if let Some(mntpoint) = self.ddi_mountpoint() {

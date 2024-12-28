@@ -67,8 +67,52 @@ impl<'de, 'a> serde::de::Deserializer<'de> for OptStringDeserializer<'a> {
         visitor.visit_seq(SingleValueSeq(self.0))
     }
 
+    fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_u32(
+            self.0
+                .parse()
+                .map_err(|_| serde::de::Error::custom("failed to parse u32"))?,
+        )
+    }
+
+    fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_u64(
+            self.0
+                .parse()
+                .map_err(|_| serde::de::Error::custom("failed to parse u64"))?,
+        )
+    }
+
+    fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_i32(
+            self.0
+                .parse()
+                .map_err(|_| serde::de::Error::custom("failed to parse i32"))?,
+        )
+    }
+
+    fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_i64(
+            self.0
+                .parse()
+                .map_err(|_| serde::de::Error::custom("failed to parse i64"))?,
+        )
+    }
+
     serde::forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char string
+        bool i8 i16 f32 f64 char string
         bytes byte_buf unit unit_struct newtype_struct tuple
         tuple_struct struct ignored_any map
     }
@@ -78,6 +122,28 @@ impl<'de, 'a> serde::de::Deserializer<'de> for OptStringDeserializer<'a> {
         V: serde::de::Visitor<'de>,
     {
         visitor.visit_str(self.0)
+    }
+
+    fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_u8(
+            self.0
+                .parse()
+                .map_err(|_| serde::de::Error::custom("failed to parse u8"))?,
+        )
+    }
+
+    fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_u16(
+            self.0
+                .parse()
+                .map_err(|_| serde::de::Error::custom("failed to parse u16"))?,
+        )
     }
 }
 
@@ -130,10 +196,10 @@ impl<'de> serde::de::Deserializer<'de> for OptVecDeserializer {
         V: serde::de::Visitor<'de>,
     {
         // When a string is expected but we have a sequence, use the first element
-        match self.0.first() {
-            Some(first) => visitor.visit_str(first),
-            None => Err(serde::de::Error::custom("empty sequence")),
-        }
+        self.0.first().map_or_else(
+            || Err(serde::de::Error::custom("empty sequence")),
+            |first| visitor.visit_str(first),
+        )
     }
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>

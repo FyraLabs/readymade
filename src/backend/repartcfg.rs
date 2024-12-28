@@ -135,18 +135,21 @@ pub struct Partition {
 }
 
 impl Partition {
-    pub fn mount_point_as_tuple(&self) -> impl Iterator<Item = (String, Option<String>)> + use<'_> {
-        self.mount_point.iter().filter_map(|mount_point| {
-            if mount_point.is_empty() {
-                return None;
-            }
-            // If there's a colon, split it into two fields
-            // only the first colon is considered though, so if there are more than one, the rest are ignored
-            let mut parts = mount_point.splitn(2, ':');
-            let fst = parts.next()?.to_owned();
-            let snd = parts.next().map(std::borrow::ToOwned::to_owned);
-            Some((fst, snd))
-        })
+    pub fn mount_point_as_tuple(&self) -> Vec<(String, Option<String>)> {
+        self.mount_point
+            .iter()
+            .filter_map(|mount_point| {
+                if mount_point.is_empty() {
+                    return None;
+                }
+                // If there's a colon, split it into two fields
+                // only the first colon is considered though, so if there are more than one, the rest are ignored
+                let mut parts = mount_point.splitn(2, ':');
+                let fst = parts.next()?.to_owned();
+                let snd = parts.next().map(std::borrow::ToOwned::to_owned);
+                Some((fst, snd))
+            })
+            .collect()
     }
 }
 
@@ -357,13 +360,13 @@ mod tests {
         let res: RepartConfig = serde_systemd_unit::from_str(config).unwrap();
 
         println!("{res:#?}");
-        println!("{:?}", res.partition.mount_point_as_tuple().collect_vec());
+        println!("{:?}", res.partition.mount_point_as_tuple());
 
         let config2 = include_str!("test/root.conf");
         let res2: RepartConfig = serde_systemd_unit::from_str(config2).unwrap();
 
         println!("{res2:#?}");
-        println!("{:?}", res2.partition.mount_point_as_tuple().collect_vec());
+        println!("{:?}", res2.partition.mount_point_as_tuple());
     }
 
     // FIXME: port this to serde_systemd_unit
