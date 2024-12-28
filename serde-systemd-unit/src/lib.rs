@@ -418,4 +418,12 @@ key3=value1
         assert_eq!(test.section.mode, Mode::ReadWrite);
         assert_eq!(test.section.modes, vec![Mode::Read, Mode::Write]);
     }
+
+    #[test]
+    fn ultimate_sanity_test() {
+        let input = include_str!("../test/sanitytest.conf");
+        let test: SystemdIni = input.parse().unwrap();
+
+        println!("{test:#?}");
+    }
 }

@@ -351,8 +351,7 @@ ini_enum! {
 
 #[cfg(test)]
 mod tests {
-    use super::{Partition, RepartConfig};
-    use itertools::Itertools;
+    use super::RepartConfig;
 
     #[test]
     fn read_config() {
