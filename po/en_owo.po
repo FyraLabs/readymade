@@ -7,32 +7,32 @@ msgstr ""
 "Project-Id-Version: Readymade 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-07-25 10:42+0000\n"
-"PO-Revision-Date: 2024-07-25 21:13+0800\n"
-"Last-Translator: Oliver Anderson <oliver.anderson4435@gmail.com>\n"
+"PO-Revision-Date: 2024-12-28 10:12+0000\n"
+"Last-Translator: Jaiden Riordan <jade@e.email>\n"
 "Language-Team: English <https://weblate.fyralabs.com/projects/tauOS/"
 "readymade/en_owo/>\n"
-"Language: en\n"
+"Language: en_owo\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 3.4.4\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 5.8.1\n"
 
 #: src/pages/completed.rs:31
 msgid "Completed"
-msgstr ""
+msgstr "Compweted"
 
 #: src/pages/completed.rs:37
 msgid "Installation complete. You may reboot now and enjoy your fresh system."
-msgstr ""
+msgstr "Instawwation compwete. Nyu may weboot now and enjoy nyur fwesh system."
 
 #: src/pages/completed.rs:49 src/pages/failure.rs:62
 msgid "Close"
-msgstr ""
+msgstr "Cwose"
 
 #: src/pages/completed.rs:56
 msgid "Reboot"
-msgstr ""
+msgstr "Weboot"
 
 #: src/pages/confirmation.rs:33
 msgid "Confirmation"
@@ -56,18 +56,16 @@ msgid "Next"
 msgstr "Nyext"
 
 #: src/pages/failure.rs:34
-#, fuzzy
-#| msgid "Installation Type"
 msgid "Installation Failure"
-msgstr "Instawwation Type"
+msgstr "Instawwation Wucky"
 
 #: src/pages/failure.rs:40
 msgid "The installation process failed."
-msgstr ""
+msgstr "The insawwation pwocess faiwed."
 
 #: src/pages/failure.rs:69
 msgid "Report a bug"
-msgstr ""
+msgstr "Feed us a bug"
 
 #: src/pages/installation.rs:44
 msgid "Installation"
@@ -83,11 +81,11 @@ msgstr "Instawwation Type"
 
 #: src/pages/installationtype.rs:90
 msgid "Chromebook"
-msgstr ""
+msgstr "Chrombok"
 
 #: src/pages/language.rs:80
 msgid "Language"
-msgstr ""
+msgstr "Wanguage"
 
 #: src/pages/welcome.rs:27 src/pages/welcome.rs:68
 msgid ""
