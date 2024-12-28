@@ -28,10 +28,29 @@ impl<'de, 'a> serde::de::Deserializer<'de> for OptStringDeserializer<'a> {
         visitor.visit_str(self.0)
     }
 
+    fn deserialize_enum<V>(
+        self,
+        name: &'static str,
+        variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        EnumDeserializer(self.0).deserialize_enum(name, variants, visitor)
+    }
+
     serde::forward_to_deserialize_any! {
         bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char string
         bytes byte_buf unit unit_struct newtype_struct seq tuple
-        tuple_struct struct enum identifier ignored_any map
+        tuple_struct struct ignored_any map
+    }
+
+    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_str(self.0)
     }
 }
 
@@ -69,7 +88,10 @@ impl<'de> serde::de::Deserializer<'de> for OptVecDeserializer {
             where
                 T: serde::de::DeserializeSeed<'de>,
             {
-                self.0.next().map_or_else(|| Ok(None), |val| seed.deserialize(OptStringDeserializer(&val)).map(Some))
+                self.0.next().map_or_else(
+                    || Ok(None),
+                    |val| seed.deserialize(OptStringDeserializer(&val)).map(Some),
+                )
             }
         }
 
@@ -80,6 +102,91 @@ impl<'de> serde::de::Deserializer<'de> for OptVecDeserializer {
         bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string
         bytes byte_buf unit unit_struct newtype_struct tuple
         tuple_struct struct enum identifier ignored_any map
+    }
+}
+
+/// Deserializer for converting strings to enum variants
+pub struct EnumDeserializer<'a>(&'a str);
+
+impl<'de, 'a> serde::de::Deserializer<'de> for EnumDeserializer<'a> {
+    type Error = serde::de::value::Error;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        self.deserialize_enum("", &[], visitor)
+    }
+
+    fn deserialize_enum<V>(
+        self,
+        _name: &str,
+        _variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        visitor.visit_enum(self)
+    }
+
+    serde::forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string
+        bytes byte_buf unit unit_struct newtype_struct seq tuple
+        tuple_struct struct map option identifier ignored_any
+    }
+}
+
+impl<'de, 'a> serde::de::EnumAccess<'de> for EnumDeserializer<'a> {
+    type Error = serde::de::value::Error;
+    type Variant = UnitOnlyVariantAccess;
+
+    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant), Self::Error>
+    where
+        V: serde::de::DeserializeSeed<'de>,
+    {
+        let variant = seed.deserialize(self.0.into_deserializer())?;
+        Ok((variant, UnitOnlyVariantAccess))
+    }
+}
+
+/// Helper struct for unit-only enum variants
+pub struct UnitOnlyVariantAccess;
+
+impl<'de> serde::de::VariantAccess<'de> for UnitOnlyVariantAccess {
+    type Error = serde::de::value::Error;
+
+    fn unit_variant(self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn newtype_variant_seed<T>(self, _seed: T) -> Result<T::Value, Self::Error>
+    where
+        T: serde::de::DeserializeSeed<'de>,
+    {
+        Err(serde::de::Error::custom(
+            "newtype variants are not supported",
+        ))
+    }
+
+    fn tuple_variant<V>(self, _len: usize, _visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        Err(serde::de::Error::custom("tuple variants are not supported"))
+    }
+
+    fn struct_variant<V>(
+        self,
+        _fields: &'static [&'static str],
+        _visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        Err(serde::de::Error::custom(
+            "struct variants are not supported",
+        ))
     }
 }
 

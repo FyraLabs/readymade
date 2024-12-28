@@ -360,4 +360,57 @@ key3=value2
         assert_eq!(test.section.optional, Some("optvalue".to_owned()));
         assert_eq!(test.section.missing, None);
     }
+
+    #[test]
+    fn test_deserialize_enum() {
+        #[derive(Debug, serde::Deserialize, PartialEq)]
+        enum Mode {
+            Read,
+            Write,
+            ReadWrite,
+        }
+
+        #[derive(Debug, serde::Deserialize)]
+        struct TestEnum {
+            section: SectionWithEnum,
+        }
+
+        #[derive(Debug, serde::Deserialize)]
+        struct SectionWithEnum {
+            mode: Mode,
+        }
+
+        let ini = "[section]\nmode=ReadWrite\n";
+        let test: TestEnum = from_str(ini).unwrap();
+        assert_eq!(test.section.mode, Mode::ReadWrite);
+    }
+
+    #[test]
+    fn test_deserialize_enum_array() {
+        #[derive(Debug, serde::Deserialize, PartialEq)]
+        enum Mode {
+            Read,
+            Write,
+            ReadWrite,
+        }
+
+        #[derive(Debug, serde::Deserialize)]
+        struct TestEnum {
+            section: SectionWithEnum,
+        }
+
+        #[derive(Debug, serde::Deserialize)]
+        struct SectionWithEnum {
+            mode: Mode,
+            modes: Vec<Mode>,
+        }
+
+        let ini = "[section]\nmode=ReadWrite\nmodes=Read\nmodes=Write\n";
+        let test: TestEnum = from_str(ini).unwrap();
+        assert_eq!(test.section.mode, Mode::ReadWrite);
+        assert_eq!(
+            test.section.modes,
+            vec![Mode::Read, Mode::Write]
+        );
+    }
 }
