@@ -1,5 +1,5 @@
 [install]
-allowed_installtypes = ["wholedisk", "dualboot", "custom"]
+allowed_installtypes = ["wholedisk", "custom"]
 
 [distro]
 name = "Ultramarine Linux"

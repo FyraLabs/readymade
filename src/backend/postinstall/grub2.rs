@@ -10,6 +10,59 @@ use crate::{stage, util::sys::run_as_root};
 
 use super::{Context, PostInstallModule};
 
+#[derive(Clone, Debug)]
+struct Grub2Defaults {
+    timeout: u32,
+    distributor: String,
+    default: String,
+    disable_submenu: bool,
+    terminal_output: String,
+    cmdline_linux: String,
+    disable_recovery: bool,
+    enable_blsconfig: bool,
+}
+
+impl Default for Grub2Defaults {
+    fn default() -> Self {
+        Self {
+            timeout: 5,
+            distributor: "$(sed 's, release .*$,,g' /etc/system-release)".to_owned(),
+            default: "saved".to_owned(),
+            disable_submenu: true,
+            terminal_output: "console".to_owned(),
+            disable_recovery: true,
+            enable_blsconfig: true,
+            cmdline_linux: "rhgb quiet".to_owned(),
+        }
+    }
+}
+
+impl Grub2Defaults {
+    fn generate(&self) -> String {
+        let Self {
+            timeout,
+            distributor,
+            default,
+            terminal_output,
+            disable_submenu,
+            cmdline_linux,
+            disable_recovery,
+            enable_blsconfig,
+        } = self;
+        format!(
+            r#"GRUB_TIMEOUT={timeout}
+GRUB_DISTRIBUTOR="{distributor}"
+GRUB_DEFAULT={default}
+GRUB_TERMINAL_OUTPUT="{terminal_output}"
+GRUB_DISABLE_SUBMENU={disable_submenu}
+GRUB_CMDLINE_LINUX="{cmdline_linux}"
+GRUB_DISABLE_RECOVERY="{disable_recovery}"
+GRUB_ENABLE_BLSCFG={enable_blsconfig}
+"#
+        )
+    }
+}
+
 /// Helper function to install GRUB2 on a legacy BIOS system.
 ///
 /// You should run this inside a [`tiffin::Container`].
@@ -32,7 +85,7 @@ use super::{Context, PostInstallModule};
 fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> std::io::Result<()> {
     info!("Generating GRUB2 configuration...");
     // this should probably be run inside a chroot... but we'll see
-    if let Err(e) = run_as_root("grub2-mkconfig -o /boot/grub/grub.cfg") {
+    if let Err(e) = run_as_root("grub2-mkconfig -o /boot/grub2/grub.cfg") {
         warn!("Failed to generate GRUB2 configuration: {e}");
 
         // Check if the file still exists
@@ -54,6 +107,12 @@ pub struct GRUB2;
 
 impl PostInstallModule for GRUB2 {
     fn run(&self, context: &Context) -> Result<()> {
+        stage!("Generating system grub defaults" {
+            let defaults = Grub2Defaults::default();
+            let defaults_str = defaults.generate();
+            std::fs::write("/etc/default/grub", defaults_str)?;
+        });
+
         if context.uefi {
             // The reason why we don't do grub2-install here is because for
             // Fedora specifically, the install script simply plops in
