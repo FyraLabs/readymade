@@ -99,6 +99,7 @@ impl SimpleComponent for DestinationPage {
                             set_orientation: gtk::Orientation::Horizontal,
                             set_vexpand: true,
                             set_homogeneous: true,
+                            set_valign: gtk::Align::Center,
                             set_min_children_per_line: 1,
                             set_max_children_per_line: 7,
                             set_column_spacing: 6,
