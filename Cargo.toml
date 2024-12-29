@@ -1,6 +1,6 @@
 [package]
 name = "readymade"
-version = "0.3.4"
+version = "0.4.0"
 edition = "2021"
 license = "MIT WITH GPL-3.0-or-later"
 description = "Install ready-made distribution images"
@@ -115,4 +115,3 @@ equatable_if_let = "allow"
 
 [workspace]
 members = ["serde-systemd-unit"]
-
