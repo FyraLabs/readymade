@@ -47,6 +47,7 @@ const fn get_shim_path() -> &'static str {
 /// assert_eq!(partition_number.unwrap(), 2);
 ///
 /// ```
+#[tracing::instrument]
 fn partition_number(partition_path: &str) -> Result<usize> {
     if !partition_path.starts_with("/dev/") {
         bail!("Not a valid device path");
@@ -55,8 +56,6 @@ fn partition_number(partition_path: &str) -> Result<usize> {
     // Table of known block device prefixes
     // Simple number suffix: /dev/sdXN, /dev/vdXN
     // pY suffix: /dev/nvmeXpY, /dev/mmcblkXpY, /dev/loopXpY
-
-    println!("Partition path: {}", partition_path);
     if partition_path.starts_with("/dev/sd") || partition_path.starts_with("/dev/vd") {
         let partition_number = partition_path
             .chars()
@@ -91,6 +90,7 @@ fn partition_number(partition_path: &str) -> Result<usize> {
 }
 
 /// Get the whole disk from a partition path. i.e. /dev/sda1 -> /dev/sda, /dev/nvme0n1p2 -> /dev/nvme0n1
+#[tracing::instrument]
 fn get_whole_disk(partition_path: &str) -> String {
     if partition_path.starts_with("/dev/sd") || partition_path.starts_with("/dev/vd") {
         if let Some(pos) = partition_path.rfind(|c: char| c.is_numeric()) {
@@ -146,12 +146,15 @@ mod test {
 pub struct EfiStub;
 
 impl PostInstallModule for EfiStub {
+    #[tracing::instrument(skip(self, context))]
     fn run(&self, context: &Context) -> Result<()> {
         // two guard clauses for checking EFI and
         // existence of an ESP partition
         if !context.uefi {
             return Ok(());
         }
+
+        tracing::debug!(esp_part = ?context.esp_partition, uefi = ?context.uefi, "Generating EFI stub");
 
         // if context.esp_partition.is_none() {
         //     bail!("No ESP partition found, cannot generate EFI stub");
@@ -162,11 +165,16 @@ impl PostInstallModule for EfiStub {
         };
         // get the partition number
         let partition_number = partition_number(esp_partition)?;
+        let esp_disk = get_whole_disk(esp_partition);
 
-        let status = Command::new("efibootmgr")
+        tracing::debug!(?partition_number, "EFI partition number");
+        tracing::debug!(?esp_disk, "EFI disk");
+
+
+        let status = Command::new("/usr/sbin/efibootmgr")
             .arg("--create")
             .arg("--disk")
-            .arg(get_whole_disk(esp_partition))
+            .arg(esp_disk)
             .arg("--part")
             .arg(partition_number.to_string())
             .arg("--label")
