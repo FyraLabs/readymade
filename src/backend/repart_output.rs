@@ -74,7 +74,7 @@ impl RepartOutput {
                 // Otherwise sort by number of slashes then alphabetically
                 let a_slashes = a_mnt.chars().filter(|&c| c == '/').count();
                 let b_slashes = b_mnt.chars().filter(|&c| c == '/').count();
-                a_slashes.cmp(&b_slashes).then(a_mnt.cmp(&b_mnt))
+                a_slashes.cmp(&b_slashes).then(a_mnt.cmp(b_mnt))
             }
         });
 
@@ -89,6 +89,17 @@ impl RepartOutput {
         }
 
         Ok(fstab)
+    }
+
+    /// Get the ESP partition if it exists
+    ///
+    /// This is a convenience function for getting the ESP partition, which we can then use for creating
+    /// the boot stub later on
+    pub fn get_esp_partition(&self) -> std::option::Option<String> {
+        self.partitions
+            .iter()
+            .find(|part| part.part_type == "esp")
+            .map(|part| part.node.clone())
     }
 
     /// Create `tiffin::Container` from the repartitioning output with the mountpoints
