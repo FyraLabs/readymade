@@ -56,10 +56,12 @@ fn partition_number(partition_path: &str) -> Result<usize> {
     // Simple number suffix: /dev/sdXN, /dev/vdXN
     // pY suffix: /dev/nvmeXpY, /dev/mmcblkXpY, /dev/loopXpY
 
+    println!("Partition path: {}", partition_path);
     if partition_path.starts_with("/dev/sd") || partition_path.starts_with("/dev/vd") {
         let partition_number = partition_path
             .chars()
             .skip_while(|c| c.is_alphabetic())
+            .filter(|c| c.is_numeric())
             .collect::<String>();
 
         return Ok(partition_number.parse::<usize>()?);
@@ -72,9 +74,13 @@ fn partition_number(partition_path: &str) -> Result<usize> {
         let partition_number = partition_path
             .chars()
             .skip_while(|c| c.is_alphabetic())
+            .skip_while(|c| c.is_numeric())
+            .skip_while(|c| *c != 'p')
+            .skip(1)
+            .take_while(|c| c.is_numeric())
             .collect::<String>();
 
-        if let Some(partition_number) = partition_number.split('p').collect::<Vec<&str>>().get(1) {
+        if !partition_number.is_empty() {
             return Ok(partition_number.parse::<usize>()?);
         }
 
@@ -87,20 +93,52 @@ fn partition_number(partition_path: &str) -> Result<usize> {
 /// Get the whole disk from a partition path. i.e. /dev/sda1 -> /dev/sda, /dev/nvme0n1p2 -> /dev/nvme0n1
 fn get_whole_disk(partition_path: &str) -> String {
     if partition_path.starts_with("/dev/sd") || partition_path.starts_with("/dev/vd") {
-        return partition_path
-            .chars()
-            .take_while(|c| c.is_alphabetic() || c.is_numeric())
-            .collect();
+        if let Some(pos) = partition_path.rfind(|c: char| c.is_numeric()) {
+            return partition_path[..pos].to_string();
+        }
     }
 
-    if partition_path.starts_with("/dev/nvme") || partition_path.starts_with("/dev/mmcblk") {
-        return partition_path
-            .chars()
-            .take_while(|c| c.is_alphabetic() || c.is_numeric())
-            .collect();
+    if partition_path.starts_with("/dev/nvme")
+        || partition_path.starts_with("/dev/mmcblk")
+        || partition_path.starts_with("/dev/loop")
+    {
+        // split by p
+        let mut parts = partition_path.split('p');
+        let partition_path = parts.next().unwrap();
+        return partition_path.to_owned();
     }
 
     partition_path.to_owned()
+}
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_partition_number() {
+        let partition_path = "/dev/sda1";
+        let partno = partition_number(partition_path);
+
+        assert_eq!(partno.unwrap(), 1);
+
+        let partition_path = "/dev/nvme0n1p2";
+        let partno = partition_number(partition_path);
+
+        assert_eq!(partno.unwrap(), 2);
+    }
+
+    #[test]
+    fn test_get_whole_disk() {
+        let partition_path = "/dev/sda1";
+        let whole_disk = get_whole_disk(partition_path);
+
+        assert_eq!(whole_disk, "/dev/sda");
+
+        let partition_path = "/dev/nvme0n1p2";
+        let whole_disk = get_whole_disk(partition_path);
+
+        assert_eq!(whole_disk, "/dev/nvme0n1");
+    }
 }
 
 /// Generate an EFI stub for the bootloader
