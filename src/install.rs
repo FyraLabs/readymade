@@ -13,7 +13,11 @@ use std::{
 };
 use tee_readwrite::TeeReader;
 
+use crate::consts::get_shim_path;
 use crate::consts::repart_dir;
+use crate::consts::OS_NAME;
+use crate::util::fs::get_whole_disk;
+use crate::util::fs::partition_number;
 use crate::util::sys::check_uefi;
 use crate::{
     backend::postinstall::PostInstallModule,
@@ -58,6 +62,61 @@ impl Default for InstallationState {
             postinstall: crate::CONFIG.read().postinstall.clone(),
         }
     }
+}
+// NOTE: The reason we don't implement this as a `PostInstallModule` is because
+// the tiffin container, during the postinstall phase, doesn't have access to
+// /sys/firmware/efi, which is required to modify the EFI boot entries.
+// Therefore this is implemented as a standalone function.
+
+/// Generate an EFI stub for the bootloader.
+/// 
+/// # Arguments
+/// 
+/// * `esp_partition` - A string that holds the path to the ESP partition (e.g. `/dev/sda1`)
+#[tracing::instrument]
+fn install_efi_stub(esp_partition: Option<String>) -> Result<()> {
+    // two guard clauses for checking EFI and
+    // existence of an ESP partition
+    if !check_uefi() {
+        return Ok(());
+    }
+
+    tracing::debug!(?esp_partition, "Generating EFI stub");
+
+    // if context.esp_partition.is_none() {
+    //     bail!("No ESP partition found, cannot generate EFI stub");
+    // }
+
+    let Some(esp_partition) = esp_partition.as_ref() else {
+        bail!("No ESP partition found, cannot generate EFI stub")
+    };
+    // get the partition number
+    let partition_number = partition_number(esp_partition)?;
+    let esp_disk = get_whole_disk(esp_partition);
+
+    tracing::debug!(?partition_number, "EFI partition number");
+    tracing::debug!(?esp_disk, "EFI disk");
+
+    // Remember to add efibootmgr in the resulting image!
+    let status = Command::new("/usr/sbin/efibootmgr")
+        .arg("--create")
+        .arg("--disk")
+        .arg(esp_disk)
+        .arg("--part")
+        .arg(partition_number.to_string())
+        .arg("--label")
+        .arg(OS_NAME)
+        .arg("--loader")
+        .arg(get_shim_path())
+        .status()?;
+
+    if !status.success() {
+        bail!("Failed to create EFI boot entry");
+    }
+
+    // we will be using efibootmgr
+
+    Ok(())
 }
 
 impl InstallationState {
@@ -200,18 +259,20 @@ impl InstallationState {
             None
         };
 
-        container.run(|| self._inner_sys_setup(fstab, esp_node))??;
+        // Install the EFI stub
+        install_efi_stub(esp_node)?;
+
+        container.run(|| self._inner_sys_setup(fstab))??;
 
         Ok(())
     }
 
     #[tracing::instrument]
-    pub fn _inner_sys_setup(&self, fstab: String, esp_node: Option<String>) -> Result<()> {
+    pub fn _inner_sys_setup(&self, fstab: String) -> Result<()> {
         // We will run the specified postinstall modules now
         let context = crate::backend::postinstall::Context {
             destination_disk: self.destination_disk.as_ref().unwrap().devpath.clone(),
             uefi: util::sys::check_uefi(),
-            esp_partition: esp_node,
         };
 
         std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;

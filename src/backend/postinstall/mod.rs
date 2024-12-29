@@ -2,7 +2,6 @@ use cleanup_boot::CleanupBoot;
 use color_eyre::Result;
 use dracut::Dracut;
 use drivers::Drivers;
-use efi_stub::EfiStub;
 use enum_dispatch::enum_dispatch;
 use grub2::GRUB2;
 use prepare_fedora::PrepareFedora;
@@ -14,7 +13,6 @@ use std::path::PathBuf;
 pub mod cleanup_boot;
 pub mod dracut;
 pub mod drivers;
-pub mod efi_stub;
 pub mod grub2;
 pub mod prepare_fedora;
 pub mod reinstall_kernel;
@@ -23,7 +21,6 @@ pub mod selinux;
 pub struct Context {
     pub destination_disk: PathBuf,
     pub uefi: bool,
-    pub esp_partition: Option<String>,
 }
 
 #[enum_dispatch(Module)]
@@ -42,5 +39,4 @@ pub enum Module {
     CleanupBoot,
     PrepareFedora,
     Drivers,
-    EfiStub,
 }

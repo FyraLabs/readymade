@@ -24,6 +24,3 @@ module = "SELinux"
 
 [[postinstall]]
 module = "Drivers"
-
-[[postinstall]]
-module = "EfiStub"
