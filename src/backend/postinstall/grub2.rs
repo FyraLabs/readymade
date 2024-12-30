@@ -85,7 +85,11 @@ GRUB_ENABLE_BLSCFG={enable_blsconfig}
 fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> std::io::Result<()> {
     info!("Generating GRUB2 configuration...");
     // this should probably be run inside a chroot... but we'll see
-    if let Err(e) = run_as_root("grub2-mkconfig -o /boot/grub2/grub.cfg") {
+    if let Err(e) = Command::new("grub2-mkconfig")
+        .arg("-o")
+        .arg("/boot/grub2/grub.cfg")
+        .status()
+    {
         warn!("Failed to generate GRUB2 configuration: {e}");
 
         // Check if the file still exists
@@ -94,10 +98,12 @@ fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> std::io::Result<()> {
         }
     }
     info!("Blessing the disk with GRUB2...");
-    run_as_root(&format!(
-        "grub2-install --target=i386-pc --recheck --boot-directory=/boot {}",
-        disk.as_ref().display()
-    ))?;
+    Command::new("grub2-install")
+        .arg("--target=i386-pc")
+        .arg("--recheck")
+        .arg("--boot-directory=/boot")
+        .arg(disk.as_ref())
+        .status()?;
 
     Ok(())
 }
