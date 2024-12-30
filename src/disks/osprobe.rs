@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, process::Command};
 
 #[derive(Debug, Clone)]
 pub struct OSProbe {
@@ -42,8 +42,16 @@ impl OSProbe {
 
         let scan = tracing::info_span!("Scanning for OS").in_scope(|| {
             tracing::info!("Scanning for OS with os-prober");
-            (crate::util::sys::run_as_root("os-prober").ok())
-                .map(|x| x.trim().to_owned())
+            Command::new("pkexec")
+                .arg("os-prober")
+                .output()
+                .ok()
+                .map(|x| {
+                    String::from_utf8(x.stdout)
+                        .expect("os-prober should return valid utf8")
+                        .trim()
+                        .to_owned()
+                })
                 .filter(|x| !x.is_empty())
         });
 
