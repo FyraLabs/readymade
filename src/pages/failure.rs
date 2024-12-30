@@ -105,9 +105,11 @@ impl SimpleComponent for FailurePage {
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             FailurePageMsg::Err(s) => self.buffer.write_str(&s).unwrap(),
-            FailurePageMsg::ReportBug => {
-                open::that(BUG_REPORT_LINK).unwrap();
-            }
+            FailurePageMsg::ReportBug => gtk::UriLauncher::new(BUG_REPORT_LINK).launch(
+                Option::<&libhelium::Window>::None,
+                gtk::gio::Cancellable::NONE,
+                |_| {},
+            ),
             FailurePageMsg::Navigate(nav) => _ = sender.output(FailurePageOutput::Navigate(nav)),
             FailurePageMsg::Update => {}
         }

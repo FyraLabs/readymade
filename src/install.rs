@@ -80,6 +80,8 @@ impl InstallationState {
             command.arg(format!("READYMADE_DRY_RUN={value}"));
         }
 
+        command.arg("NO_COLOR=1");
+
         command.arg(format!(
             "READYMADE_LOG={}",
             std::env::var("READYMADE_LOG").as_deref().unwrap_or("trace")
@@ -135,17 +137,13 @@ impl InstallationState {
                 .with_note(|| {
                     format!(
                         "Stdout:\n{}",
-                        strip_ansi_escapes::strip_str(
-                            String::from_utf8(stdout_logs).expect("stdout is not valid UTF-8")
-                        )
+                        String::from_utf8_lossy(&strip_ansi_escapes::strip(&stdout_logs))
                     )
                 })
                 .with_note(|| {
                     format!(
                         "Stderr:\n{}",
-                        strip_ansi_escapes::strip_str(
-                            String::from_utf8(stderr_logs).expect("stderr is not valid UTF-8")
-                        )
+                        String::from_utf8_lossy(&strip_ansi_escapes::strip(&stderr_logs))
                     )
                 })),
             Err(e) => Err(eyre!("Failed to execute readymade non-interactively").wrap_err(e)),
