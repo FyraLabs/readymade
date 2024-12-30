@@ -11,18 +11,18 @@
 }
 
 .installation-bento-card.welcome-card {
-    background-image: url("viewports-light.png");
+    background-image: url("viewports-light.webp");
 }
 
 .installation-bento-card.help-card {
-    background-image: url("umbrella-light.png");
+    background-image: url("umbrella-light.webp");
 }
 
 .installation-bento-card.contribute-card {
     background-position: bottom;
-    background-image: url("blueprint.png");
+    background-image: url("blueprint.webp");
 }
 
 .installation-bento-card.sponsor-card {
-    background-image: url("foresty-skies-light.png");
+    background-image: url("foresty-skies-light.webp");
 }
