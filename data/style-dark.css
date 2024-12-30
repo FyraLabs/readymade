@@ -1,11 +1,11 @@
 .installation-bento-card.welcome-card {
-    background-image: url("viewports-dark.png");
+    background-image: url("viewports-dark.webp");
 }
 
 .installation-bento-card.help-card {
-    background-image: url("umbrella-dark.png");
+    background-image: url("umbrella-dark.webp");
 }
 
 .installation-bento-card.sponsor-card {
-    background-image: url("foresty-skies-dark.png");
+    background-image: url("foresty-skies-dark.webp");
 }
