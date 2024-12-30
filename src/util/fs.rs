@@ -1,6 +1,12 @@
-use std::path::Path;
+use std::{
+    os::unix::fs::FileTypeExt,
+    path::{Path, PathBuf},
+};
 
-use color_eyre::{eyre::{bail, eyre}, Section};
+use color_eyre::{
+    eyre::{bail, eyre},
+    Section,
+};
 
 /// Ignore errors about nonexisting files.
 pub fn exist_then<T: Default>(r: std::io::Result<T>) -> std::io::Result<T> {
@@ -61,8 +67,6 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::R
         })
 }
 
-
-
 /// Get partition number from partition path
 ///
 /// # Arguments
@@ -71,7 +75,7 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::R
 ///
 /// # Returns
 ///
-/// * `Result<String>` - A string that holds the partition number
+/// * `Result<usize>` - A string that holds the partition number
 ///
 /// # Errors
 ///
@@ -96,94 +100,55 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::R
 /// ```
 #[tracing::instrument]
 pub fn partition_number(partition_path: &str) -> color_eyre::Result<usize> {
-    if !partition_path.starts_with("/dev/") {
-        bail!("Not a valid device path");
+    // first, let's
+    let metadata = std::fs::metadata(partition_path)?;
+    if !metadata.file_type().is_block_device() {
+        bail!("Not a valid block device");
     }
 
-    // Table of known block device prefixes
-    // Simple number suffix: /dev/sdXN, /dev/vdXN
-    // pY suffix: /dev/nvmeXpY, /dev/mmcblkXpY, /dev/loopXpY
-    if partition_path.starts_with("/dev/sd") || partition_path.starts_with("/dev/vd") {
-        let partition_number = partition_path
-            .chars()
-            .skip_while(|c| c.is_alphabetic())
-            .filter(|c| c.is_numeric())
-            .collect::<String>();
+    let sys_path = format!(
+        "/sys/class/block/{}",
+        partition_path.trim_start_matches("/dev/")
+    );
+    let partition_number_path = format!("{sys_path}/partition");
 
-        return Ok(partition_number.parse::<usize>()?);
-    }
+    let partition_number = std::fs::read_to_string(partition_number_path)
+        .map_err(|e| eyre!("Could not read partition number: {e}"))?
+        .trim()
+        .parse::<usize>()
+        .map_err(|e| eyre!("Could not parse partition number: {e}"))?;
 
-    if partition_path.starts_with("/dev/nvme")
-        || partition_path.starts_with("/dev/mmcblk")
-        || partition_path.starts_with("/dev/loop")
-    {
-        let partition_number = partition_path
-            .chars()
-            .skip_while(|c| c.is_alphabetic())
-            .skip_while(|c| c.is_numeric())
-            .skip_while(|c| *c != 'p')
-            .skip(1)
-            .take_while(|c| c.is_numeric())
-            .collect::<String>();
+    Ok(partition_number)
+}
 
-        if !partition_number.is_empty() {
-            return Ok(partition_number.parse::<usize>()?);
-        }
+#[tracing::instrument]
+pub fn get_maj_min(dev: &str) -> color_eyre::Result<String> {
+    let sys_path = format!("/sys/class/block/{}", dev.trim_start_matches("/dev/"));
 
-        bail!("Could not extract partition number");
-    }
+    let maj_min = std::fs::read_to_string(format!("{sys_path}/dev"))
+        .map_err(|e| eyre!("Could not read maj:min: {e}"))?
+        .trim()
+        .to_owned();
 
-    bail!("Could not extract partition number");
+    Ok(maj_min)
 }
 
 /// Get the whole disk from a partition path. i.e. /dev/sda1 -> /dev/sda, /dev/nvme0n1p2 -> /dev/nvme0n1
 #[tracing::instrument]
-pub fn get_whole_disk(partition_path: &str) -> String {
-    if partition_path.starts_with("/dev/sd") || partition_path.starts_with("/dev/vd") {
-        if let Some(pos) = partition_path.rfind(|c: char| c.is_numeric()) {
-            return partition_path[..pos].to_string();
-        }
-    }
+pub fn get_whole_disk(partition_path: &str) -> color_eyre::Result<String> {
+    let majmin = get_maj_min(partition_path)?;
+    let sys_path = format!("/sys/dev/block/{majmin}");
 
-    if partition_path.starts_with("/dev/nvme")
-        || partition_path.starts_with("/dev/mmcblk")
-        || partition_path.starts_with("/dev/loop")
-    {
-        // split by p
-        let mut parts = partition_path.split('p');
-        let partition_path = parts.next().unwrap();
-        return partition_path.to_owned();
-    }
+    let path = std::fs::canonicalize(PathBuf::from(sys_path).join(".."))
+        .map_err(|e| eyre!("Could not get whole disk: {e}"))?
+        .to_string_lossy()
+        .to_string();
 
-    partition_path.to_owned()
-}
-#[cfg(test)]
-mod test {
-    use super::*;
+    // we finally got the node name, so let's do some tiny string manipulation
+    // so we can replace the /sys/devices with /dev
+    let path = path
+        .rsplit_once('/')
+        .map_or(path.clone(), |(_, tail)| format!("/dev/{tail}"));
 
-    #[test]
-    fn test_partition_number() {
-        let partition_path = "/dev/sda1";
-        let partno = partition_number(partition_path);
-
-        assert_eq!(partno.unwrap(), 1);
-
-        let partition_path = "/dev/nvme0n1p2";
-        let partno = partition_number(partition_path);
-
-        assert_eq!(partno.unwrap(), 2);
-    }
-
-    #[test]
-    fn test_get_whole_disk() {
-        let partition_path = "/dev/sda1";
-        let whole_disk = get_whole_disk(partition_path);
-
-        assert_eq!(whole_disk, "/dev/sda");
-
-        let partition_path = "/dev/nvme0n1p2";
-        let whole_disk = get_whole_disk(partition_path);
-
-        assert_eq!(whole_disk, "/dev/nvme0n1");
-    }
+    Ok(path)
 }
