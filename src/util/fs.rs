@@ -152,34 +152,3 @@ pub fn get_whole_disk(partition_path: &str) -> color_eyre::Result<String> {
 
     Ok(path)
 }
-
-// we can't reliably test the disk functions since
-// it accesses the system's block devices + sysfs
-
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-
-//     #[test]
-//     fn test_partition_number() {
-
-//         let partition_path = "/dev/nvme0n1p2";
-//         let partno = partition_number(partition_path);
-
-//         assert_eq!(partno.unwrap(), 2);
-//     }
-
-//     #[test]
-//     fn test_get_whole_disk() {
-//         // let partition_path = "/dev/sda1";
-//         // let whole_disk = get_whole_disk(partition_path);
-
-//         // assert_eq!(whole_disk, "/dev/sda");
-
-//         let partition_path = "/dev/nvme0n1p2";
-//         let whole_disk = get_whole_disk(partition_path);
-//         println!("{:?}", whole_disk);
-
-//         // assert_eq!(whole_disk, "/dev/nvme0n1");
-//     }
-// }
