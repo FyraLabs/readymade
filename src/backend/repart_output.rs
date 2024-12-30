@@ -7,7 +7,10 @@ use std::path::PathBuf;
 use sys_mount::MountFlags;
 use tiffin::{Container, MountTarget};
 
-use crate::backend::repartcfg::{FileSystem, RepartConfig};
+use crate::{
+    backend::repartcfg::{FileSystem, RepartConfig},
+    util::sys::check_uefi,
+};
 
 /// Gets the systemd version
 pub fn systemd_version() -> color_eyre::Result<usize> {
@@ -120,6 +123,18 @@ impl RepartOutput {
             };
 
             container.add_mount(mnt_target, PathBuf::from(node));
+        }
+
+        if check_uefi() {
+            // add efivarfs
+            let mnt_target = MountTarget {
+                target: PathBuf::from("/sys/firmware/efi/efivars"),
+                flags: MountFlags::empty(),
+                data: None,
+                fstype: Some("efivarfs".to_owned()),
+            };
+
+            container.add_mount(mnt_target, PathBuf::from("/sys/firmware/efi/efivars"));
         }
 
         Ok(container)
