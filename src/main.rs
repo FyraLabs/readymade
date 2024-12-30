@@ -208,7 +208,6 @@ fn main() -> Result<()> {
 
         return install_state.install();
     }
-    
 
     *CONFIG.write() = cfg::get_cfg()?;
 
@@ -249,7 +248,7 @@ fn initialize_custom_icons(display: &gtk::gdk::Display) {
 /// - cannot create readymade tempdir
 #[allow(clippy::cognitive_complexity)]
 fn setup_hooks() -> impl std::any::Any {
-    for arg in std::env::args(){
+    for arg in std::env::args() {
         if arg.starts_with("READYMADE_") || arg.starts_with("REPART_COPY_SOURCE") {
             let (key, value) = arg.split_once('=').unwrap();
             println!("Setting env var {key} to {value}");
