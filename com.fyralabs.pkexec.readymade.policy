@@ -3,7 +3,6 @@
  "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <policyconfig>
-
   <action id="org.freedesktop.policykit.pkexec.readymade">
     <description>Readymade Installer</description>
     <message>Authentication is required to install the operating system</message>
@@ -14,7 +13,16 @@
       <allow_active>yes</allow_active>
     </defaults>
     <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/readymade</annotate>
-    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
   </action>
-
+  <action id="org.freedesktop.policykit.pkexec.readymade.os-prober">
+    <description>Readymade Installer - os-prober</description>
+    <message>Authentication is required to probe installed operating systems</message>
+    <icon_name>com.fyralabs.Readymade</icon_name>
+    <defaults>
+      <allow_any>yes</allow_any>
+      <allow_inactive>yes</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/bin/os-prober</annotate>
+  </action>
 </policyconfig>

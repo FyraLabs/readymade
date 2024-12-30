@@ -14,6 +14,7 @@ use std::{
 use tee_readwrite::TeeReader;
 
 use crate::consts::repart_dir;
+use crate::util::sys::check_uefi;
 use crate::{
     backend::postinstall::PostInstallModule,
     backend::repart_output::RepartOutput,
@@ -192,17 +193,25 @@ impl InstallationState {
 
         let fstab = output.generate_fstab()?;
 
-        container.run(|| self._inner_sys_setup(fstab))??;
+        // todo: Also handle custom installs? Needs more information
+        let esp_node = if check_uefi() {
+            output.get_esp_partition()
+        } else {
+            None
+        };
+
+        container.run(|| self._inner_sys_setup(fstab, esp_node))??;
 
         Ok(())
     }
 
     #[tracing::instrument]
-    pub fn _inner_sys_setup(&self, fstab: String) -> Result<()> {
+    pub fn _inner_sys_setup(&self, fstab: String, esp_node: Option<String>) -> Result<()> {
         // We will run the specified postinstall modules now
         let context = crate::backend::postinstall::Context {
             destination_disk: self.destination_disk.as_ref().unwrap().devpath.clone(),
             uefi: util::sys::check_uefi(),
+            esp_partition: esp_node,
         };
 
         std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;

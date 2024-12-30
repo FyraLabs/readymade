@@ -7,7 +7,10 @@ use std::path::PathBuf;
 use sys_mount::MountFlags;
 use tiffin::{Container, MountTarget};
 
-use crate::backend::repartcfg::{FileSystem, RepartConfig};
+use crate::{
+    backend::repartcfg::{FileSystem, RepartConfig},
+    util::sys::check_uefi,
+};
 
 /// Gets the systemd version
 pub fn systemd_version() -> color_eyre::Result<usize> {
@@ -74,7 +77,7 @@ impl RepartOutput {
                 // Otherwise sort by number of slashes then alphabetically
                 let a_slashes = a_mnt.chars().filter(|&c| c == '/').count();
                 let b_slashes = b_mnt.chars().filter(|&c| c == '/').count();
-                a_slashes.cmp(&b_slashes).then(a_mnt.cmp(&b_mnt))
+                a_slashes.cmp(&b_slashes).then(a_mnt.cmp(b_mnt))
             }
         });
 
@@ -89,6 +92,17 @@ impl RepartOutput {
         }
 
         Ok(fstab)
+    }
+
+    /// Get the ESP partition if it exists
+    ///
+    /// This is a convenience function for getting the ESP partition, which we can then use for creating
+    /// the boot stub later on
+    pub fn get_esp_partition(&self) -> std::option::Option<String> {
+        self.partitions
+            .iter()
+            .find(|part| part.part_type == "esp")
+            .map(|part| part.node.clone())
     }
 
     /// Create `tiffin::Container` from the repartitioning output with the mountpoints
@@ -109,6 +123,18 @@ impl RepartOutput {
             };
 
             container.add_mount(mnt_target, PathBuf::from(node));
+        }
+
+        if check_uefi() {
+            // add efivarfs
+            let mnt_target = MountTarget {
+                target: PathBuf::from("/sys/firmware/efi/efivars"),
+                flags: MountFlags::empty(),
+                data: None,
+                fstype: Some("efivarfs".to_owned()),
+            };
+
+            container.add_mount(mnt_target, PathBuf::from("/sys/firmware/efi/efivars"));
         }
 
         Ok(container)
