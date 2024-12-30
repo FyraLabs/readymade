@@ -31,8 +31,13 @@ impl PostInstallModule for EfiStub {
         let partition_number = partition_number(esp_partition)?;
         let esp_disk = get_whole_disk(esp_partition)?;
 
-        tracing::debug!(?partition_number, "EFI partition number");
-        tracing::debug!(?esp_disk, "EFI disk");
+        tracing::debug!(
+            disk = esp_disk,
+            part = partition_number,
+            label = OS_NAME,
+            shim_path = get_shim_path(),
+            "Creating EFI boot entry"
+        );
 
         let status = Command::new("/usr/sbin/efibootmgr")
             .arg("--create")
