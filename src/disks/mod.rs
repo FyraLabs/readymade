@@ -1,7 +1,8 @@
 mod osprobe;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
+use itertools::Itertools;
 use osprobe::OSProbe;
 
 use crate::pages::destination::DiskInit;
@@ -15,6 +16,13 @@ const OSNAME_PLACEHOLDER: &str = "Unknown OS";
 // NOTE: Below system detection might not even work at all, I have no idea since above note.
 pub fn detect_os() -> Vec<DiskInit> {
     let disks = lsblk::BlockDevice::list().unwrap();
+    // Surprisingly, getting the physical device for the booted system is non trivial on Linux
+    // For live systems, we can look for the the device associated with the live mountpoint
+    // This way, we can avoid showing the live system as a valid target
+    let live_device = lsblk::Mount::list()
+        .unwrap()
+        .find(|mount| mount.mountpoint == PathBuf::from("/run/initramfs/live"))
+        .map(|mount| PathBuf::from(mount.device));
 
     tracing::debug!(?disks, "Found disks");
 
@@ -24,7 +32,11 @@ pub fn detect_os() -> Vec<DiskInit> {
 
     disks
         .into_iter()
-        .filter(|disk| disk.is_disk() && (cfg!(debug_assertions) || disk.is_physical()))
+        .filter(|disk| {
+            disk.is_disk()
+                && live_device.as_ref() != Some(&disk.fullname)
+                && (cfg!(debug_assertions) || disk.is_physical())
+        })
         .map(|mut disk| {
             let model = disk
                 .sysfs()
