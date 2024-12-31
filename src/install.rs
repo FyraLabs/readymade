@@ -210,6 +210,7 @@ impl InstallationState {
             destination_disk: self.destination_disk.as_ref().unwrap().devpath.clone(),
             uefi: util::sys::check_uefi(),
             esp_partition: esp_node,
+            lang: self.langlocale.clone().unwrap_or_else(|| "C.UTF-8".into()),
         };
 
         std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;

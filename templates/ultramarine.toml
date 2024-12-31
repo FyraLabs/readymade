@@ -27,3 +27,9 @@ module = "Drivers"
 
 [[postinstall]]
 module = "EfiStub"
+
+[[postinstall]]
+module = "InitialSetup"
+
+[[postinstall]]
+module = "Language"
