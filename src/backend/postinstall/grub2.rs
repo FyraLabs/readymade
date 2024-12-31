@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use crate::stage;
 
@@ -84,6 +84,8 @@ GRUB_ENABLE_BLSCFG={enable_blsconfig}
 /// * `disk` - The path to the disk to install GRUB2 on.
 fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> std::io::Result<()> {
     info!("Generating GRUB2 configuration...");
+    let _disk = disk.as_ref().to_str();
+    debug!(?_disk);
     // this should probably be run inside a chroot... but we'll see
     if let Err(e) = Command::new("grub2-mkconfig")
         .arg("-o")
@@ -102,6 +104,12 @@ fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> std::io::Result<()> {
         .arg("--target=i386-pc")
         .arg("--recheck")
         .arg("--boot-directory=/boot")
+        // We are going to force the installation, because for some reason
+        // grub-install just couldn't find our xbootldr partition
+        // even though it exists.
+        // 
+        // --force is a last resort, but in our layout it's kind of necessary :P
+        .arg("--force")
         .arg(disk.as_ref())
         .status()?;
 
