@@ -82,7 +82,7 @@ GRUB_ENABLE_BLSCFG={enable_blsconfig}
 /// # Arguments
 ///
 /// * `disk` - The path to the disk to install GRUB2 on.
-fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> std::io::Result<()> {
+fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> Result<()> {
     info!("Generating GRUB2 configuration...");
     let _disk = disk.as_ref().to_str();
     debug!(?_disk);
@@ -96,11 +96,11 @@ fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> std::io::Result<()> {
 
         // Check if the file still exists
         if !Path::new("/boot/grub/grub.cfg").exists() {
-            return Err(e);
+            return Err(e).map_err(Into::into);
         }
     }
     info!("Blessing the disk with GRUB2...");
-    Command::new("grub2-install")
+    let status = Command::new("grub2-install")
         .arg("--target=i386-pc")
         .arg("--recheck")
         .arg("--boot-directory=/boot")
@@ -112,6 +112,10 @@ fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> std::io::Result<()> {
         .arg("--force")
         .arg(disk.as_ref())
         .status()?;
+    
+    if !status.success() {
+        bail!("Failed to install GRUB2 on disk {_disk:?}")
+    }
 
     Ok(())
 }
