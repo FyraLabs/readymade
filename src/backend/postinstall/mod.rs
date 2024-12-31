@@ -23,9 +23,14 @@ pub mod reinstall_kernel;
 pub mod selinux;
 
 pub struct Context {
+    /// The disk to install to
     pub destination_disk: PathBuf,
+    /// Whether the installation is UEFI
     pub uefi: bool,
+    /// ESP partition path
     pub esp_partition: Option<String>,
+    /// Bootloader partition path
+    pub boot_partition: Option<String>,
 }
 
 #[enum_dispatch(Module)]

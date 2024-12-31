@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::process::Command;
 
 use crate::{
-    consts::{get_shim_path, OS_NAME},
+    consts::{get_grub_bootloader_target, get_shim_path, OS_NAME},
     util::fs::{get_whole_disk, partition_number},
 };
 
@@ -13,48 +13,88 @@ use super::{Context, PostInstallModule};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EfiStub;
 
+fn install_efi_stub(context: &Context) -> Result<()> {
+    // two guard clauses for checking EFI and
+    // existence of an ESP partition
+    if !context.uefi {
+        // return Ok(());
+        bail!("Not a UEFI system");
+    }
+
+    tracing::debug!(esp_part = ?context.esp_partition, uefi = ?context.uefi, "Generating EFI stub");
+
+    let Some(esp_partition) = context.esp_partition.as_ref() else {
+        bail!("No ESP partition found, cannot generate EFI stub")
+    };
+    // get the partition number
+    let partition_number = partition_number(esp_partition)?;
+    let esp_disk = get_whole_disk(esp_partition)?;
+
+    tracing::debug!(
+        disk = esp_disk,
+        part = partition_number,
+        label = OS_NAME,
+        shim_path = get_shim_path(),
+        "Creating EFI boot entry"
+    );
+
+    let status = Command::new("/usr/sbin/efibootmgr")
+        .arg("--create")
+        .arg("--disk")
+        .arg(esp_disk)
+        .arg("--part")
+        .arg(partition_number.to_string())
+        .arg("--label")
+        .arg(OS_NAME)
+        .arg("--loader")
+        .arg(get_shim_path())
+        .status()?;
+
+    if !status.success() {
+        bail!("Failed to create EFI boot entry");
+    }
+
+    Ok(())
+}
+
+fn mbr_bootloader(context: &Context) -> Result<()> {
+    
+    let Some(boot_partition) = context.boot_partition.as_ref() else {
+        bail!("No boot partition found, cannot install MBR bootloader")
+    };
+    
+    let boot_disk = get_whole_disk(boot_partition)?;
+    
+    let platform = get_grub_bootloader_target();
+    
+    tracing::debug!(boot_disk, platform, "Installing MBR bootloader");
+    
+    tracing::debug!("Installing MBR bootloader");
+    
+    let status = Command::new("/usr/sbin/grub2-install")
+        .arg("--target")
+        .arg(platform)
+        .arg(boot_disk)
+        .status()?;
+    
+    
+    if !status.success() {
+        bail!("Failed to install MBR bootloader");
+    }
+
+    
+    
+    Ok(())
+}
+
+// todo: rename to `bootloader`
 impl PostInstallModule for EfiStub {
     #[tracing::instrument(skip(self, context))]
     fn run(&self, context: &Context) -> Result<()> {
-        // two guard clauses for checking EFI and
-        // existence of an ESP partition
-        if !context.uefi {
-            return Ok(());
+        if context.uefi {
+            install_efi_stub(context)
+        } else {
+            mbr_bootloader(context)
         }
-
-        tracing::debug!(esp_part = ?context.esp_partition, uefi = ?context.uefi, "Generating EFI stub");
-
-        let Some(esp_partition) = context.esp_partition.as_ref() else {
-            bail!("No ESP partition found, cannot generate EFI stub")
-        };
-        // get the partition number
-        let partition_number = partition_number(esp_partition)?;
-        let esp_disk = get_whole_disk(esp_partition)?;
-
-        tracing::debug!(
-            disk = esp_disk,
-            part = partition_number,
-            label = OS_NAME,
-            shim_path = get_shim_path(),
-            "Creating EFI boot entry"
-        );
-
-        let status = Command::new("/usr/sbin/efibootmgr")
-            .arg("--create")
-            .arg("--disk")
-            .arg(esp_disk)
-            .arg("--part")
-            .arg(partition_number.to_string())
-            .arg("--label")
-            .arg(OS_NAME)
-            .arg("--loader")
-            .arg(get_shim_path())
-            .status()?;
-
-        if !status.success() {
-            bail!("Failed to create EFI boot entry");
-        }
-
-        Ok(())
     }
 }

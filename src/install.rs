@@ -198,18 +198,26 @@ impl InstallationState {
             None
         };
 
-        container.run(|| self._inner_sys_setup(fstab, esp_node))??;
+        let xbootldr_node = output.get_bootloader_partition();
+
+        container.run(|| self._inner_sys_setup(fstab, esp_node, xbootldr_node))??;
 
         Ok(())
     }
 
     #[tracing::instrument]
-    pub fn _inner_sys_setup(&self, fstab: String, esp_node: Option<String>) -> Result<()> {
+    pub fn _inner_sys_setup(
+        &self,
+        fstab: String,
+        esp_node: Option<String>,
+        bl_node: Option<String>,
+    ) -> Result<()> {
         // We will run the specified postinstall modules now
         let context = crate::backend::postinstall::Context {
             destination_disk: self.destination_disk.as_ref().unwrap().devpath.clone(),
             uefi: util::sys::check_uefi(),
             esp_partition: esp_node,
+            boot_partition: bl_node,
         };
 
         std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;

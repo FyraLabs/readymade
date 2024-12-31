@@ -104,6 +104,17 @@ impl RepartOutput {
             .find(|part| part.part_type == "esp")
             .map(|part| part.node.clone())
     }
+    
+    /// Get the bootloader partition if it exists
+    ///
+    /// This is a convenience function for getting the bootloader partition, which we can then use for installing
+    /// the bootloader later on
+    pub fn get_bootloader_partition(&self) -> std::option::Option<String> {
+        self.partitions
+            .iter()
+            .find(|part| part.part_type == "xbootldr")
+            .map(|part| part.node.clone())
+    }
 
     /// Create `tiffin::Container` from the repartitioning output with the mountpoints
     /// from the DDI partition types
