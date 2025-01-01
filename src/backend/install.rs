@@ -2,11 +2,16 @@ use color_eyre::eyre::bail;
 use color_eyre::eyre::eyre;
 use color_eyre::eyre::Context;
 use color_eyre::{Result, Section};
+use ipc_channel::ipc::IpcError;
+use ipc_channel::ipc::IpcOneShotServer;
+use ipc_channel::ipc::IpcSender;
 use serde::{Deserialize, Serialize};
 use std::io::BufRead;
 use std::io::BufReader;
 use std::process::Command;
 use std::process::Stdio;
+use std::sync::Mutex;
+use std::sync::OnceLock;
 use std::{
     io::Write,
     path::{Path, PathBuf},
@@ -23,7 +28,8 @@ use crate::{
     stage, util,
 };
 
-#[allow(clippy::unsafe_derive_deserialize)]
+pub static IPC_CHANNEL: OnceLock<Mutex<IpcSender<InstallationMessage>>> = OnceLock::new();
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum InstallationType {
@@ -60,13 +66,25 @@ impl Default for InstallationState {
     }
 }
 
+/// IPC installation message for non-interactive mode
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub enum InstallationMessage {
+    Status(String),
+}
+
 impl InstallationState {
     // todo: move methods from installationstate to here!
     #[allow(clippy::unwrap_in_result)]
-    pub fn install_using_subprocess(&self) -> Result<()> {
+    pub fn install_using_subprocess(
+        &self,
+        sender: relm4::Sender<InstallationMessage>,
+    ) -> Result<()> {
         let mut command = Command::new("pkexec");
         command.arg(std::env::current_exe()?);
         command.arg("--non-interactive");
+
+        let (server, channel_id) = IpcOneShotServer::new()?;
+        command.arg(channel_id);
 
         if let Ok(value) = std::env::var("REPART_COPY_SOURCE") {
             command.arg(format!("REPART_COPY_SOURCE={value}"));
@@ -97,7 +115,6 @@ impl InstallationState {
         let tee_stderr = TeeReader::new(stderr_reader, &mut stderr_logs, false);
 
         command
-            // .arg(std::env::current_exe()?)
             .stdin(std::process::Stdio::piped())
             .stdout(stdout_writer)
             .stderr(stderr_writer);
@@ -122,6 +139,24 @@ impl InstallationState {
                 reader
                     .lines()
                     .for_each(|line| eprintln!("| {}", line.unwrap()));
+            });
+            s.spawn(|| -> Result<()> {
+                let (receiver, _) = server.accept()?;
+
+                loop {
+                    match receiver.recv() {
+                        Ok(msg) => sender.emit(msg),
+                        Err(IpcError::Disconnected) => {
+                            break;
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to receive message from subprocess: {:?}", e);
+                            break;
+                        }
+                    }
+                }
+
+                Ok(())
             });
 
             let result = res.wait_with_output();

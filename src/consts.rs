@@ -10,7 +10,7 @@ pub fn repart_dir() -> PathBuf {
     PathBuf::from(std::env::var("READYMADE_REPART_DIR").unwrap_or_else(|_| REPART_DIR.into()))
 }
 
-pub const fn get_shim_path() -> &'static str {
+pub const fn shim_path() -> &'static str {
     if cfg!(target_arch = "x86_64") {
         EFI_SHIM_X86_64
     } else {

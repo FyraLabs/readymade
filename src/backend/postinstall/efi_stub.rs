@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::process::Command;
 
 use crate::{
-    consts::{get_shim_path, OS_NAME},
+    consts::{shim_path, OS_NAME},
     util::fs::{get_whole_disk, partition_number},
 };
 
@@ -35,7 +35,7 @@ impl PostInstallModule for EfiStub {
             disk = esp_disk,
             part = partition_number,
             label = OS_NAME,
-            shim_path = get_shim_path(),
+            shim_path = shim_path(),
             "Creating EFI boot entry"
         );
 
@@ -48,7 +48,7 @@ impl PostInstallModule for EfiStub {
             .arg("--label")
             .arg(OS_NAME)
             .arg("--loader")
-            .arg(get_shim_path())
+            .arg(shim_path())
             .status()?;
 
         if !status.success() {

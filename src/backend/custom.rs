@@ -2,6 +2,8 @@ use std::path::Component;
 use std::path::Path;
 use std::path::PathBuf;
 
+use super::install::InstallationState;
+
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct MountTarget {
     #[doc(hidden)]
@@ -82,7 +84,7 @@ impl MountTargets {
 // 2. copy stuff
 // 3. funny setup_system()
 pub fn install_custom(
-    state: &crate::install::InstallationState,
+    state: &InstallationState,
     mounttags: &mut MountTargets,
 ) -> color_eyre::Result<()> {
     let destroot = Path::new("/mnt/custom");
@@ -96,7 +98,7 @@ pub fn install_custom(
             }
         };
 
-        let copy_source = PathBuf::from(crate::install::InstallationState::determine_copy_source());
+        let copy_source = PathBuf::from(InstallationState::determine_copy_source());
         if copy_source.is_file() {
             // TODO: impl callback status progress
             super::mksys::unsquash_copy(&copy_source, destroot, |_, _| {})?;
