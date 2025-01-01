@@ -1,6 +1,8 @@
+use crate::backend::install::InstallationMessage;
 use crate::prelude::*;
 use crate::{NavigationAction, INSTALLATION_STATE};
 use color_eyre::Result;
+use relm4::tokio::sync::broadcast::Receiver;
 use relm4::{Component, ComponentParts, ComponentSender};
 use std::time::Duration;
 
@@ -73,11 +75,14 @@ pub enum InstallationPageMsg {
     Update,
     #[doc(hidden)]
     Throb,
+    #[doc(hidden)]
+    SubprocessMessage(InstallationMessage),
 }
 
 #[derive(Debug)]
 pub enum InstallationPageCommandMsg {
     FinishInstallation(Result<()>),
+    None,
 }
 
 #[derive(Debug)]
@@ -188,17 +193,9 @@ impl Component for InstallationPage {
                     // },
                 },
 
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-
-                    gtk::Label {
-                        set_halign: gtk::Align::Start,
-                        #[watch]
-                        set_label: &*gettext("Installing base system...")
-                    },
-
-                    #[local_ref]
-                    progress_bar -> gtk::ProgressBar {}
+                #[local_ref]
+                progress_bar -> gtk::ProgressBar {
+                    set_show_text: true
                 }
             }
         }
@@ -211,6 +208,7 @@ impl Component for InstallationPage {
     ) -> ComponentParts<Self> {
         let model = Self::default();
         let progress_bar = &model.progress_bar;
+        progress_bar.set_text(Some(&gettext("Installing base system...")));
 
         let widgets = view_output!();
 
@@ -233,10 +231,24 @@ impl Component for InstallationPage {
                 |_| {},
             ),
             InstallationPageMsg::StartInstallation => {
+                let sender2 = sender.clone();
+                let (s, r) = relm4::channel();
+                sender.oneshot_command(async move {
+                    r.forward(sender2.input_sender().clone(), |msg| {
+                        InstallationPageMsg::SubprocessMessage(msg)
+                    })
+                    .await;
+
+                    InstallationPageCommandMsg::None
+                });
+
                 sender.spawn_oneshot_command(|| {
                     let state = INSTALLATION_STATE.read();
                     tracing::debug!(?state, "Starting installation...");
-                    InstallationPageCommandMsg::FinishInstallation(state.install_using_subprocess())
+
+                    InstallationPageCommandMsg::FinishInstallation(
+                        state.install_using_subprocess(s),
+                    )
                 });
             }
             InstallationPageMsg::Navigate(action) => sender
@@ -244,6 +256,9 @@ impl Component for InstallationPage {
                 .unwrap(),
             InstallationPageMsg::Update => {}
             InstallationPageMsg::Throb => self.progress_bar.pulse(),
+            InstallationPageMsg::SubprocessMessage(InstallationMessage::Status(status)) => {
+                self.progress_bar.set_text(Some(&status));
+            }
         }
     }
 
@@ -274,6 +289,7 @@ impl Component for InstallationPage {
                         .unwrap();
                 }
             }
+            InstallationPageCommandMsg::None => {}
         }
     }
 }

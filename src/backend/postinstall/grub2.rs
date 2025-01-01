@@ -112,7 +112,7 @@ fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> Result<()> {
         .arg("--force")
         .arg(disk.as_ref())
         .status()?;
-    
+
     if !status.success() {
         bail!("Failed to install GRUB2 on disk {_disk:?}")
     }

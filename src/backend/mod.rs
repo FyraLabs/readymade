@@ -1,4 +1,5 @@
 pub mod custom;
+pub mod install;
 pub mod mksys;
 pub mod postinstall;
 pub mod repart_output;
