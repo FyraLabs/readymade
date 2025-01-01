@@ -23,9 +23,6 @@ module = "PrepareFedora"
 module = "SELinux"
 
 [[postinstall]]
-module = "Drivers"
-
-[[postinstall]]
 module = "EfiStub"
 
 [[postinstall]]
