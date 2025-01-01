@@ -3,15 +3,18 @@ mod backend;
 pub mod cfg;
 mod consts;
 mod disks;
-mod install;
 mod pages;
 pub mod prelude;
 mod util;
 
+use std::sync::Mutex;
+
 use crate::prelude::*;
+use backend::install::{InstallationState, InstallationType, IPC_CHANNEL};
+use color_eyre::eyre::ContextCompat;
 use color_eyre::Result;
 use gtk::glib::translate::FromGlibPtrNone;
-use install::{InstallationState, InstallationType};
+use ipc_channel::ipc::IpcSender;
 use pages::installation::InstallationPageMsg;
 use relm4::{
     Component, ComponentController, ComponentParts, ComponentSender, RelmApp, SharedState,
@@ -200,10 +203,17 @@ impl SimpleComponent for AppModel {
 #[allow(clippy::missing_panics_doc)]
 fn main() -> Result<()> {
     let _guard = setup_hooks();
-    if std::env::args().any(|arg| arg == "--non-interactive") {
+    if let Some((i, _)) = std::env::args().find_position(|arg| arg == "--non-interactive") {
         tracing::info!("Running in non-interactive mode");
         // Get installation state from stdin json instead
 
+        let channel = IpcSender::connect(
+            std::env::args()
+                .nth(i + 1)
+                .context("No IPC channel ID passed")?,
+        )?;
+
+        IPC_CHANNEL.set(Mutex::new(channel)).unwrap();
         let install_state: InstallationState = serde_json::from_reader(std::io::stdin())?;
 
         return install_state.install();

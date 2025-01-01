@@ -1,30 +1,16 @@
-/// IPC installation message for non-interactive mode
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub enum InstallMessage {
-    Status(String),
-}
-
-impl InstallMessage {
-    pub fn new(s: &str) -> Self {
-        Self::Status(s.to_owned())
-    }
-
-    pub fn into_json(self) -> String {
-        serde_json::to_string(&self).unwrap()
-    }
-}
-
 #[macro_export]
 macro_rules! stage {
     // todo: Export text to global progress text
     ($s:literal $body:block) => {{
         let s = tracing::info_span!($s);
 
-        if std::env::var("NON_INTERACTIVE_INSTALL").is_ok_and(|v| v == "1") {
+        if let Some(m) = $crate::backend::install::IPC_CHANNEL.get() {
+            let sender = m.lock().unwrap();
             // Then we are in a non-interactive install, which means we export IPC
             // to stdout
-            let install_status = $crate::util::macros::InstallMessage::new($s);
-            println!("{}", install_status.into_json());
+            let install_status =
+                $crate::backend::install::InstallationMessage::Status($s.to_owned());
+            sender.send(install_status).unwrap();
         }
 
         {

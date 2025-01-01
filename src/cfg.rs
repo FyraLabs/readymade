@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde_valid::toml::FromTomlStr;
 use serde_valid::Validate;
 
+use crate::backend::install::InstallationType;
 use crate::backend::postinstall::Module;
 
 const DEFAULT_CFG_PATH: &str = "/etc/readymade.toml";
@@ -12,7 +13,7 @@ const DEFAULT_CFG_PATH: &str = "/etc/readymade.toml";
 #[derive(Deserialize, Validate, Default, Debug, Clone, PartialEq, Eq)]
 pub struct Install {
     #[validate(min_items = 1)]
-    pub allowed_installtypes: Vec<crate::install::InstallationType>,
+    pub allowed_installtypes: Vec<InstallationType>,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq)]
@@ -93,7 +94,7 @@ mod tests {
                     icon: "fedora-logo-icon".into(),
                 },
                 install: Install {
-                    allowed_installtypes: vec![crate::install::InstallationType::ChromebookInstall],
+                    allowed_installtypes: vec![InstallationType::ChromebookInstall],
                 },
                 postinstall: vec![
                     crate::backend::postinstall::grub2::GRUB2.into(),

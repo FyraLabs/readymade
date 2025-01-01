@@ -131,7 +131,7 @@ impl SimpleComponent for DestinationPage {
                         connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(
                             if let [x] = crate::CONFIG.read().install.allowed_installtypes[..] {
                                 #[allow(clippy::enum_glob_use)]
-                                use crate::{install::InstallationType::*, Page::*};
+                                use crate::{backend::install::InstallationType::*, Page::*};
                                 match x {
                                     ChromebookInstall | WholeDisk => Confirmation,
                                     DualBoot(_) => InstallDual,

@@ -49,6 +49,7 @@ scopeguard = "1.2.0"
 tracing-test = "0.2.5"
 serde-systemd-unit = { path = "./serde-systemd-unit" }
 format-bytes = "0.3.0"
+ipc-channel = { version = "0.19.0", features = ["async"] }
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"
