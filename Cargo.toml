@@ -1,6 +1,6 @@
 [package]
 name = "readymade"
-version = "0.6.0"
+version = "0.7.1"
 edition = "2021"
 license = "MIT WITH GPL-3.0-or-later"
 description = "Install ready-made distribution images"
