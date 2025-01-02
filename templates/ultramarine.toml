@@ -5,9 +5,6 @@ allowed_installtypes = ["wholedisk", "custom"]
 name = "Ultramarine Linux"
 
 [[postinstall]]
-module = "GRUB2"
-
-[[postinstall]]
 module = "CleanupBoot"
 
 [[postinstall]]
@@ -15,6 +12,9 @@ module = "ReinstallKernel"
 
 [[postinstall]]
 module = "Dracut"
+
+[[postinstall]]
+module = "GRUB2"
 
 [[postinstall]]
 module = "PrepareFedora"
