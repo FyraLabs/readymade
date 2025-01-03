@@ -9,4 +9,4 @@ jobs:
     uses: FyraLabs/actions/.github/workflows/rust.yml@main
     with:
       test-container: '{"image": "ghcr.io/terrapkg/builder:f41"}'
-      test-pre: dnf builddep -y libhelium-devel 'pkgconfig(gnome-desktop-4)' clang-devel gcc mold
+      test-pre: dnf4 builddep -y libhelium-devel 'pkgconfig(gnome-desktop-4)' clang-devel gcc mold
