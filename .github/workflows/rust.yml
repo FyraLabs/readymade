@@ -9,3 +9,4 @@ jobs:
     uses: FyraLabs/actions/.github/workflows/rust.yml@main
     with:
       test-container: '{"image": "ghcr.io/tau-os/builder:main"}'
+      test-pre: dnf builddep -y ci/readymade.spec
