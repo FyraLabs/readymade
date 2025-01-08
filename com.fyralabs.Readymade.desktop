@@ -6,8 +6,7 @@ Categories=System;Utility;GNOME;GTK;
 Exec=readymade
 Terminal=false
 Type=Application
-# TODO: Make an icon for Readymade
-Icon=drive-harddisk
+Icon=com.fyralabs.Readymade
 StartupNotify=true
 StartupWMClass=com.fyralabs.Readymade
 # This will hide the desktop file, inside of a live environment, set it to false to show it
