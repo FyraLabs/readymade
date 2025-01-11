@@ -1,7 +1,6 @@
 # Hacking Readymade
 
-Readymade is an OS installer written in Rust, and currently a frontend for [Albius](https://github.com/Vanilla-OS/Albius).
-There are plans to create a dedicated backend for Readymade in the future for better integration with the installer.
+Readymade is an OS installer written in Rust, and currently a frontend for systemd-repart.
 
 The UI code is written in [Relm](https://relm4.org/), a GTK4 UI framework for Rust inspired by Elm.
 
