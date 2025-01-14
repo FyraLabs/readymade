@@ -127,7 +127,17 @@ pub fn install_custom(
         );
     }
 
-    // container.run(|| state._inner_sys_setup())??;
+    let mut fstab = std::process::Command::new("mkfstab");
+    let fstab = fstab.arg("/mnt/custom/"); // root
+    let fstab = fstab.stdout(std::process::Stdio::piped());
+    let fstab = fstab.output()?.stdout;
+    let fstab = String::from_utf8(fstab)?;
+
+    let efi = (mounttags.0.iter())
+        .find(|part| part.mountpoint == std::path::Path::new("/boot/efi"))
+        .and_then(|part| part.partition.to_str().map(ToOwned::to_owned));
+
+    container.run(|| state._inner_sys_setup(fstab, efi))??;
 
     Ok(())
 }
