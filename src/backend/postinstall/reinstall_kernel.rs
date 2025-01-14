@@ -3,6 +3,8 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 
+use crate::stage;
+
 use super::{Context, PostInstallModule};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -21,19 +23,21 @@ impl PostInstallModule for ReinstallKernel {
 
         // install kernel
 
-        let kernel_install_cmd_status = Command::new("kernel-install")
-            .arg("add")
-            .arg(kver)
-            .arg(format!("/lib/modules/{kver}/vmlinuz"))
-            .arg("--verbose")
-            .status()?;
+        stage!("Reinstalling kernels" {
+            let kernel_install_cmd_status = Command::new("kernel-install")
+                .arg("add")
+                .arg(kver)
+                .arg(format!("/lib/modules/{kver}/vmlinuz"))
+                .arg("--verbose")
+                .status()?;
 
-        if !kernel_install_cmd_status.success() {
-            bail!(
-                "kernel-install failed with exit code {:?}",
-                kernel_install_cmd_status.code()
-            );
-        }
+            if !kernel_install_cmd_status.success() {
+                bail!(
+                    "kernel-install failed with exit code {:?}",
+                    kernel_install_cmd_status.code()
+                );
+            }
+        });
 
         Ok(())
     }

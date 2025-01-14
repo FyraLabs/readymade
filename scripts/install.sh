@@ -19,6 +19,7 @@ for dir in `ls -d */`; do
 done
 popd
 
+install -Dpm644 com.fyralabs.Readymade.svg $root/usr/share/icons/hicolor/scalable/apps/com.fyralabs.Readymade.svg
 install -Dpm644 com.fyralabs.Readymade.desktop $root/usr/share/applications/com.fyralabs.Readymade.desktop
 install -Dpm644 com.fyralabs.pkexec.readymade.policy $root/usr/share/polkit-1/actions/com.fyralabs.pkexec.readymade.policy
 install -Dpm644 templates/ultramarine.toml $root/etc/readymade.toml
