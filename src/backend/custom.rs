@@ -126,15 +126,9 @@ pub fn install_custom(
         } else {
             // todo: fix dir copy method, it's very broken due to symlinks
             crate::stage!("Copying files" {
-                // fs_more::directory::copy_directory(&copy_source, destroot, DIR_COPY_OPTS).wrap_err("can't copy files")?;
-                // https://github.com/woelper/dircpy/blob/master/src/lib.rs
-                // https://docs.rs/jwalk/latest/jwalk/
-                dircpy::CopyBuilder::new(&copy_source, destroot)
-                    .overwrite(true)
-                    .run().wrap_err("can't copy files")?;
+                crate::util::fs::copy_dir(&copy_source, destroot)?;
             });
             tracing::info!(?copy_source, ?destroot, "Copying directory");
-            // crate::util::fs::copy_dir(&copy_source, destroot)?;
         }
     }
 

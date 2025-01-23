@@ -33,7 +33,7 @@ serde_with = "3.9.0"
 uuid = { version = "1.10.0", features = ["serde"] }
 tiffin = { version = "0.3.2" }
 tracing-journald = "0.3.0"
-# rayon = "1.10.0"
+rayon = "1.10.0"
 process_alive = "0.1.1"
 crossbeam-queue = "0.3.11"
 strip-ansi-escapes = "0.2.0"
@@ -52,8 +52,8 @@ format-bytes = "0.3.0"
 ipc-channel = { version = "0.19.0", features = ["async"] }
 which = "7.0.1"
 freedesktop-desktop-entry = "0.7.7"
-fs-more = "0.8.0"
-dircpy = "0.3.19"
+jwalk = "0.8.1"
+filetime = "0.2.25"
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"

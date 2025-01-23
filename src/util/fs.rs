@@ -27,73 +27,68 @@ pub fn exist_then_read_dir<A: AsRef<Path>>(
         Ok(x) => Ok(Box::new(x.flatten())),
     }
 }
+/// Attempt to remove a file, but ignore if the file didn't exist in the first place.
+fn remove_if_exists(path: &Path) -> color_eyre::Result<()> {
+    let rm = std::fs::remove_file(path);
+    
+    if rm.is_err() && rm.as_ref().unwrap_err().kind() != std::io::ErrorKind::NotFound {
+        bail!(rm.unwrap_err());
+    }
+    Ok(())
+}
 
-/*
 pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     use rayon::iter::{ParallelBridge, ParallelIterator};
-    
+
     // todo: use walkdir or something
     // or https://crates.io/crates/dircpy
     // or https://docs.rs/fs-more/latest/fs_more/directory/fn.copy_directory.html
     //
-    // also parallelizing this is a bit of a waste, since we're doing a lot of IO, 
+    // also parallelizing this is a bit of a waste, since we're doing a lot of IO,
     // and we might mess with the dir order
 
     let to = to.as_ref();
+    let from = from.as_ref();
     std::fs::create_dir_all(to)?;
-    from.as_ref()
-        .read_dir()?
-        .par_bridge()
-        .try_for_each(|dir_entry| -> color_eyre::Result<()> {
-            let dir_entry = dir_entry?;
-            let to = to.join(dir_entry.file_name());
-            let metadata = dir_entry.path().symlink_metadata().map_err(|e| {
-                eyre!("can't grab metadata")
-                    .note(format!("Path : {}", dir_entry.path().display()))
-                    .wrap_err(e)
-            })?;
-            if metadata.is_dir() {
-                copy_dir(dir_entry.path(), to)?;
-            } else if metadata.is_symlink() {
-                if dir_entry.path().exists() {
-                    tracing::warn!(
-                        ?dir_entry,
-                        "File seems to already exist.. Removing anyway to make way for symlink"
-                    );
-                    std::fs::remove_file(dir_entry.path()).map_err(|e| {
-                        eyre!("can't remove file for symlink")
-                            .note(format!("From : {}", dir_entry.path().display()))
-                            .note(format!("To   : {}", to.display()))
-                            // .note(format!("Link : {}", link.display()))
-                            .wrap_err(e)
-                    })?;
-                }
-                let link = match std::fs::read_link(dir_entry.path()) {
-                    Ok(link) => link,
-                    Err(e) => {
-                        tracing::warn!(path=?dir_entry.path(), ?e, "link does not exist, skipping");
-                        return Ok(());
-                    }
-                };
-                std::os::unix::fs::symlink(&link, &to).map_err(|e| {
-                    eyre!("can't symlink")
-                        .note(format!("From : {}", dir_entry.path().display()))
-                        .note(format!("To   : {}", to.display()))
-                        .note(format!("Link : {}", link.display()))
-                        .wrap_err(e)
-                })?;
-            } else {
-                std::fs::copy(dir_entry.path(), &to).map_err(|e| {
-                    eyre!("can't copy file")
-                        .note(format!("From : {}", dir_entry.path().display()))
-                        .note(format!("To   : {}", to.display()))
-                        .wrap_err(e)
-                })?;
+    
+
+
+    let walkdir = jwalk::WalkDir::new(from).sort(true).into_iter();
+
+    walkdir.par_bridge().try_for_each(|entry| -> color_eyre::Result<()> {
+        let entry = entry?;
+
+        let src_path = entry.path();
+
+        let dest_path = to.join(src_path.strip_prefix(from)?);
+
+        // tracing::trace!(?src_path, ?dest_path, "Copying");
+
+        let metadata = src_path.symlink_metadata()?;
+
+        if metadata.is_dir() {
+            std::fs::create_dir_all(&dest_path)?;
+        } else if metadata.is_symlink() {
+            if !dest_path.parent().unwrap().exists() {
+                std::fs::create_dir_all(dest_path.parent().unwrap())?;
             }
-            Ok(())
-        })
+            // read link path
+            let link = std::fs::read_link(&src_path)?;
+
+            remove_if_exists(&dest_path)?;
+            std::os::unix::fs::symlink(&link, &dest_path)?;
+        } else {
+            if !dest_path.parent().unwrap().exists() {
+                std::fs::create_dir_all(dest_path.parent().unwrap())?;
+            }
+
+            remove_if_exists(&dest_path)?;
+            std::fs::copy(src_path, dest_path)?;
+        }
+        Ok(())
+    })
+
 }
-*/
 
 /// Get partition number from partition path
 ///
