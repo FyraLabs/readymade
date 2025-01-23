@@ -53,10 +53,14 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::R
     std::fs::create_dir_all(to)?;
 
     let walkdir = jwalk::WalkDir::new(from).sort(true).into_iter();
+    
+    
 
     walkdir
+        .enumerate()
         .par_bridge()
-        .try_for_each(|entry| -> color_eyre::Result<()> {
+        .try_for_each(|(_num, entry)| -> color_eyre::Result<()> {
+            // let (num, entry) = entry;
             let entry = entry?;
 
             let src_path = entry.path();
@@ -87,37 +91,64 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::R
                 std::fs::copy(&src_path, &dest_path)?;
                 // let metadata = src_path.symlink_metadata().unwrap();
             }
-            // after actually copying the dirs, set the attrs
-            let atime = metadata
-                .accessed()
-                .expect("cannot get atime")
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap();
 
-            let mtime = metadata
-                .modified()
-                .expect("cannot get atime")
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap();
-            nix::sys::stat::utimes(
-                &dest_path,
-                &nix::sys::time::TimeVal::new(
-                    atime.as_secs().try_into().unwrap(),
-                    (atime.as_micros() % 1_000_000).try_into().unwrap(),
-                ),
-                &nix::sys::time::TimeVal::new(
-                    mtime.as_secs().try_into().unwrap(),
-                    (mtime.as_micros() % 1_000_000).try_into().unwrap(),
-                ),
-            )?;
+            // set attributes only for files and dirs, symlinks will fail with ENOENT
+            if metadata.is_dir() || metadata.is_file() {
+                // after actually copying the dirs, set the attrs
+                let atime = metadata
+                    .accessed()
+                    .expect("cannot get atime")
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap();
 
-            let xattrs = xattr::list(&src_path)?;
-            for xattr in xattrs {
-                let value = xattr::get(&src_path, &xattr)?;
-                if let Some(val) = value {
-                    xattr::set(&dest_path, &xattr, &val)?;
+                let mtime = metadata
+                    .modified()
+                    .expect("cannot get atime")
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap();
+                // tracing::trace!(?atime, ?mtime, ?dest_path, "Setting times");    
+                nix::sys::stat::utimes(
+                    &dest_path,
+                    &nix::sys::time::TimeVal::new(
+                        atime.as_secs().try_into().unwrap(),
+                        (atime.as_micros() % 1_000_000).try_into().unwrap(),
+                    ),
+                    &nix::sys::time::TimeVal::new(
+                        mtime.as_secs().try_into().unwrap(),
+                        (mtime.as_micros() % 1_000_000).try_into().unwrap(),
+                    ),
+                )?;
+
+                match xattr::list(&src_path) {
+                    Ok(xattrs) => {
+                        for xattr in xattrs {
+                            match xattr::get(&src_path, &xattr) {
+                                Ok(value) => {
+                                    if let Some(val) = value {
+                                        if let Err(e) = xattr::set(&dest_path, &xattr, &val) {
+                                            tracing::warn!(
+                                                "Failed to set xattr {}: {}",
+                                                xattr.to_string_lossy(),
+                                                e
+                                            );
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "Failed to get xattr {}: {}",
+                                        xattr.to_string_lossy(),
+                                        e
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to list xattrs: {}", e);
+                    }
                 }
-                // xattr::set(&dest_path, &xattr, &value)?;
+
             }
 
             Ok(())
