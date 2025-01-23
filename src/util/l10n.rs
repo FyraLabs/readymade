@@ -19,7 +19,7 @@ pub fn get_lang_from_locale(locale: &str) -> Option<(String, String)> {
     }
 }
 
-fn _list(f: impl Fn(&str) -> Option<(String, String)>) -> HashMap<String, (String, String)> {
+fn list(f: impl Fn(&str) -> Option<(String, String)>) -> HashMap<String, (String, String)> {
     (list_locales().into_iter())
         .filter_map(|s| Some((f(&s)?, s))) // avoid clone ∴ flip here (rust bug?)
         .map(|(lang, locale)| (locale, lang))
@@ -28,7 +28,7 @@ fn _list(f: impl Fn(&str) -> Option<(String, String)>) -> HashMap<String, (Strin
 
 /// A list of `locale_id` -> name of language in English
 pub fn list_langs() -> HashMap<String, (String, String)> {
-    _list(get_lang_from_locale)
+    list(get_lang_from_locale)
 }
 
 #[cfg(test)]

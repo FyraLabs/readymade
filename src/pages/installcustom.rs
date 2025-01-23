@@ -289,11 +289,140 @@ impl FactoryComponent for ChooseMount {
 }
 // ────────────────────────────────────────────────────────────────────────────
 // PartitionTypeDropdown
+#[derive(Debug, Default, Clone)]
+enum PartitionType {
+    /// Root partition
+    #[default]
+    Root,
+    /// /boot (xbootldr)
+    ExtendedBoot,
+    /// /boot/efi (esp)
+    Esp,
+    /// /home
+    Home,
+    /// /var
+    Var,
+    Other(String),
+}
+
+impl PartitionType {
+    #[must_use]
+    fn all() -> [Self; 6] {
+        use PartitionType::*;
+        [Root, ExtendedBoot, Esp, Home, Var, Other("".to_owned())]
+    }
+    fn as_str(&self) -> &str {
+        match self {
+            Self::Root => "/",
+            Self::ExtendedBoot => "/boot",
+            Self::Esp => "/boot/efi",
+            Self::Home => "/home",
+            Self::Var => "/var",
+            Self::Other(s) => s,
+        }
+    }
+
+    fn from_str(s: &str) -> Self {
+        match s {
+            "/" => Self::Root,
+            "/boot" => Self::ExtendedBoot,
+            "/boot/efi" => Self::Esp,
+            "/home" => Self::Home,
+            "/var" => Self::Var,
+            _ => Self::Other(s.to_string()),
+        }
+    }
+
+    fn description_string(&self) -> String {
+        match self {
+            Self::Root => gettext("Filesystem root (/)"),
+            Self::ExtendedBoot => gettext("Extended Boot Loader Partition (/boot)"),
+            Self::Esp => gettext("EFI System Partition (/boot/efi)"),
+            Self::Home => gettext("User data (/home)"),
+            Self::Var => gettext("Variable data (/var)"),
+            Self::Other(_) => gettextrs::pgettext("Custom partitioning mountpoint", "Other"),
+        }
+    }
+}
 
 /// Dropdown the set the mountpoint type, for ease of use.
-/// 
-/// There will be an Other option to allow the user to type in their own mountpoint.
-struct PartitionTypeDropdown {}
+///
+/// There will be an Other option to allow the user to type in their own mountpoint,
+/// which creates a text entry next to the dropdown.
+///
+/// This will be a `Gtk::Box` containing a `Gtk::ComboBoxText` and a `Gtk::Entry`.
+#[derive(Debug, Default, Clone, Copy)]
+struct PartitionTypeDropdown {
+    is_other: bool,
+}
+
+#[relm4::component]
+impl SimpleComponent for PartitionTypeDropdown {
+    type Init = ();
+    type Input = PartitionType;
+    type Output = PartitionType;
+
+    view! {
+        gtk::Box {
+            set_orientation: gtk::Orientation::Horizontal,
+            set_spacing: 4,
+            set_halign: gtk::Align::Fill,
+            set_hexpand: true,
+
+            #[local_ref] dropdown ->
+            gtk::DropDown {
+                connect_selected_notify[sender] => move |dropdown| {
+                    let selected = PartitionType::all()[dropdown.selected() as usize].clone();
+                    tracing::trace!(?selected, "PartitionTypeDropdown::selected");
+                    sender.input(selected);
+                },
+            },
+
+            #[name = "entry"]
+            gtk::Entry {
+                set_halign: gtk::Align::Fill,
+                set_hexpand: false,
+                #[watch]
+                set_visible: model.is_other,
+
+                connect_changed[sender] => move |entry| {
+                    let text = entry.text();
+                    if !text.is_empty() {
+                        sender.output(PartitionType::Other(text.into())).unwrap();
+                    }
+                },
+            },
+        },
+    }
+
+    fn init(
+        (): Self::Init,
+        root: Self::Root,
+        sender: ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        let model = Self::default();
+        let parttypes = PartitionType::all()
+            .into_iter()
+            .map(|s| s.description_string())
+            .collect_vec();
+
+        let dropdown =
+            gtk::DropDown::from_strings(&parttypes.iter().map(String::as_str).collect_vec());
+
+        let widgets = view_output!();
+
+        ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
+        if let PartitionType::Other(_) = message {
+            self.is_other = true;
+        } else {
+            self.is_other = false;
+        }
+        sender.output(message).unwrap();
+    }
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // AddDialog (also for edit)
@@ -304,14 +433,16 @@ struct AddDialog {
     mountpoint: String,
     mountopts: String,
     index: usize,
+    mnpt_type_is_other: bool,
 }
 
 #[derive(Debug)]
 enum AddDialogMsg {
     ChangedPart(String),
-    ChangedMnpt(String),
+    // ChangedMnpt(String),
     ChangedOpts(String),
     Close(libhelium::Window),
+    SelectMnptType(PartitionType),
 }
 
 #[relm4::component]
@@ -365,13 +496,9 @@ impl SimpleComponent for AddDialog {
                         #[watch]
                         set_label: &gettext("Mount at"),
                     },
-                    #[name = "tf_at"]
-                    libhelium::TextField {
-                        set_halign: gtk::Align::Fill,
-                        set_hexpand: true,
-                        set_is_outline: true,
-                        add_css_class: "monospace",
-                    },
+
+                    #[local_ref] dd_at ->
+                    gtk::Box {},
                 },
 
                 gtk::Box {
@@ -401,20 +528,34 @@ impl SimpleComponent for AddDialog {
 
                     #[watch]
                     set_sensitive: !model.partition.is_empty() && !model.mountpoint.is_empty(),
+                    // HACK: relm4 doesn't perform the #[watch] until the UI is updated by the user
+                    // e.g. they typed something into the entry, then relm4 actually finally realize
+                    // it needs to set this as sensitive
+                    // 
+                    // therefore right here we just have relm4 default to a sensitivity before any UI trigs
+                    set_sensitive: !model.partition.is_empty(),
                 },
             },
         }
     }
 
     fn init(
-        init: Self::Init,
+        mut init: Self::Init,
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         tracing::trace!(?init, "Spawned AddDialog");
+        PartitionType::default()
+            .as_str()
+            .clone_into(&mut init.mountpoint);
         // populate partition dropdown list
         let disk = (crate::INSTALLATION_STATE.read().destination_disk.clone()).unwrap();
         let disk = disk.devpath.file_name().unwrap().to_str().unwrap();
+        let mut mp_dropdown = PartitionTypeDropdown::builder()
+            .launch(())
+            .forward(sender.input_sender(), AddDialogMsg::SelectMnptType);
+        mp_dropdown.detach_runtime();
+        let dd_at = mp_dropdown.widget();
         let partlist = lsblk::BlockDevice::list().unwrap();
         let partlist = (partlist.iter())
             .filter(|b| b.is_part() && b.disk_name().is_ok_and(|d| d == disk))
@@ -423,7 +564,7 @@ impl SimpleComponent for AddDialog {
         let partlist =
             &gtk::DropDown::from_strings(&partvec.iter().filter_map(|s| s.to_str()).collect_vec());
 
-        let (sd0, sd1, sd2) = (sender.clone(), sender.clone(), sender.clone());
+        let (sd0, sd2) = (sender.clone(), sender.clone());
         let partvec0 = partvec.clone();
         // connect signal for the dropdown
         partlist.connect_selected_notify(move |dropdown| {
@@ -433,13 +574,19 @@ impl SimpleComponent for AddDialog {
             ));
         });
 
+        // todo: binding dropdown
+        // when other selected:
+        // - enable text field inside
+        // - treat the text field like the old tf_at
+        // - get the value from the now-visible text field and set the mountpoint to that value
+        // when other is not selected:
+        // - hide text field again
+        // - blank out the text field if it was filled, so it won't fill in the mountpoint
+        // - get the value from the dropdown using the `to_string` method, and set the mountpoint to that value
+
         let mut model = init;
         let widgets = view_output!();
         // connect signal for textfields
-        widgets
-            .tf_at
-            .internal_entry()
-            .connect_changed(move |en| sd1.input(AddDialogMsg::ChangedMnpt(en.text().to_string())));
         widgets
             .tf_opts
             .internal_entry()
@@ -455,7 +602,7 @@ impl SimpleComponent for AddDialog {
         {
             partlist.set_selected(index as u32);
         }
-        widgets.tf_at.internal_entry().set_text(&model.mountpoint);
+        // widgets.tf_at.internal_entry().set_text(&model.mountpoint);
         widgets.tf_opts.internal_entry().set_text(&model.mountopts);
 
         ComponentParts { model, widgets }
@@ -464,11 +611,19 @@ impl SimpleComponent for AddDialog {
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             AddDialogMsg::ChangedPart(part) => self.partition = part,
-            AddDialogMsg::ChangedMnpt(mnpt) => self.mountpoint = mnpt,
+            // AddDialogMsg::ChangedMnpt(mnpt) => self.mountpoint = mnpt,
             AddDialogMsg::ChangedOpts(opts) => self.mountopts = opts,
             AddDialogMsg::Close(window) => {
                 sender.output(std::mem::take(self)).unwrap();
                 window.close();
+            }
+            AddDialogMsg::SelectMnptType(t) => {
+                // if let PartitionType::Other(_) = t {
+                //     self.mnpt_type_is_other = true;
+                // } else {
+                //     self.mnpt_type_is_other = false;
+                // }
+                t.as_str().clone_into(&mut self.mountpoint);
             }
         }
     }
@@ -481,6 +636,7 @@ impl From<&AddDialog> for ChooseMount {
             mountpoint,
             mountopts,
             index,
+            ..
         }: &AddDialog,
     ) -> Self {
         Self {
@@ -506,6 +662,7 @@ impl From<&ChooseMount> for AddDialog {
             partition: partition.display().to_string(),
             mountpoint: mountpoint.display().to_string(),
             mountopts: options.clone(),
+            ..Default::default()
         }
     }
 }
@@ -517,6 +674,7 @@ impl From<AddDialog> for ChooseMount {
             mountpoint,
             mountopts,
             index,
+            ..
         }: AddDialog,
     ) -> Self {
         Self {
@@ -542,6 +700,7 @@ impl From<ChooseMount> for AddDialog {
             partition: partition.display().to_string(),
             mountpoint: mountpoint.display().to_string(),
             mountopts: options,
+            ..Default::default()
         }
     }
 }
@@ -647,6 +806,7 @@ impl SimpleComponent for PartitionToolSelector {
                     set_spacing: 16,
                     set_align: gtk::Align::Fill,
                     set_margin_all: 16,
+                    set_margin_top: 0,
                     set_vexpand: true,
                     set_hexpand: true,
 
@@ -680,7 +840,7 @@ impl SimpleComponent for PartitionToolSelector {
             .launch(gtk::Box::default())
             .detach();
         let mut guard = entry_factory.guard();
-        Self::list_partitioning_tools().for_each(|entry| {
+        Self::list_partitioning_tools().for_each(|(_, entry)| {
             guard.push_back(entry);
         });
         drop(guard);
@@ -706,7 +866,6 @@ impl SimpleComponent for PartitionToolSelector {
 /// }
 /// ```
 struct PartitionToolEntry {
-    path: std::path::PathBuf,
     desktop_entry: freedesktop_desktop_entry::DesktopEntry,
 }
 
@@ -716,7 +875,7 @@ impl FactoryComponent for PartitionToolEntry {
     type Input = ();
     type Output = ();
     type CommandOutput = ();
-    type Init = (PathBuf, freedesktop_desktop_entry::DesktopEntry);
+    type Init = freedesktop_desktop_entry::DesktopEntry;
 
     view! {
         gtk::Button {
@@ -738,7 +897,7 @@ impl FactoryComponent for PartitionToolEntry {
                     set_wrap_mode: gtk::pango::WrapMode::Word,
                 },
             },
-            connect_clicked[path = self.path.clone()] => move |_| {
+            connect_clicked[path = self.desktop_entry.path.clone()] => move |_| {
                 // expect() should work here because we have already triple-checked and filtered
                 // the broken entries in both
                 // `PartitionToolSelector::list_partitioning_tools()` and `PartitionToolSelector::query_desktop_entry()`
@@ -746,7 +905,7 @@ impl FactoryComponent for PartitionToolEntry {
                 //
                 // If for some arcane reason it's suddenly no longer valid, it's corrupted way beyond our control
                 let appinfo =
-                    gtk::gio::DesktopAppInfo::from_filename(path.to_str().expect("Invalid desktop file path"))
+                    gtk::gio::DesktopAppInfo::from_filename(&*path)
                         .expect("Invalid desktop file");
 
                 let launch_ctx = gtk::gio::AppLaunchContext::new();
@@ -757,8 +916,7 @@ impl FactoryComponent for PartitionToolEntry {
 
     fn init_model(init: Self::Init, index: &Self::Index, _sender: FactorySender<Self>) -> Self {
         Self {
-            path: init.0,
-            desktop_entry: init.1,
+            desktop_entry: init,
         }
     }
 }

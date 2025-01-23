@@ -1,29 +1,3 @@
-/// Run a command with elevated privileges if not already root.
-///
-/// This function relies upon the `pkexec` command to elevate privileges.
-///
-/// If the current user is not root, the command will be run with `pkexec`.
-pub fn run_as_root(cmd: &str) -> Result<String, std::io::Error> {
-    if std::process::Command::new("whoami")
-        .output()
-        .map(|output| String::from_utf8_lossy(&output.stdout).contains("root"))
-        .unwrap_or(false)
-    {
-        let output = std::process::Command::new("sh")
-            .arg("-c")
-            .arg(cmd)
-            .output()?;
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        let output = std::process::Command::new("pkexec")
-            .arg("sh")
-            .arg("-c")
-            .arg(cmd)
-            .output()?;
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    }
-}
-
 /// Check if the current running system is UEFI or not.
 ///
 /// Simply checks for the existence of the `/sys/firmware/efi` directory.

@@ -4,7 +4,7 @@ use std::process::{ChildStderr, ChildStdout, Command, Stdio};
 use std::sync::Arc;
 use tracing::{debug, warn};
 
-fn _just_read_stdout(tx: &Arc<SegQueue<u8>>, stop: &Arc<ArrayQueue<()>>, mut fd: ChildStdout) {
+fn just_read_stdout(tx: &Arc<SegQueue<u8>>, stop: &Arc<ArrayQueue<()>>, mut fd: ChildStdout) {
     while stop.is_empty() {
         let mut buf = [0];
         match fd.read(&mut buf) {
@@ -15,7 +15,7 @@ fn _just_read_stdout(tx: &Arc<SegQueue<u8>>, stop: &Arc<ArrayQueue<()>>, mut fd:
     }
 }
 
-fn _just_read_stderr(tx: &Arc<SegQueue<u8>>, stop: &Arc<ArrayQueue<()>>, mut fd: ChildStderr) {
+fn just_read_stderr(tx: &Arc<SegQueue<u8>>, stop: &Arc<ArrayQueue<()>>, mut fd: ChildStderr) {
     while stop.is_empty() {
         let mut buf = [0];
         match fd.read(&mut buf) {
@@ -50,8 +50,8 @@ where
     let mut hdl = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
     setup_handle(&mut hdl)?;
     let (stdout, stderr) = (hdl.stdout.take().unwrap(), hdl.stderr.take().unwrap());
-    let outhdl = std::thread::spawn(move || _just_read_stdout(&outqc, &outstopc, stdout));
-    let errhdl = std::thread::spawn(move || _just_read_stderr(&errqc, &errstopc, stderr));
+    let outhdl = std::thread::spawn(move || just_read_stdout(&outqc, &outstopc, stdout));
+    let errhdl = std::thread::spawn(move || just_read_stderr(&errqc, &errstopc, stderr));
     let (mut out, mut err) = (String::new(), String::new());
     let (mut tmpoutbytes, mut tmperrbytes) = (vec![], vec![]);
 
