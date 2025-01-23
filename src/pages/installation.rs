@@ -2,7 +2,6 @@ use crate::backend::install::InstallationMessage;
 use crate::prelude::*;
 use crate::{NavigationAction, INSTALLATION_STATE};
 use color_eyre::Result;
-use relm4::tokio::sync::broadcast::Receiver;
 use relm4::{Component, ComponentParts, ComponentSender};
 use std::time::Duration;
 

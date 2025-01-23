@@ -531,7 +531,7 @@ impl SimpleComponent for AddDialog {
                     // HACK: relm4 doesn't perform the #[watch] until the UI is updated by the user
                     // e.g. they typed something into the entry, then relm4 actually finally realize
                     // it needs to set this as sensitive
-                    // 
+                    //
                     // therefore right here we just have relm4 default to a sensitivity before any UI trigs
                     set_sensitive: !model.partition.is_empty(),
                 },
@@ -721,7 +721,9 @@ impl AddDialog {
         // WARN: by design yes this is a memleak but we have no choice
         ctrl.detach_runtime();
         ctrl.widget().set_transient_for(root_window.as_ref());
-        libhelium::prelude::WindowExt::set_parent(ctrl.widget(), root_window.as_ref());
+        libhelium::prelude::WindowExt::set_parent(ctrl.widget(), root_window.as_ref()); // FIXME: doubt if this actually works
+                                                                                        // temporary hack is to use the gtk one instead
+        gtk::prelude::WidgetExt::set_parent(ctrl.widget(), &root_window.expect("no root window"));
         ctrl.widget().present();
         ctrl
     }

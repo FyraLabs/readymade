@@ -28,8 +28,16 @@ pub fn exist_then_read_dir<A: AsRef<Path>>(
     }
 }
 
+/*
 pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     use rayon::iter::{ParallelBridge, ParallelIterator};
+    
+    // todo: use walkdir or something
+    // or https://crates.io/crates/dircpy
+    // or https://docs.rs/fs-more/latest/fs_more/directory/fn.copy_directory.html
+    //
+    // also parallelizing this is a bit of a waste, since we're doing a lot of IO, 
+    // and we might mess with the dir order
 
     let to = to.as_ref();
     std::fs::create_dir_all(to)?;
@@ -47,7 +55,26 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::R
             if metadata.is_dir() {
                 copy_dir(dir_entry.path(), to)?;
             } else if metadata.is_symlink() {
-                let link = std::fs::read_link(dir_entry.path())?;
+                if dir_entry.path().exists() {
+                    tracing::warn!(
+                        ?dir_entry,
+                        "File seems to already exist.. Removing anyway to make way for symlink"
+                    );
+                    std::fs::remove_file(dir_entry.path()).map_err(|e| {
+                        eyre!("can't remove file for symlink")
+                            .note(format!("From : {}", dir_entry.path().display()))
+                            .note(format!("To   : {}", to.display()))
+                            // .note(format!("Link : {}", link.display()))
+                            .wrap_err(e)
+                    })?;
+                }
+                let link = match std::fs::read_link(dir_entry.path()) {
+                    Ok(link) => link,
+                    Err(e) => {
+                        tracing::warn!(path=?dir_entry.path(), ?e, "link does not exist, skipping");
+                        return Ok(());
+                    }
+                };
                 std::os::unix::fs::symlink(&link, &to).map_err(|e| {
                     eyre!("can't symlink")
                         .note(format!("From : {}", dir_entry.path().display()))
@@ -66,6 +93,7 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::R
             Ok(())
         })
 }
+*/
 
 /// Get partition number from partition path
 ///

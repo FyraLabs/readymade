@@ -8,8 +8,9 @@ macro_rules! stage {
             let sender = m.lock().unwrap();
             // Then we are in a non-interactive install, which means we export IPC
             // to stdout
+            let status_localized = gettextrs::gettext($s).to_owned();
             let install_status =
-                $crate::backend::install::InstallationMessage::Status($s.to_owned());
+                $crate::backend::install::InstallationMessage::Status(status_localized);
             sender.send(install_status).unwrap();
         }
 

@@ -133,10 +133,10 @@ impl SimpleComponent for AppModel {
                     Page::Welcome => *model.welcome_page.widget(),
                     Page::Destination => *model.destination_page.widget(),
                     Page::InstallationType => *model.installation_type_page.widget(),
-                    Page::Confirmation => *model.confirmation_page.widget(),
-                    Page::Installation => *model.installation_page.widget(),
                     Page::InstallDual => *model.install_dual_page.widget(),
                     Page::InstallCustom => *model.install_custom_page.widget(),
+                    Page::Confirmation => *model.confirmation_page.widget(),
+                    Page::Installation => *model.installation_page.widget(),
                     Page::Completed => *model.completed_page.widget(),
                     Page::Failure => *model.failure_page.widget(),
                 }
