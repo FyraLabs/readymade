@@ -32,7 +32,7 @@ pub fn unsquash_copy<F: FnMut(usize, usize)>(
         match &node.inner {
             InnerNode::File(f) => {
                 // Just write it in split second if <= 1 MiB
-                if f.basic.file_size <= 1024 * 1024 {
+                if f.file_len() <= 1024 * 1024 {
                     _writef(&path, arcfs, f)?;
                     continue;
                 }
@@ -100,12 +100,12 @@ fn _writef(
     fs: &std::sync::Arc<FilesystemReader<'_>>,
     f: &backhand::SquashfsFileReader,
 ) -> std::io::Result<()> {
-    trace!(size = f.basic.file_size, "Writing file");
+    trace!(size = f.file_len(), "Writing file");
     let dir = path.parent().ok_or_else(|| {
         std::io::Error::new(std::io::ErrorKind::Other, "Cannot parse path parent")
     })?;
     std::fs::create_dir_all(dir)?;
-    let mut reader = fs.file(&f.basic).reader();
+    let mut reader = fs.file(f).reader();
     let mut file = std::fs::File::create_new(path)?;
     std::io::copy(&mut reader, &mut file).map(|_| ())
 }

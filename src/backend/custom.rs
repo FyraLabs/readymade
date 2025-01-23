@@ -6,22 +6,22 @@ use color_eyre::eyre::Context;
 
 use super::install::InstallationState;
 
-const DIR_COPY_OPTS: fs_more::directory::DirectoryCopyOptions = {
-    use fs_more::directory::{
-        BrokenSymlinkBehaviour, CollidingSubDirectoryBehaviour, DestinationDirectoryRule,
-        DirectoryCopyDepthLimit, DirectoryCopyOptions, SymlinkBehaviour,
-    };
-    use fs_more::file::CollidingFileBehaviour;
-    DirectoryCopyOptions {
-        destination_directory_rule: DestinationDirectoryRule::AllowNonEmpty {
-            colliding_file_behaviour: CollidingFileBehaviour::Overwrite,
-            colliding_subdirectory_behaviour: CollidingSubDirectoryBehaviour::Continue,
-        },
-        copy_depth_limit: DirectoryCopyDepthLimit::Unlimited,
-        symlink_behaviour: SymlinkBehaviour::Keep,
-        broken_symlink_behaviour: BrokenSymlinkBehaviour::Keep,
-    }
-};
+// const DIR_COPY_OPTS: fs_more::directory::DirectoryCopyOptions = {
+//     use fs_more::directory::{
+//         BrokenSymlinkBehaviour, CollidingSubDirectoryBehaviour, DestinationDirectoryRule,
+//         DirectoryCopyDepthLimit, DirectoryCopyOptions, SymlinkBehaviour,
+//     };
+//     use fs_more::file::CollidingFileBehaviour;
+//     DirectoryCopyOptions {
+//         destination_directory_rule: DestinationDirectoryRule::AllowNonEmpty {
+//             colliding_file_behaviour: CollidingFileBehaviour::Overwrite,
+//             colliding_subdirectory_behaviour: CollidingSubDirectoryBehaviour::Continue,
+//         },
+//         copy_depth_limit: DirectoryCopyDepthLimit::Unlimited,
+//         symlink_behaviour: SymlinkBehaviour::Keep,
+//         broken_symlink_behaviour: BrokenSymlinkBehaviour::Keep,
+//     }
+// };
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct MountTarget {
@@ -118,13 +118,20 @@ pub fn install_custom(
         };
 
         let copy_source = PathBuf::from(InstallationState::determine_copy_source());
+        tracing::trace!(?copy_source, ?destroot);
         if copy_source.is_file() {
             crate::stage!("Extracting files" {
                 super::mksys::unsquash_copy(&copy_source, destroot, |_, _| {})?;
             });
         } else {
+            // todo: fix dir copy method, it's very broken due to symlinks
             crate::stage!("Copying files" {
-                fs_more::directory::copy_directory(&copy_source, destroot, DIR_COPY_OPTS).wrap_err("can't copy files")?;
+                // fs_more::directory::copy_directory(&copy_source, destroot, DIR_COPY_OPTS).wrap_err("can't copy files")?;
+                // https://github.com/woelper/dircpy/blob/master/src/lib.rs
+                // https://docs.rs/jwalk/latest/jwalk/
+                dircpy::CopyBuilder::new(&copy_source, destroot)
+                    .overwrite(true)
+                    .run().wrap_err("can't copy files")?;
             });
             tracing::info!(?copy_source, ?destroot, "Copying directory");
             // crate::util::fs::copy_dir(&copy_source, destroot)?;
