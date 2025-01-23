@@ -729,11 +729,11 @@ impl AddDialog {
     }
 }
 
-const PARTITION_TOOLS_LIST: &[(&str, &str)] = &[
-    ("gparted", "gparted"),
-    ("gnome-disks", "org.gnome.DiskUtility"),
-    ("partitionmanager", "org.kde.partitionmanager"),
-    ("blivet-gui", "blivet-gui"),
+const PARTITION_TOOLS_LIST: &[&str] = &[
+    "gparted",
+    "org.gnome.DiskUtility",
+    "org.kde.partitionmanager",
+    "blivet-gui",
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -748,13 +748,11 @@ struct PartitionToolSelector {
 }
 
 impl PartitionToolSelector {
-    fn list_partitioning_tools(
-    ) -> impl Iterator<Item = (PathBuf, freedesktop_desktop_entry::DesktopEntry)> {
-        PARTITION_TOOLS_LIST.iter().copied().filter_map(|(a, b)| {
-            which::which(a)
-                .ok()
-                .and_then(|a| Some((a, Self::query_desktop_entry(b)?)))
-        })
+    fn list_partitioning_tools() -> impl Iterator<Item = freedesktop_desktop_entry::DesktopEntry> {
+        PARTITION_TOOLS_LIST
+            .iter()
+            .copied()
+            .filter_map(|p| Self::query_desktop_entry(p))
     }
     /// Get the XDG desktop entry for a given desktop entry name.
     ///
@@ -842,7 +840,7 @@ impl SimpleComponent for PartitionToolSelector {
             .launch(gtk::Box::default())
             .detach();
         let mut guard = entry_factory.guard();
-        Self::list_partitioning_tools().for_each(|(_, entry)| {
+        Self::list_partitioning_tools().for_each(|entry| {
             guard.push_back(entry);
         });
         drop(guard);

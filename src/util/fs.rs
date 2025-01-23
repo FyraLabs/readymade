@@ -7,6 +7,7 @@ use color_eyre::{
     eyre::{bail, eyre},
     Section,
 };
+use nix::libc::suseconds_t;
 
 /// Ignore errors about nonexisting files.
 pub fn exist_then<T: Default>(r: std::io::Result<T>) -> std::io::Result<T> {
@@ -30,7 +31,7 @@ pub fn exist_then_read_dir<A: AsRef<Path>>(
 /// Attempt to remove a file, but ignore if the file didn't exist in the first place.
 fn remove_if_exists(path: &Path) -> color_eyre::Result<()> {
     let rm = std::fs::remove_file(path);
-    
+
     if rm.is_err() && rm.as_ref().unwrap_err().kind() != std::io::ErrorKind::NotFound {
         bail!(rm.unwrap_err());
     }
@@ -50,44 +51,77 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::R
     let to = to.as_ref();
     let from = from.as_ref();
     std::fs::create_dir_all(to)?;
-    
-
 
     let walkdir = jwalk::WalkDir::new(from).sort(true).into_iter();
 
-    walkdir.par_bridge().try_for_each(|entry| -> color_eyre::Result<()> {
-        let entry = entry?;
+    walkdir
+        .par_bridge()
+        .try_for_each(|entry| -> color_eyre::Result<()> {
+            let entry = entry?;
 
-        let src_path = entry.path();
+            let src_path = entry.path();
 
-        let dest_path = to.join(src_path.strip_prefix(from)?);
+            let dest_path = to.join(src_path.strip_prefix(from)?);
 
-        // tracing::trace!(?src_path, ?dest_path, "Copying");
+            // tracing::trace!(?src_path, ?dest_path, "Copying");
 
-        let metadata = src_path.symlink_metadata()?;
+            let metadata = src_path.symlink_metadata()?;
 
-        if metadata.is_dir() {
-            std::fs::create_dir_all(&dest_path)?;
-        } else if metadata.is_symlink() {
-            if !dest_path.parent().unwrap().exists() {
-                std::fs::create_dir_all(dest_path.parent().unwrap())?;
+            if metadata.is_dir() {
+                std::fs::create_dir_all(&dest_path)?;
+            } else if metadata.is_symlink() {
+                if !dest_path.parent().unwrap().exists() {
+                    std::fs::create_dir_all(dest_path.parent().unwrap())?;
+                }
+                // read link path
+                let link = std::fs::read_link(&src_path)?;
+
+                remove_if_exists(&dest_path)?;
+                std::os::unix::fs::symlink(&link, &dest_path)?;
+            } else {
+                if !dest_path.parent().unwrap().exists() {
+                    std::fs::create_dir_all(dest_path.parent().unwrap())?;
+                }
+
+                remove_if_exists(&dest_path)?;
+                std::fs::copy(&src_path, &dest_path)?;
+                // let metadata = src_path.symlink_metadata().unwrap();
             }
-            // read link path
-            let link = std::fs::read_link(&src_path)?;
+            // after actually copying the dirs, set the attrs
+            let atime = metadata
+                .accessed()
+                .expect("cannot get atime")
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap();
 
-            remove_if_exists(&dest_path)?;
-            std::os::unix::fs::symlink(&link, &dest_path)?;
-        } else {
-            if !dest_path.parent().unwrap().exists() {
-                std::fs::create_dir_all(dest_path.parent().unwrap())?;
+            let mtime = metadata
+                .modified()
+                .expect("cannot get atime")
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap();
+            nix::sys::stat::utimes(
+                &dest_path,
+                &nix::sys::time::TimeVal::new(
+                    atime.as_secs().try_into().unwrap(),
+                    (atime.as_micros() % 1_000_000).try_into().unwrap(),
+                ),
+                &nix::sys::time::TimeVal::new(
+                    mtime.as_secs().try_into().unwrap(),
+                    (mtime.as_micros() % 1_000_000).try_into().unwrap(),
+                ),
+            )?;
+
+            let xattrs = xattr::list(&src_path)?;
+            for xattr in xattrs {
+                let value = xattr::get(&src_path, &xattr)?;
+                if let Some(val) = value {
+                    xattr::set(&dest_path, &xattr, &val)?;
+                }
+                // xattr::set(&dest_path, &xattr, &value)?;
             }
 
-            remove_if_exists(&dest_path)?;
-            std::fs::copy(src_path, dest_path)?;
-        }
-        Ok(())
-    })
-
+            Ok(())
+        })
 }
 
 /// Get partition number from partition path
