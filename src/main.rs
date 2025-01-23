@@ -153,7 +153,6 @@ impl SimpleComponent for AppModel {
         // TODO: make libhelium force this
         let display = gtk::gdk::Display::default().unwrap();
         let settings = gtk::Settings::for_display(&display);
-        *ROOT_WINDOW_ID.write() = root.id();
 
         initialize_custom_icons(&display);
         settings.set_gtk_icon_theme_name(Some("Hydrogen"));

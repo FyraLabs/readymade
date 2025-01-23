@@ -6,8 +6,26 @@ use crate::{
     backend::custom::MountTarget as ChooseMount, prelude::*, NavigationAction, INSTALLATION_STATE,
 };
 
+/// List of magic mountpoint labels, should not be forced but if labeled, suggested by default
+const MAGIC_MOUNTPOINT_LABELS: &[(&[&str], &str)] = &[
+    (&["ROOT"], "/"),
+    (&["ESP", "EFI"], "/boot/efi"),
+    (&["XBOOTLDR", "BOOT"], "/boot"),
+    (&["HOME"], "/home"),
+];
+
+/// Wizard to set up custom partitioning.
+///
+/// Users should also be able to label their partition with a special magic value to suggest
+/// Readymade to use that partition for a specific purpose, like /boot or /home.
+///
+/// i.e. If the user labels their partition `ROOT`, Readymade will automatically use that partition as the root partition.
+/// Or `ESP` for the EFI System Partition, `XBOOTLDR` for the bootloader partition, etc.
+///
+/// We may also handle cases where a BTRFS subvolume is labeled as `ROOT` or `HOME` automatically select it as the home partition.
 pub struct InstallCustomPage {
     pub choose_mount_factory: FactoryVecDeque<ChooseMount>,
+    pub root: libhelium::ViewMono,
 }
 
 #[derive(Debug)]
@@ -19,12 +37,17 @@ pub enum InstallCustomPageMsg {
     #[doc(hidden)]
     Navigate(NavigationAction),
     Update,
+    OpenPartTool,
 }
 
 #[derive(Debug)]
 pub enum InstallCustomPageOutput {
     Navigate(NavigationAction),
 }
+
+// todo: Open PartitionToolSelector window?
+// And then a button to re-open that window?
+// And a button to refresh the partitions?
 
 #[relm4::component(pub)]
 impl SimpleComponent for InstallCustomPage {
@@ -40,6 +63,7 @@ impl SimpleComponent for InstallCustomPage {
                 set_label: &gettext("Custom Installation"),
                 set_css_classes: &["view-title"],
             },
+
             set_vexpand: true,
             append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -72,12 +96,23 @@ impl SimpleComponent for InstallCustomPage {
                     connect_clicked => InstallCustomPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Confirmation)),
                 },
 
+
+
                 libhelium::BottomBar {
                     #[watch]
                     set_title: &gettext("Partitions and Mountpoints"),
 
                     #[watch]
                     set_description: &gettext("%s definition(s)").replace("%s", &model.choose_mount_factory.len().to_string()),
+
+                    prepend_button[libhelium::BottomBarPosition::Right] = &libhelium::Button {
+                        set_is_iconic: true,
+                        #[watch]
+                        set_tooltip: &gettext("Open partitioning tool"),
+
+                        set_icon: Some("preferences-system-symbolic"),
+                        connect_clicked => InstallCustomPageMsg::OpenPartTool,
+                    },
 
                     prepend_button[libhelium::BottomBarPosition::Left] = &libhelium::Button {
                         set_is_iconic: true,
@@ -102,6 +137,7 @@ impl SimpleComponent for InstallCustomPage {
             .forward(sender.input_sender(), InstallCustomPageMsg::RowOutput);
 
         let model = Self {
+            root: root.clone(),
             choose_mount_factory,
         };
 
@@ -124,7 +160,14 @@ impl SimpleComponent for InstallCustomPage {
                     index: self.choose_mount_factory.len(),
                     ..AddDialog::default()
                 }
-                .make_window(sender.input_sender(), InstallCustomPageMsg::UpdateRow);
+                .make_window(
+                    self.root.clone(),
+                    sender.input_sender(),
+                    InstallCustomPageMsg::UpdateRow,
+                );
+            }
+            InstallCustomPageMsg::OpenPartTool => {
+                _ = PartitionToolSelector::make_window(self.root.clone());
             }
             InstallCustomPageMsg::UpdateRow(msg) => {
                 let mut guard = self.choose_mount_factory.guard();
@@ -148,7 +191,11 @@ impl SimpleComponent for InstallCustomPage {
                         index,
                         ..mnt_target.into()
                     }
-                    .make_window(sender.input_sender(), InstallCustomPageMsg::UpdateRow);
+                    .make_window(
+                        self.root.clone(),
+                        sender.input_sender(),
+                        InstallCustomPageMsg::UpdateRow,
+                    );
                 }
                 ChooseMountOutput::Remove(index) => {
                     (self.choose_mount_factory.guard().remove(index))
@@ -240,6 +287,13 @@ impl FactoryComponent for ChooseMount {
         }
     }
 }
+// ────────────────────────────────────────────────────────────────────────────
+// PartitionTypeDropdown
+
+/// Dropdown the set the mountpoint type, for ease of use.
+/// 
+/// There will be an Other option to allow the user to type in their own mountpoint.
+struct PartitionTypeDropdown {}
 
 // ────────────────────────────────────────────────────────────────────────────
 // AddDialog (also for edit)
@@ -317,7 +371,6 @@ impl SimpleComponent for AddDialog {
                         set_hexpand: true,
                         set_is_outline: true,
                         add_css_class: "monospace",
-
                     },
                 },
 
@@ -494,19 +547,231 @@ impl From<ChooseMount> for AddDialog {
 }
 
 impl AddDialog {
-    fn make_window<X, F>(self, sender: &relm4::Sender<X>, transform: F) -> Controller<Self>
+    fn make_window<X, F>(
+        self,
+        widget: impl IsA<gtk::Widget>,
+        sender: &relm4::Sender<X>,
+        transform: F,
+    ) -> Controller<Self>
     where
         X: 'static,
         F: Fn(Self) -> X + 'static,
     {
-        let root_window = relm4::main_application().window_by_id(*crate::ROOT_WINDOW_ID.read());
-        let root_window = root_window.as_ref();
+        let root_window = widget.toplevel_window();
         let mut ctrl = Self::builder().launch(self).forward(sender, transform);
         // WARN: by design yes this is a memleak but we have no choice
         ctrl.detach_runtime();
-        ctrl.widget().set_transient_for(root_window);
-        libhelium::prelude::WindowExt::set_parent(ctrl.widget(), root_window);
+        ctrl.widget().set_transient_for(root_window.as_ref());
+        libhelium::prelude::WindowExt::set_parent(ctrl.widget(), root_window.as_ref());
         ctrl.widget().present();
         ctrl
+    }
+}
+
+const PARTITION_TOOLS_LIST: &[(&str, &str)] = &[
+    ("gparted", "gparted"),
+    ("gnome-disks", "org.gnome.DiskUtility"),
+    ("partitionmanager", "org.kde.partitionmanager"),
+    ("blivet-gui", "blivet-gui"),
+];
+
+// ────────────────────────────────────────────────────────────────────────────
+// PartitionToolSelector
+
+/// A new pop-up window to select a partitioning tool, should take in a list of [`DesktopEntry`]'s
+/// and ask the user which one to open, then call some function to open the selected tool using the
+/// desktop entry data.
+///
+struct PartitionToolSelector {
+    entry_factory: FactoryVecDeque<PartitionToolEntry>,
+}
+
+impl PartitionToolSelector {
+    fn list_partitioning_tools(
+    ) -> impl Iterator<Item = (PathBuf, freedesktop_desktop_entry::DesktopEntry)> {
+        PARTITION_TOOLS_LIST.iter().copied().filter_map(|(a, b)| {
+            which::which(a)
+                .ok()
+                .and_then(|a| Some((a, Self::query_desktop_entry(b)?)))
+        })
+    }
+    /// Get the XDG desktop entry for a given desktop entry name.
+    ///
+    /// # Arguments
+    ///
+    /// * `desktop_entry` - The name of the desktop entry to query. (foo.desktop)
+    fn query_desktop_entry(desktop_entry: &str) -> Option<freedesktop_desktop_entry::DesktopEntry> {
+        let locales = freedesktop_desktop_entry::get_languages_from_env();
+        // we could do from_path() but we want to future proof this in case XDG or Fedora
+        // changes some paths from now on, plus we don't have to hardcode the paths
+        let x = freedesktop_desktop_entry::Iter::new(freedesktop_desktop_entry::default_paths())
+            .entries(Some(&locales))
+            .find(|entry| entry.appid == desktop_entry);
+        x // FIXME: why can't we inline this variable
+    }
+    fn make_window(widget: impl IsA<gtk::Widget>) -> Controller<Self> {
+        let root_window = widget.toplevel_window();
+        let mut ctrl = Self::builder().launch(()).detach();
+        // XXX: by design yes this is a memleak but we have no choice
+        ctrl.detach_runtime();
+        ctrl.widget().set_transient_for(root_window.as_ref());
+
+        ctrl.widget()
+            .set_parent(&root_window.expect("no root window"));
+        ctrl.widget().present();
+        ctrl
+    }
+}
+
+#[relm4::component]
+impl SimpleComponent for PartitionToolSelector {
+    type Init = ();
+    type Input = ();
+    type Output = ();
+
+    view! {
+        libhelium::ApplicationWindow {
+            set_title: Some(&gettext("Select your partitioning tool")),
+
+            #[wrap(Some)]
+            set_child = &gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_align: gtk::Align::Fill,
+                set_vexpand: true,
+                set_hexpand: true,
+
+                libhelium::AppBar {},
+
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_spacing: 16,
+                    set_align: gtk::Align::Fill,
+                    set_margin_all: 16,
+                    set_vexpand: true,
+                    set_hexpand: true,
+
+                    gtk::Label {
+                        set_halign: gtk::Align::Center,
+                        set_valign: gtk::Align::Start,
+                        #[watch]
+                        set_label: &gettext("Select your partitioning tool"),
+                        set_css_classes: &["view-title"],
+                    },
+
+                    #[local_ref] entries ->
+                    gtk::Box {
+                        set_halign: gtk::Align::Center,
+                        set_valign: gtk::Align::End,
+                        set_orientation: gtk::Orientation::Horizontal,
+                        set_spacing: 16,
+                        set_homogeneous: true,
+                    },
+                },
+            },
+        }
+    }
+
+    fn init(
+        (): Self::Init,
+        root: Self::Root,
+        _sender: ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        let mut entry_factory = FactoryVecDeque::builder()
+            .launch(gtk::Box::default())
+            .detach();
+        let mut guard = entry_factory.guard();
+        Self::list_partitioning_tools().for_each(|entry| {
+            guard.push_back(entry);
+        });
+        drop(guard);
+
+        let model = Self { entry_factory };
+
+        let entries = model.entry_factory.widget();
+        let widgets = view_output!();
+        ComponentParts { model, widgets }
+    }
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {}
+}
+
+/// Partition tool selector entry,
+/// should be a factory to generate from a single [`freedesktop_desktop_entry::DesktopEntry`]
+/// layout:
+/// ```no_run
+/// box {
+///    button {
+///         image,
+///         label,
+///     }
+/// }
+/// ```
+struct PartitionToolEntry {
+    path: std::path::PathBuf,
+    desktop_entry: freedesktop_desktop_entry::DesktopEntry,
+}
+
+#[relm4::factory(pub)]
+impl FactoryComponent for PartitionToolEntry {
+    type ParentWidget = gtk::Box;
+    type Input = ();
+    type Output = ();
+    type CommandOutput = ();
+    type Init = (PathBuf, freedesktop_desktop_entry::DesktopEntry);
+
+    view! {
+        gtk::Button {
+            gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_spacing: 4,
+                set_halign: gtk::Align::Center,
+                set_valign: gtk::Align::Center,
+                set_margin_all: 8,
+
+                gtk::Image {
+                    set_icon_name: self.desktop_entry.icon(),
+                    set_pixel_size: 64,
+                },
+                gtk::Label {
+                    set_label: &self.desktop_entry.name(&freedesktop_desktop_entry::get_languages_from_env()).map_or(String::new(), |name| name.to_string()),
+                    add_css_class: "cb-subtitle",
+                    set_wrap: true,
+                    set_wrap_mode: gtk::pango::WrapMode::Word,
+                },
+            },
+            connect_clicked[path = self.path.clone()] => move |_| {
+                // expect() should work here because we have already triple-checked and filtered
+                // the broken entries in both
+                // `PartitionToolSelector::list_partitioning_tools()` and `PartitionToolSelector::query_desktop_entry()`
+                // so we can safely assume that the desktop entry is valid
+                //
+                // If for some arcane reason it's suddenly no longer valid, it's corrupted way beyond our control
+                let appinfo =
+                    gtk::gio::DesktopAppInfo::from_filename(path.to_str().expect("Invalid desktop file path"))
+                        .expect("Invalid desktop file");
+
+                let launch_ctx = gtk::gio::AppLaunchContext::new();
+                appinfo.launch_uris(&[], Some(&launch_ctx)).expect("cannot launch?");
+            },
+        }
+    }
+
+    fn init_model(init: Self::Init, index: &Self::Index, _sender: FactorySender<Self>) -> Self {
+        Self {
+            path: init.0,
+            desktop_entry: init.1,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_iter_desktop_entry() {
+        let iter = PartitionToolSelector::query_desktop_entry("gparted");
+        if let Some(entry) = iter {
+            println!("{entry:?}");
+        }
     }
 }
