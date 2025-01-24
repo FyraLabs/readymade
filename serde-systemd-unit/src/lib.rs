@@ -9,6 +9,7 @@ use de::SectionDeserializer;
 use parser::Err;
 use serde::de::IntoDeserializer;
 use std::collections::HashMap;
+pub use se::to_string;
 
 pub fn parse(s: &str) -> Result<SystemdIni, Err> {
     Ok(SystemdIni {
