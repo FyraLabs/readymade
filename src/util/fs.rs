@@ -3,11 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use color_eyre::{
-    eyre::{bail, eyre},
-    Section,
-};
-use nix::libc::suseconds_t;
+use color_eyre::eyre::{bail, eyre};
 
 /// Ignore errors about nonexisting files.
 pub fn exist_then<T: Default>(r: std::io::Result<T>) -> std::io::Result<T> {
@@ -99,7 +95,7 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::R
                 .expect("cannot get atime")
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap();
-            nix::sys::stat::utimes(
+            _ = nix::sys::stat::utimes(
                 &dest_path,
                 &nix::sys::time::TimeVal::new(
                     atime.as_secs().try_into().unwrap(),
@@ -109,15 +105,14 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::R
                     mtime.as_secs().try_into().unwrap(),
                     (mtime.as_micros() % 1_000_000).try_into().unwrap(),
                 ),
-            )?;
+            );
 
             let xattrs = xattr::list(&src_path)?;
             for xattr in xattrs {
                 let value = xattr::get(&src_path, &xattr)?;
                 if let Some(val) = value {
-                    xattr::set(&dest_path, &xattr, &val)?;
+                    _ = xattr::set(&dest_path, &xattr, &val);
                 }
-                // xattr::set(&dest_path, &xattr, &value)?;
             }
 
             Ok(())

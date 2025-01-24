@@ -2,26 +2,7 @@ use std::path::Component;
 use std::path::Path;
 use std::path::PathBuf;
 
-use color_eyre::eyre::Context;
-
 use super::install::InstallationState;
-
-// const DIR_COPY_OPTS: fs_more::directory::DirectoryCopyOptions = {
-//     use fs_more::directory::{
-//         BrokenSymlinkBehaviour, CollidingSubDirectoryBehaviour, DestinationDirectoryRule,
-//         DirectoryCopyDepthLimit, DirectoryCopyOptions, SymlinkBehaviour,
-//     };
-//     use fs_more::file::CollidingFileBehaviour;
-//     DirectoryCopyOptions {
-//         destination_directory_rule: DestinationDirectoryRule::AllowNonEmpty {
-//             colliding_file_behaviour: CollidingFileBehaviour::Overwrite,
-//             colliding_subdirectory_behaviour: CollidingSubDirectoryBehaviour::Continue,
-//         },
-//         copy_depth_limit: DirectoryCopyDepthLimit::Unlimited,
-//         symlink_behaviour: SymlinkBehaviour::Keep,
-//         broken_symlink_behaviour: BrokenSymlinkBehaviour::Keep,
-//     }
-// };
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct MountTarget {
@@ -121,14 +102,34 @@ pub fn install_custom(
         tracing::trace!(?copy_source, ?destroot);
         if copy_source.is_file() {
             crate::stage!("Extracting files" {
-                super::mksys::unsquash_copy(&copy_source, destroot, |_, _| {})?;
+                // super::mksys::unsquash_copy(&copy_source, destroot, |_, _| {})?;
+                //
+                // FIXME: I give up idk why this doesn't work
+                // let mt = MountTarget { partition: copy_source, mountpoint: "/mnt/rdmsqsh".into(),
+                //     options: "loop".into(),
+                //     ..Default::default() };
+                // mt.mount("/".as_ref())?;
+                // scopeguard::defer! {
+                //     if let Err(e) = mt.umount("/".as_ref()) {
+                //         tracing::error!("Cannot unmount /mnt/rdmsqsh: {e:?}");
+                //     }
+                // };
+                // and it says
+                // 0: Invalid argument (os error 22)
+                // the error is from the nix mount call I think
+                let rc = std::process::Command::new("mount").arg(copy_source).arg("/mnt/rdmsqsh").status()?.code();
+                if rc.is_none_or(|rc| rc != 0) {
+                    color_eyre::eyre::bail!("mount command returns rc={rc:?}");
+                }
+                scopeguard::defer! {
+                    _ = std::process::Command::new("umount").arg("/mnt/rdmsqsh").status();
+                }
+                crate::util::fs::copy_dir("/mnt/rdmsqsh", destroot)?;
             });
         } else {
-            // todo: fix dir copy method, it's very broken due to symlinks
             crate::stage!("Copying files" {
                 crate::util::fs::copy_dir(&copy_source, destroot)?;
             });
-            tracing::info!(?copy_source, ?destroot, "Copying directory");
         }
     }
 
