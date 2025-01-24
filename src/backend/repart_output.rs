@@ -1,5 +1,4 @@
 use bytesize::ByteSize;
-use color_eyre::eyre::eyre;
 use std::fmt::Write;
 use std::path::PathBuf;
 use sys_mount::MountFlags;
@@ -11,21 +10,6 @@ use crate::{
 };
 
 /// Gets the systemd version
-pub fn systemd_version() -> color_eyre::Result<usize> {
-    let output = std::process::Command::new("systemctl")
-        .arg("--version")
-        .output()?;
-    let version_str = std::str::from_utf8(&output.stdout)?;
-    let version = version_str
-        .split_whitespace()
-        .nth(1)
-        .ok_or_else(|| eyre!("Could not parse systemd version"))?
-        .split('.')
-        .next()
-        .ok_or_else(|| eyre!("Could not parse systemd version"))?
-        .parse()?;
-    Ok(version)
-}
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 // type should be just an array of partitions
@@ -39,13 +23,8 @@ impl RepartOutput {
     /// Generate a `BTreeMap` of mountpoint -> node name for generating /etc/fstab
     /// from DDI partition types
     pub fn mountpoints(&self) -> impl Iterator<Item = (&'static str, String)> + '_ {
-        self.partitions
-            .iter()
+        (self.partitions.iter())
             .filter_map(|part| part.ddi_mountpoint().map(|mp| (mp, part.node.clone())))
-    }
-
-    pub fn find_by_node(&self, node: &str) -> Option<&RepartPartition> {
-        self.partitions.iter().find(|part| part.node == node)
     }
 
     /// Generate a /etc/fstab file from the DDI partition types
@@ -366,12 +345,5 @@ mod tests {
         let mountpoints = output.generate_fstab().unwrap();
 
         println!("{mountpoints}");
-    }
-
-    #[test]
-    fn get_systemd_version() -> color_eyre::Result<()> {
-        let version = systemd_version()?;
-        println!("{version}");
-        Ok(())
     }
 }

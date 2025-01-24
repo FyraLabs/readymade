@@ -2,7 +2,6 @@ mod osprobe;
 
 use std::{collections::HashMap, path::PathBuf};
 
-use itertools::Itertools;
 use osprobe::OSProbe;
 
 use crate::pages::destination::DiskInit;
@@ -51,7 +50,7 @@ pub fn detect_os() -> Vec<DiskInit> {
                     .iter()
                     .filter_map(|(path, osname)| path.to_str().zip(Some(osname)))
                     .find_map(|(path, osname)| {
-                        path.starts_with(&disk.fullname.to_str().unwrap())
+                        path.starts_with(disk.fullname.to_str().unwrap())
                             .then_some(osname)
                     })
                     .map_or(OSNAME_PLACEHOLDER.to_owned(), ToOwned::to_owned),

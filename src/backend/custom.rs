@@ -16,10 +16,7 @@ pub struct MountTarget {
 impl MountTarget {
     fn mount(&self, root: &Path) -> std::io::Result<()> {
         std::fs::create_dir_all(root)?;
-        let target = self
-            .mountpoint
-            .strip_prefix("/")
-            .unwrap_or(&self.mountpoint);
+        let target = (self.mountpoint.strip_prefix("/")).unwrap_or(&self.mountpoint);
         tracing::info!(?root, "Mounting {:?} to {target:?}", self.partition);
         let target = root.join(target);
         std::fs::create_dir_all(&target)?;
@@ -32,10 +29,7 @@ impl MountTarget {
 
     pub fn umount(&self, root: &Path) -> std::io::Result<()> {
         // sanitize target path
-        let target = self
-            .mountpoint
-            .strip_prefix("/")
-            .unwrap_or(&self.mountpoint);
+        let target = (self.mountpoint.strip_prefix("/")).unwrap_or(&self.mountpoint);
         let target = root.join(target);
 
         nix::mount::umount(&target)?;

@@ -130,15 +130,11 @@ impl InstallationState {
         let res = std::thread::scope(|s| {
             s.spawn(|| {
                 let reader = BufReader::new(tee_stdout);
-                reader
-                    .lines()
-                    .for_each(|line| println!("| {}", line.unwrap()));
+                (reader.lines()).for_each(|line| println!("| {}", line.unwrap()));
             });
             s.spawn(|| {
                 let reader = BufReader::new(tee_stderr);
-                reader
-                    .lines()
-                    .for_each(|line| eprintln!("| {}", line.unwrap()));
+                (reader.lines()).for_each(|line| eprintln!("| {}", line.unwrap()));
             });
             s.spawn(|| -> Result<()> {
                 let (receiver, _) = server.accept()?;
@@ -185,18 +181,14 @@ impl InstallationState {
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     pub fn install(&self) -> Result<()> {
-        let inst_type = self
-            .installation_type
-            .as_ref()
+        let inst_type = (self.installation_type.as_ref())
             .expect("A valid installation type should be set before calling install()");
 
         if let InstallationType::Custom = inst_type {
             let mut mounttags = self.mounttags.clone().unwrap();
             return crate::backend::custom::install_custom(self, &mut mounttags);
         }
-        let blockdev = &self
-            .destination_disk
-            .as_ref()
+        let blockdev = &(self.destination_disk.as_ref())
             .expect("A valid destination device should be set before calling install()")
             .devpath;
         let cfgdir = inst_type.cfgdir();
@@ -224,17 +216,14 @@ impl InstallationState {
         let fstab = output.generate_fstab()?;
 
         // todo: Also handle custom installs? Needs more information
-        let esp_node = if check_uefi() {
-            output.get_esp_partition()
-        } else {
-            None
-        };
+        let esp_node = check_uefi().then(|| output.get_esp_partition()).flatten();
 
         container.run(|| self._inner_sys_setup(fstab, esp_node))??;
 
         Ok(())
     }
 
+    #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     pub fn _inner_sys_setup(&self, fstab: String, esp_node: Option<String>) -> Result<()> {
         // We will run the specified postinstall modules now
@@ -345,7 +334,7 @@ impl InstallationState {
             std::env::var("READYMADE_DRY_RUN").map_or(cfg!(debug_assertions), |v| v == "1");
         let dry_run = if dry_run { "yes" } else { "no" };
 
-        let mut args = vec![
+        let args = [
             "--dry-run",
             dry_run,
             "--definitions",
@@ -358,14 +347,8 @@ impl InstallationState {
             &copy_source,
             "--json",
             "pretty",
+            blockdev.to_str().unwrap(),
         ];
-
-        // if systemd_version()? >= 256 {
-        //     args.push("--generate-fstab");
-        //     args.push("/dev/stdout");
-        // }
-
-        args.push(blockdev.to_str().unwrap());
 
         tracing::debug!(?dry_run, ?args, "Running systemd-repart");
 
@@ -406,22 +389,12 @@ impl InstallationType {
         let blockdev_str = blockdev
             .to_str()
             .ok_or_else(|| eyre!("Invalid block device path"))?;
-        let status = Command::new("cgpt")
-            .args([
-                "add",
-                "-i",
-                "2",
-                "-t",
-                "kernel",
-                "-P",
-                "15",
-                "-T",
-                "1",
-                "-S",
-                "1",
-                blockdev_str,
-            ])
-            .status()?;
+        let args = [
+            ["add", "-i", "2", "-t"],
+            ["kernel", "-P", "15", "-T"],
+            ["1", "-S", "1", blockdev_str],
+        ];
+        let status = Command::new("cgpt").args(args.concat()).status()?;
 
         if !status.success() {
             bail!("cgpt command failed with exit code {:?}", status.code());

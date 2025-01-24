@@ -1,5 +1,7 @@
 use std::{path::PathBuf, process::Command};
 
+use itertools::Itertools;
+
 #[derive(Debug, Clone)]
 pub struct OSProbe {
     pub part: PathBuf,
@@ -14,8 +16,8 @@ pub struct OSProbe {
 impl OSProbe {
     #[tracing::instrument]
     pub fn from_entry(entry: &str) -> Self {
-        let parts: Vec<&str> =
-            tracing::debug_span!("OS Probe Entry", ?entry).in_scope(|| entry.split(':').collect());
+        let parts = tracing::debug_span!("OS Probe Entry", ?entry)
+            .in_scope(|| entry.split(':').collect_vec());
 
         // Minimum 4 parts, Part 5, 6 and 7 are optional
 
@@ -34,38 +36,23 @@ impl OSProbe {
         })
     }
 
-    // #[tracing::instrument]
     pub fn scan() -> Option<Vec<Self>> {
-        // check if root already
-
         const ERROR: &str = "os-prober failed to run! Are we root? Is it installed? Continuing without OS detection.";
 
-        let scan = tracing::info_span!("Scanning for OS").in_scope(|| {
+        let ret = tracing::info_span!("Scanning for OS").in_scope(|| {
             tracing::info!("Scanning for OS with os-prober");
-            Command::new("pkexec")
-                .arg("os-prober")
-                .output()
-                .ok()
-                .map(|x| {
-                    String::from_utf8(x.stdout)
-                        .expect("os-prober should return valid utf8")
-                        .trim()
-                        .to_owned()
-                })
-                .filter(|x| !x.is_empty())
-        });
-
-        // let scan: Option<String> = Some("".to_string()); // test case for failure
-
-        scan.map(|strout| {
+            let x = Command::new("pkexec").arg("os-prober").output().ok()?;
+            let strout = String::from_utf8(x.stdout).inspect_err(|e| {
+                tracing::error!(?e, "os-prober should return valid utf8");
+            });
+            let strout = strout.ok()?;
             tracing::info!(?strout, "OS Probe Output");
-
-            (strout.split('\n').map(str::trim))
-                .filter(|l| !l.is_empty())
-                .map(Self::from_entry)
-                .collect()
-        })
-        .or_else(|| {
+            let v = strout.lines().map(str::trim);
+            let v = v.filter(|l| !l.is_empty()).map(Self::from_entry);
+            let v = v.collect_vec();
+            (!v.is_empty()).then_some(v)
+        });
+        ret.or_else(|| {
             tracing::error!("{ERROR}");
             None
         })

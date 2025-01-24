@@ -37,86 +37,66 @@ fn remove_if_exists(path: &Path) -> color_eyre::Result<()> {
 pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     use rayon::iter::{ParallelBridge, ParallelIterator};
 
-    // todo: use walkdir or something
-    // or https://crates.io/crates/dircpy
-    // or https://docs.rs/fs-more/latest/fs_more/directory/fn.copy_directory.html
-    //
-    // also parallelizing this is a bit of a waste, since we're doing a lot of IO,
-    // and we might mess with the dir order
-
     let to = to.as_ref();
     let from = from.as_ref();
     std::fs::create_dir_all(to)?;
 
     let walkdir = jwalk::WalkDir::new(from).sort(true).into_iter();
 
-    walkdir
-        .par_bridge()
-        .try_for_each(|entry| -> color_eyre::Result<()> {
-            let entry = entry?;
+    (walkdir.par_bridge()).try_for_each(|entry| -> color_eyre::Result<()> {
+        let src_path = entry?.path();
+        let dest_path = to.join(src_path.strip_prefix(from)?);
+        let metadata = src_path.symlink_metadata()?;
 
-            let src_path = entry.path();
+        if metadata.is_dir() {
+            std::fs::create_dir_all(&dest_path)?;
+        } else if metadata.is_symlink() {
+            std::fs::create_dir_all(dest_path.parent().unwrap())?;
+            let link = std::fs::read_link(&src_path)?;
+            remove_if_exists(&dest_path)?;
+            std::os::unix::fs::symlink(&link, &dest_path)?;
+        } else {
+            std::fs::create_dir_all(dest_path.parent().unwrap())?;
+            remove_if_exists(&dest_path)?;
+            std::fs::copy(&src_path, &dest_path)?;
+        }
 
-            let dest_path = to.join(src_path.strip_prefix(from)?);
+        // set attributes only for files and dirs, symlinks will fail with ENOENT
+        if metadata.is_dir() || metadata.is_file() {
+            set_attributes(&src_path, &dest_path, &metadata)?;
+        }
 
-            // tracing::trace!(?src_path, ?dest_path, "Copying");
+        Ok(())
+    })
+}
 
-            let metadata = src_path.symlink_metadata()?;
-
-            if metadata.is_dir() {
-                std::fs::create_dir_all(&dest_path)?;
-            } else if metadata.is_symlink() {
-                if !dest_path.parent().unwrap().exists() {
-                    std::fs::create_dir_all(dest_path.parent().unwrap())?;
-                }
-                // read link path
-                let link = std::fs::read_link(&src_path)?;
-
-                remove_if_exists(&dest_path)?;
-                std::os::unix::fs::symlink(&link, &dest_path)?;
-            } else {
-                if !dest_path.parent().unwrap().exists() {
-                    std::fs::create_dir_all(dest_path.parent().unwrap())?;
-                }
-
-                remove_if_exists(&dest_path)?;
-                std::fs::copy(&src_path, &dest_path)?;
-                // let metadata = src_path.symlink_metadata().unwrap();
-            }
-            // after actually copying the dirs, set the attrs
-            let atime = metadata
-                .accessed()
-                .expect("cannot get atime")
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap();
-
-            let mtime = metadata
-                .modified()
-                .expect("cannot get atime")
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap();
-            _ = nix::sys::stat::utimes(
-                &dest_path,
-                &nix::sys::time::TimeVal::new(
-                    atime.as_secs().try_into().unwrap(),
-                    (atime.as_micros() % 1_000_000).try_into().unwrap(),
-                ),
-                &nix::sys::time::TimeVal::new(
-                    mtime.as_secs().try_into().unwrap(),
-                    (mtime.as_micros() % 1_000_000).try_into().unwrap(),
-                ),
-            );
-
-            let xattrs = xattr::list(&src_path)?;
-            for xattr in xattrs {
-                let value = xattr::get(&src_path, &xattr)?;
-                if let Some(val) = value {
-                    _ = xattr::set(&dest_path, &xattr, &val);
-                }
-            }
-
-            Ok(())
-        })
+fn to_timeval(time: std::time::SystemTime) -> nix::sys::time::TimeVal {
+    let t = time.duration_since(std::time::UNIX_EPOCH).unwrap();
+    nix::sys::time::TimeVal::new(
+        t.as_secs().try_into().unwrap(),
+        (t.as_micros() % 1_000_000).try_into().unwrap(),
+    )
+}
+fn set_attributes(
+    src_path: &Path,
+    dest_path: &Path,
+    metadata: &std::fs::Metadata,
+) -> Result<(), color_eyre::eyre::Error> {
+    let atime = metadata.accessed().expect("cannot get atime");
+    let mtime = metadata.modified().expect("cannot get mtime");
+    nix::sys::stat::utimes(dest_path, &to_timeval(atime), &to_timeval(mtime))?;
+    let xattrs =
+        xattr::list(src_path).inspect_err(|e| tracing::warn!("Failed to list xattrs: {e}"));
+    (xattrs.into_iter().flat_map(IntoIterator::into_iter)).for_each(|xattr| {
+        let val = xattr::get(src_path, &xattr)
+            .inspect_err(|e| tracing::warn!("Failed to get xattr {xattr:?}: {e}"));
+        if let Some(e) =
+            (val.ok().flatten()).and_then(|val| xattr::set(dest_path, &xattr, &val).err())
+        {
+            tracing::warn!("Failed to set xattr {xattr:?}: {e}");
+        }
+    });
+    Ok(())
 }
 
 /// Get partition number from partition path

@@ -26,7 +26,6 @@ use tracing_subscriber::{fmt, EnvFilter};
 /// State related to the user's installation configuration
 static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
 static CONFIG: SharedState<cfg::ReadymadeConfig> = SharedState::new();
-static ROOT_WINDOW_ID: SharedState<u32> = SharedState::new();
 
 // todo: lazy_static const variables for the setup params
 
@@ -208,7 +207,7 @@ fn main() -> Result<()> {
 
         let channel = IpcSender::connect(
             std::env::args()
-                .nth(i + 1)
+                .nth(i.wrapping_add(1))
                 .context("No IPC channel ID passed")?,
         )?;
 
