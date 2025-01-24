@@ -257,7 +257,7 @@ fn initialize_custom_icons(display: &gtk::gdk::Display) {
 #[allow(clippy::cognitive_complexity)]
 fn setup_hooks() -> impl std::any::Any {
     for arg in std::env::args() {
-        if arg.starts_with("READYMADE_") || arg.starts_with("REPART_COPY_SOURCE") {
+        if arg.starts_with("READYMADE_") || arg.starts_with("REPART_COPY_SOURCE") || arg.starts_with("NO_COLOR") {
             let (key, value) = arg.split_once('=').unwrap();
             println!("Setting env var {key} to {value}");
             std::env::set_var(key, value);
