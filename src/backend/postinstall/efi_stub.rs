@@ -54,11 +54,11 @@ impl PostInstallModule for EfiStub {
         if !status.success() {
             // We should be able to fail silently here, as the user may still be able to find the OS as long
             // as the firmware finds the bootloader binary
-            
+
             tracing::error!("Failed to create EFI boot entry");
-            
+
             tracing::warn!("EFI boot entry creation failed, You may not be able to find the installed OS in the boot menu");
-            
+
             // todo: Implement a popup to warn the user, since this is not a critical error but should be noted
         }
 
