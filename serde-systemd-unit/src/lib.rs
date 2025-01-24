@@ -4,6 +4,7 @@
 use itertools::Itertools;
 mod de;
 pub mod parser;
+mod se;
 use de::SectionDeserializer;
 use parser::Err;
 use serde::de::IntoDeserializer;
