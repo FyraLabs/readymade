@@ -110,4 +110,4 @@ equatable_if_let = "allow"
 
 
 [workspace]
-members = ["serde-systemd-unit"]
+members = [ "filesystem-table","serde-systemd-unit"]

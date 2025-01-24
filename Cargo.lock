@@ -619,6 +619,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "filesystem-table"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.11",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"

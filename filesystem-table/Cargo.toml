@@ -1,0 +1,15 @@
+[package]
+name = "filesystem-table"
+version = "0.1.0"
+edition = "2021"
+
+authors = ["Cappy Ishihara <cappy@fyralabs.com>"]
+license = "MIT"
+categories = ["filesystem", "encoding"]
+keywords = ["fstab", "mtab", "filesystem"]
+readme = "README.md"
+repository = "https://github.com/FyraLabs/readymade"
+description = "A library for reading and writing filesystem tables."
+
+[dependencies]
+thiserror = "2.0.11"
