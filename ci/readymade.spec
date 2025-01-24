@@ -15,6 +15,7 @@ BuildRequires:  pkgconfig(gnome-desktop-4)
 BuildRequires:  clang-devel
 BuildRequires:  gcc
 BuildRequires:  mold
+BuildRequires:  cmake
 
 %description
 Readymade is a Linux Distribution installer based on the great distinst library by System76.
