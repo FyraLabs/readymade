@@ -46,6 +46,7 @@ pub struct InstallationState {
     pub installation_type: Option<InstallationType>,
     pub mounttags: Option<crate::backend::custom::MountTargets>,
     pub postinstall: Vec<crate::backend::postinstall::Module>,
+    pub encrypt: bool,
 }
 
 // TODO: remove this after have support for anything other than chromebook
@@ -62,6 +63,7 @@ impl Default for InstallationState {
             },
             mounttags: Option::default(),
             postinstall: crate::CONFIG.read().postinstall.clone(),
+            encrypt: false,
         }
     }
 }

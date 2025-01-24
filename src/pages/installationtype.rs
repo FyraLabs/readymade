@@ -2,7 +2,10 @@ use crate::prelude::*;
 use crate::{InstallationType, NavigationAction, Page, INSTALLATION_STATE};
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
-pub struct InstallationTypePage;
+#[derive(Default)]
+pub struct InstallationTypePage {
+    can_encrypt: bool,
+}
 
 #[derive(Debug)]
 pub enum InstallationTypePageMsg {
@@ -105,7 +108,13 @@ impl SimpleComponent for InstallationTypePage {
                             add_css_class: "large-button",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::ChromebookInstall)
                         },
-                    }
+                    },
+                    gtk::CheckButton {
+                        set_label: Some(&gettext("Enable disk encryption")),
+                        #[watch]
+                        set_sensitive: model.can_encrypt,
+                        connect_toggled => |btn| INSTALLATION_STATE.write().encrypt = btn.is_active(),
+                    },
                 },
 
                 gtk::Box {
@@ -132,7 +141,7 @@ impl SimpleComponent for InstallationTypePage {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = Self {};
+        let model = Self::default();
 
         let widgets = view_output!();
 
@@ -150,6 +159,7 @@ impl SimpleComponent for InstallationTypePage {
                         NavigationAction::GoTo(Page::Confirmation),
                     ))
                     .unwrap();
+                self.can_encrypt = true;
             }
             InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot(_)) => {
                 sender
@@ -157,6 +167,7 @@ impl SimpleComponent for InstallationTypePage {
                         NavigationAction::GoTo(Page::InstallDual),
                     ))
                     .unwrap();
+                self.can_encrypt = true;
             }
             InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom) => {
                 INSTALLATION_STATE.write().installation_type = Some(InstallationType::Custom);
@@ -165,6 +176,7 @@ impl SimpleComponent for InstallationTypePage {
                         NavigationAction::GoTo(Page::InstallCustom),
                     ))
                     .unwrap();
+                self.can_encrypt = false;
             }
             InstallationTypePageMsg::InstallationTypeSelected(
                 InstallationType::ChromebookInstall,
@@ -176,6 +188,7 @@ impl SimpleComponent for InstallationTypePage {
                         NavigationAction::GoTo(Page::Confirmation),
                     ))
                     .unwrap();
+                self.can_encrypt = true;
             }
             InstallationTypePageMsg::Navigate(action) => sender
                 .output(InstallationTypePageOutput::Navigate(action))
