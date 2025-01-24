@@ -77,7 +77,7 @@ impl InstallationState {
     #[allow(clippy::unwrap_in_result)]
     pub fn install_using_subprocess(
         &self,
-        sender: relm4::Sender<InstallationMessage>,
+        sender: &relm4::Sender<InstallationMessage>,
     ) -> Result<()> {
         let mut command = Command::new("pkexec");
         command.arg(std::env::current_exe()?);
@@ -143,18 +143,15 @@ impl InstallationState {
             s.spawn(|| -> Result<()> {
                 let (receiver, _) = server.accept()?;
 
-                loop {
-                    match receiver.recv() {
-                        Ok(msg) => sender.emit(msg),
-                        Err(IpcError::Disconnected) => {
-                            break;
-                        }
-                        Err(e) => {
-                            tracing::error!("Failed to receive message from subprocess: {:?}", e);
-                            break;
-                        }
-                    }
-                }
+                let mut msg;
+                while {
+                    msg = receiver.recv().map(|msg| sender.emit(msg));
+                    msg.is_ok()
+                } {}
+                _ = msg.map_err(|e| match e {
+                    IpcError::Disconnected => {}
+                    e => tracing::error!("Failed to receive message from subprocess: {e:?}"),
+                });
 
                 Ok(())
             });
@@ -402,7 +399,6 @@ impl InstallationType {
             Self::DualBoot(_) => todo!(),
             Self::Custom => unreachable!(),
         }
-        .into()
     }
 
     fn set_cgpt_flags(blockdev: &Path) -> Result<()> {

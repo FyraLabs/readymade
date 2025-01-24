@@ -1,4 +1,7 @@
 //? https://github.com/FyraLabs/readymade/blob/5acdda4ed2bc32b094b615ec3207e9a2ed458bd4/src/mksys.rs
+//
+// FIXME: this doesn't work due to a backhand bug that doesn't support inode id 10.
+#![allow(clippy::arithmetic_side_effects)]
 
 use backhand::{FilesystemReader, InnerNode};
 use color_eyre::{Result, Section};
@@ -33,7 +36,7 @@ pub fn unsquash_copy<F: FnMut(usize, usize)>(
             InnerNode::File(f) => {
                 // Just write it in split second if <= 1 MiB
                 if f.file_len() <= 1024 * 1024 {
-                    _writef(&path, arcfs, f)?;
+                    writef(&path, arcfs, f)?;
                     continue;
                 }
                 // Don't block, instead write while decompress remaining squashfs
@@ -41,7 +44,7 @@ pub fn unsquash_copy<F: FnMut(usize, usize)>(
                 // => too many threads and overwhelm the system?
                 trace!("Creating thread for file creation");
                 let th = std::thread::Builder::new().name(path.display().to_string());
-                threads.push(th.spawn(move || _writef(&path, arcfs, f))?);
+                threads.push(th.spawn(move || writef(&path, arcfs, f))?);
             }
             InnerNode::Symlink(link) => {
                 trace!(link = ?link.link, "Creating symlink");
@@ -50,10 +53,10 @@ pub fn unsquash_copy<F: FnMut(usize, usize)>(
             x => trace!("Ignored {x:?}"),
         }
     }
-    _join_and_handle_threads(threads, callback, num_files)
+    join_and_handle_threads(threads, callback, num_files)
 }
 
-fn _join_and_handle_threads(
+fn join_and_handle_threads(
     threads: Vec<std::thread::JoinHandle<Result<(), std::io::Error>>>,
     mut callback: impl FnMut(usize, usize),
     num_files: usize,
@@ -95,7 +98,7 @@ fn _join_and_handle_threads(
 }
 
 /// Internal function for writing file from unsquashfs file `f` to `path`
-fn _writef(
+fn writef(
     path: &Path,
     fs: &std::sync::Arc<FilesystemReader<'_>>,
     f: &backhand::SquashfsFileReader,

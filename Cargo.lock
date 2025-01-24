@@ -81,7 +81,7 @@ dependencies = [
  "flate2",
  "libz-sys",
  "solana-nohash-hasher",
- "thiserror 2.0.9",
+ "thiserror 2.0.11",
  "tracing",
  "xxhash-rust",
  "xz2",
@@ -686,7 +686,7 @@ dependencies = [
  "memchr",
  "strsim",
  "textdistance",
- "thiserror 2.0.9",
+ "thiserror 2.0.11",
  "xdg",
 ]
 
@@ -1037,9 +1037,12 @@ dependencies = [
 
 [[package]]
 name = "glib-build-tools"
-version = "0.17.10"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a65d79efe318ef2cbbbb37032b125866fd82c34ea44c816132621bbc552e716"
+checksum = "7029c2651d9b5d5a3eea93ec8a1995665c6d3a69ce9bf6042ad9064d134736d8"
+dependencies = [
+ "gio 0.20.6",
+]
 
 [[package]]
 name = "glib-macros"
@@ -1406,6 +1409,15 @@ name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
 dependencies = [
  "either",
 ]
@@ -1979,6 +1991,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-error-attr2"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96de42df36bb9bba5542fe9f1a054b8cc87e172759a1868aa05c1f3acc89dfc5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "proc-macro-error2"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11ec05c52be0a07b08061f7dd003e7d7092e0472bc731b4af7bb1ef876109802"
+dependencies = [
+ "proc-macro-error-attr2",
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2126,7 +2159,7 @@ dependencies = [
  "gnome-desktop",
  "gtk4",
  "ipc-channel",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "jwalk",
  "libhelium",
  "lsblk",
@@ -2147,7 +2180,7 @@ dependencies = [
  "sys-mount",
  "tee_readwrite",
  "tempfile",
- "thiserror 1.0.69",
+ "thiserror 2.0.11",
  "tiffin",
  "toml",
  "tracing",
@@ -2329,9 +2362,9 @@ name = "serde-systemd-unit"
 version = "0.1.0"
 dependencies = [
  "chumsky",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "serde",
- "thiserror 2.0.9",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
@@ -2368,9 +2401,9 @@ dependencies = [
 
 [[package]]
 name = "serde_valid"
-version = "0.24.0"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32c92fa3e7abc9108490d7f9ac752008e12297d5a969511a66fd0a42fbcaf1cd"
+checksum = "3b615bed66931a7a9809b273937adc8a402d038b1e509d027fcaf62f084d33d1"
 dependencies = [
  "indexmap 2.7.0",
  "itertools 0.13.0",
@@ -2389,13 +2422,13 @@ dependencies = [
 
 [[package]]
 name = "serde_valid_derive"
-version = "0.24.0"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02529dfc96005e7e0d2dd5a12a7d9664cf51be96a5b1a58a496e8080020711ee"
+checksum = "5fa1a5a21ea5aab06d2e6a6b59837d450fb2be9695be97735a711edfbe79ea07"
 dependencies = [
  "itertools 0.13.0",
  "paste",
- "proc-macro-error",
+ "proc-macro-error2",
  "proc-macro2",
  "quote",
  "strsim",
@@ -2404,9 +2437,9 @@ dependencies = [
 
 [[package]]
 name = "serde_valid_literal"
-version = "0.24.0"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70b385e1d2d8fd49695e9ae387ebf9bde548fe8dcecd1cf5f164f9c2a2b4a3c3"
+checksum = "dd07331596ea967dccf9a35bde71ecd757490e09827b938a5c6226c648e3a25e"
 dependencies = [
  "paste",
  "regex",
@@ -2664,11 +2697,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.9"
+version = "2.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f072643fd0190df67a8bab670c20ef5d8737177d6ac6b2e9a236cb096206b2cc"
+checksum = "d452f284b73e6d76dd36758a0c8684b1d5be31f92b89d07fd5822175732206fc"
 dependencies = [
- "thiserror-impl 2.0.9",
+ "thiserror-impl 2.0.11",
 ]
 
 [[package]]
@@ -2684,9 +2717,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.9"
+version = "2.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b50fa271071aae2e6ee85f842e2e28ba8cd2c5fb67f11fcb1fd70b276f9e7d4"
+checksum = "26afc1baea8a989337eeb52b6e72a039780ce45c3edfcc9c5b9d112feeb173c2"
 dependencies = [
  "proc-macro2",
  "quote",

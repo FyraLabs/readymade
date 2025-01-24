@@ -83,6 +83,7 @@ impl MountTargets {
 // 1. mount all
 // 2. copy stuff
 // 3. funny setup_system()
+#[allow(clippy::cognitive_complexity, clippy::module_name_repetitions)]
 pub fn install_custom(
     state: &InstallationState,
     mounttags: &mut MountTargets,

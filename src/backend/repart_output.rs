@@ -1,8 +1,6 @@
 use bytesize::ByteSize;
 use color_eyre::eyre::eyre;
-use itertools::Itertools;
 use std::fmt::Write;
-// use lsblk::mountpoints;
 use std::path::PathBuf;
 use sys_mount::MountFlags;
 use tiffin::{Container, MountTarget};

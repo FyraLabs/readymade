@@ -17,8 +17,8 @@ libhelium = { version = "0.10.0", features = ["gtk_v4_10", "v1_6"] }
 tracing = { version = "0.1.40", features = ["log"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tracing-appender = "0.2"
-itertools = "0.13.0"
-thiserror = "1.0.63"
+itertools = "0.14.0"
+thiserror = "2.0.11"
 gettext-rs = { version = "0.7.0", features = ["gettext-system"] }
 gnome-desktop = "0.4.2"
 paste = "1.0.15"
@@ -38,7 +38,7 @@ process_alive = "0.1.1"
 crossbeam-queue = "0.3.11"
 strip-ansi-escapes = "0.2.0"
 toml = "0.8.19"
-serde_valid = { version = "0.24.0", features = ["toml"] }
+serde_valid = { version = "1.0.5", features = ["toml"] }
 os_pipe = "1.2.1"
 tee_readwrite = "0.2.0"
 nix = { version = "0.29.0", features = ["fs", "mount"] }
@@ -59,7 +59,7 @@ git = "https://github.com/FyraLabs/distinst"
 branch = "master"
 
 [build-dependencies]
-glib-build-tools = "0.17.10"
+glib-build-tools = "0.20.0"
 
 [lints.clippy]
 # cargo = { level = "warn", priority = -1 }

@@ -120,7 +120,7 @@ impl Component for InstallationPage {
 
                     #[template]
                     attach[0, 0, 1, 4] = &BentoCard {
-                        connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/welcome/".to_string()),
+                        connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/welcome/".to_owned()),
                         add_css_class: "welcome-card",
 
                         #[template_child]
@@ -138,7 +138,7 @@ impl Component for InstallationPage {
                     },
                     #[template]
                     attach[1, 0, 1, 2] = &BentoCard {
-                        connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/community/community/".to_string()),
+                        connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/community/community/".to_owned()),
                         add_css_class: "help-card",
 
                         #[template_child]
@@ -156,7 +156,7 @@ impl Component for InstallationPage {
                     },
                     #[template]
                     attach[1, 2, 1, 2] = &BentoCard {
-                        connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/contributing/contributorguide/".to_string()),
+                        connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/contributing/contributorguide/".to_owned()),
                         add_css_class: "contribute-card",
 
                         #[template_child]
@@ -241,12 +241,12 @@ impl Component for InstallationPage {
                     InstallationPageCommandMsg::None
                 });
 
-                sender.spawn_oneshot_command(|| {
+                sender.spawn_oneshot_command(move || {
                     let state = INSTALLATION_STATE.read();
                     tracing::debug!(?state, "Starting installation...");
 
                     InstallationPageCommandMsg::FinishInstallation(
-                        state.install_using_subprocess(s),
+                        state.install_using_subprocess(&s),
                     )
                 });
             }
