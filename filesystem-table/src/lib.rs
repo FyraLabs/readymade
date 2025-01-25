@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -103,8 +105,7 @@ pub struct FsEntry {
     /// - `ext4`
     /// - `btrfs`
     /// - `vfat`
-    /// ...
-    ///
+    /// - ...
     pub fs_type: String,
 
     /// Mount options for the filesystem. Is a comma-separated list of options.
@@ -127,9 +128,7 @@ pub struct FsEntry {
 
 impl FsEntry {
     /// Parse a FsEntry from a line in the fstab file.
-    ///
-
-    pub fn from_line_str(line: &str) -> Result<Self> {
+    pub fn from_line_str(line: &str) -> std::result::Result<Self, FsTableError> {
         // split by whitespace
         let parts: Vec<&str> = line.split_whitespace().collect();
 
@@ -194,9 +193,9 @@ impl TryFrom<&str> for FsEntry {
     }
 }
 
-impl ToString for FsEntry {
-    fn to_string(&self) -> String {
-        self.to_line_str()
+impl std::fmt::Display for FsEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.to_line_str())
     }
 }
 
@@ -205,22 +204,25 @@ pub struct FsTable {
     pub entries: Vec<FsEntry>,
 }
 
-impl FsTable {
-    pub fn from_str(table: &str) -> Result<Self> {
+impl FromStr for FsTable {
+    type Err = FsTableError;
+
+    fn from_str(table: &str) -> Result<Self> {
         let entries = table
             .lines()
-            .map(|line| FsEntry::from_line_str(line))
+            .map(FsEntry::from_line_str)
             .collect::<Result<Vec<FsEntry>>>()?;
 
         Ok(Self { entries })
     }
+}
 
-    pub fn to_string(&self) -> String {
+impl std::fmt::Display for FsTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.entries
             .iter()
             .map(|entry| entry.to_line_str())
-            .collect::<Vec<String>>()
-            .join("\n")
+            .try_for_each(|s| f.write_str(&s))
     }
 }
 

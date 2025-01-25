@@ -4,7 +4,7 @@ use crate::Value;
 
 pub struct OptStringDeserializer<'a>(pub &'a str);
 
-impl<'de, 'a> serde::de::Deserializer<'de> for OptStringDeserializer<'a> {
+impl<'de> serde::de::Deserializer<'de> for OptStringDeserializer<'_> {
     type Error = serde::de::value::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -47,7 +47,7 @@ impl<'de, 'a> serde::de::Deserializer<'de> for OptStringDeserializer<'a> {
         // Create a single-element sequence from the string
         struct SingleValueSeq<'a>(&'a str);
 
-        impl<'de, 'a> serde::de::SeqAccess<'de> for SingleValueSeq<'a> {
+        impl<'de> serde::de::SeqAccess<'de> for SingleValueSeq<'_> {
             type Error = serde::de::value::Error;
 
             fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
@@ -219,7 +219,7 @@ impl<'de> serde::de::Deserializer<'de> for OptVecDeserializer {
 /// Deserializer for converting strings to enum variants
 pub struct EnumDeserializer<'a>(&'a str);
 
-impl<'de, 'a> serde::de::Deserializer<'de> for EnumDeserializer<'a> {
+impl<'de> serde::de::Deserializer<'de> for EnumDeserializer<'_> {
     type Error = serde::de::value::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -248,7 +248,7 @@ impl<'de, 'a> serde::de::Deserializer<'de> for EnumDeserializer<'a> {
     }
 }
 
-impl<'de, 'a> serde::de::EnumAccess<'de> for EnumDeserializer<'a> {
+impl<'de> serde::de::EnumAccess<'de> for EnumDeserializer<'_> {
     type Error = serde::de::value::Error;
     type Variant = UnitOnlyVariantAccess;
 
@@ -305,7 +305,7 @@ pub struct SectionDeserializer<'a> {
     pub map: &'a std::collections::BTreeMap<String, Value>,
 }
 
-impl<'de, 'a> serde::de::Deserializer<'de> for SectionDeserializer<'a> {
+impl<'de> serde::de::Deserializer<'de> for SectionDeserializer<'_> {
     type Error = serde::de::value::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -338,7 +338,7 @@ impl<'de, 'a> serde::de::Deserializer<'de> for SectionDeserializer<'a> {
             current: Option<(&'a String, &'a Value)>,
         }
 
-        impl<'de, 'a> serde::de::MapAccess<'de> for KeysMap<'a> {
+        impl<'de> serde::de::MapAccess<'de> for KeysMap<'_> {
             type Error = serde::de::value::Error;
 
             fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>

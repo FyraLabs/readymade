@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::NavigationAction;
 use crate::INSTALLATION_STATE;
 use relm4::RelmIterChildrenExt;
-use relm4::{ComponentParts, RelmWidgetExt, SharedState, SimpleComponent};
+use relm4::{ComponentParts, SharedState, SimpleComponent};
 use std::rc::Rc;
 
 static SEARCH_STATE: SharedState<gtk::glib::GString> = SharedState::new();
