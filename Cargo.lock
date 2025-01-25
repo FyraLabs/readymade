@@ -2158,6 +2158,7 @@ dependencies = [
  "const_format",
  "crossbeam-queue",
  "enum_dispatch",
+ "filesystem-table",
  "format-bytes",
  "freedesktop-desktop-entry",
  "gettext-rs",

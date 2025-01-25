@@ -2,6 +2,8 @@ use std::path::Component;
 use std::path::Path;
 use std::path::PathBuf;
 
+use color_eyre::eyre::Context;
+
 use super::install::InstallationState;
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -147,11 +149,9 @@ pub fn install_custom(
         );
     }
 
-    let mut fstab = std::process::Command::new("mkfstab");
-    let fstab = fstab.arg("/mnt/custom/"); // root
-    let fstab = fstab.stdout(std::process::Stdio::piped());
-    let fstab = fstab.output()?.stdout;
-    let fstab = String::from_utf8(fstab)?;
+    let fstab = filesystem_table::generate_fstab("/mnt/custom/")
+        .wrap_err("cannot generate fstab")?
+        .to_string();
 
     let efi = (mounttags.0.iter())
         .find(|part| part.mountpoint == std::path::Path::new("/boot/efi"))

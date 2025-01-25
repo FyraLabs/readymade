@@ -250,28 +250,34 @@ pub fn read_fstab() -> Result<FsTable> {
 pub fn generate_fstab(prefix: &str) -> Result<FsTable> {
     let mtab = read_mtab()?;
 
-    // filter by prefix
-    let entries = mtab
-        .entries
-        .iter()
-        .filter_map(|entry| {
-            entry.mountpoint.as_ref().and_then(|mp| {
-                if mp.starts_with(prefix) {
-                    let mut new_entry = entry.clone();
-                    new_entry.mountpoint = Some(
-                        match mp.strip_prefix(prefix).unwrap() {
-                            "" => "/",
-                            path => path,
-                        }
-                        .to_string(),
-                    );
-                    Some(new_entry)
-                } else {
-                    None
-                }
+    let uuid_map: std::collections::HashMap<String, String> =
+        std::fs::read_dir("/dev/disk/by-uuid")?
+            .filter_map(|f| {
+                let f = f.ok()?;
+                Some((
+                    std::fs::read_link(f.path()).ok()?.to_str()?.to_owned(),
+                    f.file_name().to_str().expect("cannot get uuid").to_owned(),
+                ))
             })
-        })
-        .collect();
+            .collect();
+
+    // filter by prefix
+    let entries = (mtab.entries.into_iter())
+        .filter(|entry| (entry.mountpoint.as_ref()).is_some_and(|mp| mp.starts_with(prefix)));
+    let entries = entries.map(|mut entry| {
+        entry.mountpoint = Some(
+            match entry.mountpoint.unwrap().strip_prefix(prefix).unwrap() {
+                "" => "/",
+                path => path,
+            }
+            .to_string(),
+        );
+        let mut device_spec = String::from("UUID=");
+        device_spec += &uuid_map[&*entry.device_spec];
+        device_spec.clone_into(&mut entry.device_spec);
+        entry
+    });
+    let entries = entries.collect();
 
     Ok(FsTable { entries })
 }

@@ -53,6 +53,7 @@ ipc-channel = { version = "0.19.0", features = ["async"] }
 freedesktop-desktop-entry = "0.7.7"
 jwalk = "0.8.1"
 xattr = "1.4.0"
+filesystem-table = { version = "0.1.0", path = "filesystem-table" }
 
 [dependencies.os-detect]
 git = "https://github.com/FyraLabs/distinst"
