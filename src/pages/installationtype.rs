@@ -78,7 +78,10 @@ impl SimpleComponent for InstallationTypePage {
                         set_homogeneous: true,
                         libhelium::Button {
                             set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::WholeDisk),
-                            set_is_pill: true,
+                            #[watch]
+                            set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::WholeDisk),
+                            #[watch]
+                            set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
                             #[watch]
                             set_label: &gettext("Entire Disk"),
                             add_css_class: "large-button",
@@ -86,16 +89,21 @@ impl SimpleComponent for InstallationTypePage {
                         },
                         libhelium::Button {
                             set_visible: crate::CONFIG.read().install.allowed_installtypes.iter().any(|x| matches!(x, InstallationType::DualBoot(_))),
-                            set_is_pill: true,
+                            #[watch]
+                            set_is_fill: matches!(crate::INSTALLATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
+                            #[watch]
+                            set_is_outline: !matches!(crate::INSTALLATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
                             #[watch]
                             set_label: &gettext("Dual Boot"),
                             add_css_class: "large-button",
-                            // FIXME:
-                            // connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot)
+                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot(0)),
                         },
                         libhelium::Button {
                             set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::Custom),
-                            set_is_pill: true,
+                            #[watch]
+                            set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::Custom),
+                            #[watch]
+                            set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::Custom),
                             #[watch]
                             set_label: &gettext("Custom"),
                             add_css_class: "large-button",
@@ -103,13 +111,22 @@ impl SimpleComponent for InstallationTypePage {
                         },
                         libhelium::Button {
                             set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::ChromebookInstall),
-                            set_is_pill: true,
+                            #[watch]
+                            set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::ChromebookInstall),
+                            #[watch]
+                            set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::ChromebookInstall),
                             #[watch]
                             set_label: &gettext("Chromebook"),
                             add_css_class: "large-button",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::ChromebookInstall)
                         },
                     },
+                },
+
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_halign: gtk::Align::Center,
+
                     gtk::CheckButton {
                         set_label: Some(&gettext("Enable disk encryption")),
                         #[watch]
@@ -133,6 +150,10 @@ impl SimpleComponent for InstallationTypePage {
                         #[watch]
                         set_label: &gettext("Previous"),
                         connect_clicked => InstallationTypePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
+                    },
+
+                    gtk::Box {
+                        set_hexpand: true,
                     },
 
                     libhelium::Button {
@@ -191,16 +212,18 @@ impl SimpleComponent for InstallationTypePage {
                 .output(InstallationTypePageOutput::Navigate(action))
                 .unwrap(),
             InstallationTypePageMsg::Next => {
-                sender.input(InstallationTypePageMsg::Navigate(NavigationAction::GoTo(
-                    match INSTALLATION_STATE.read().installation_type.unwrap() {
-                        InstallationType::WholeDisk => Page::Confirmation,
+                sender.input(InstallationTypePageMsg::Navigate(NavigationAction::GoTo({
+                    let value = INSTALLATION_STATE.read().installation_type;
+                    match value.unwrap() {
                         InstallationType::DualBoot(_) => Page::InstallDual,
-                        InstallationType::ChromebookInstall => Page::Confirmation,
+                        InstallationType::ChromebookInstall | InstallationType::WholeDisk => {
+                            Page::Confirmation
+                        }
                         InstallationType::Custom => Page::InstallCustom,
-                    },
-                )))
+                    }
+                })));
             }
-            InstallationTypePageMsg::Update => {},
+            InstallationTypePageMsg::Update => {}
         }
     }
 }

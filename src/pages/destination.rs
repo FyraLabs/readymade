@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct DiskInit {
     pub disk_name: String,
     pub os_name: String,
@@ -158,7 +159,8 @@ impl SimpleComponent for DestinationPage {
             .launch(gtk::FlowBox::default())
             .detach();
 
-        let disks_data = crate::disks::detect_os();
+        let mut disks_data = crate::disks::detect_os();
+        disks_data.sort();
 
         for disk in disks_data {
             disks.guard().push_front(disk);
