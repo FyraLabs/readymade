@@ -7,9 +7,9 @@ pub mod parser;
 mod se;
 use de::SectionDeserializer;
 use parser::Err;
+pub use se::to_string;
 use serde::de::IntoDeserializer;
 use std::collections::HashMap;
-pub use se::to_string;
 
 pub fn parse(s: &str) -> Result<SystemdIni, Err> {
     Ok(SystemdIni {
@@ -82,6 +82,29 @@ impl Value {
 #[derive(Clone, PartialEq, Eq, Default)]
 pub struct SystemdIni {
     pub sections: HashMap<String, HashMap<String, Value>>,
+}
+
+impl std::fmt::Display for SystemdIni {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (k, v) in &self.sections {
+            f.write_fmt(format_args!("[{k}]\n"))?;
+            for (k, v) in v {
+                for s in (match v {
+                    Value::String(s) => {
+                        Box::new(std::iter::once(&**s)) as Box<dyn Iterator<Item = &str>>
+                    }
+                    Value::Array(v) => Box::new(v.iter().map(String::as_str)),
+                } as Box<dyn Iterator<Item = &str>>)
+                {
+                    f.write_fmt(format_args!(
+                        "{k}=\"{}\"\n",
+                        s.replace('"', "\\\"").replace('\n', "\\\n")
+                    ))?;
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl SystemdIni {

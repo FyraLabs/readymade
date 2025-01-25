@@ -194,6 +194,9 @@ impl InstallationState {
             .expect("A valid destination device should be set before calling install()")
             .devpath;
         let cfgdir = inst_type.cfgdir();
+
+        // TODO: encryption
+        self.enable_encryption(&cfgdir)?;
         let repart_out = stage!("Creating partitions and copying files" {
             // todo: not freeze on error, show error message as err handler?
             Self::systemd_repart(blockdev, &cfgdir)?
@@ -323,7 +326,28 @@ impl InstallationState {
         })
     }
 
-    // todo: Generate custom repart partitioning definitions in case the user wants to use a custom partitioning scheme
+    fn set_encrypt_to_file(f: &str) -> String {
+        let mut f = serde_systemd_unit::parse(f).expect("cannot parse templates");
+        f.sections.get_mut("Partition").unwrap().insert(
+            "Encrypt".to_owned(),
+            serde_systemd_unit::Value::String("key-file".to_owned()),
+        );
+        f.to_string()
+    }
+
+    #[allow(clippy::unwrap_in_result)]
+    #[tracing::instrument]
+    fn enable_encryption(&self, cfgdir: &Path) -> Result<()> {
+        if !self.encrypt {
+            return Ok(());
+        }
+        let root_file = cfgdir.join("50-root.conf");
+        let f = std::fs::read_to_string(&root_file)?;
+        let f = Self::set_encrypt_to_file(&f);
+        std::fs::write(root_file, f)?;
+        Ok(())
+    }
+
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     fn systemd_repart(
@@ -402,5 +426,16 @@ impl InstallationType {
             bail!("cgpt command failed with exit code {:?}", status.code());
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_set_encrypt_to_file() {
+        assert_eq!(
+            super::InstallationState::set_encrypt_to_file("[Partition]\nType=root"),
+            "[Partition]\nType=\"root\"\nEncrypt=\"key-file\"\n"
+        );
     }
 }
