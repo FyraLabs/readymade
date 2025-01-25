@@ -10,7 +10,12 @@ use parser::Err;
 pub use se::to_string;
 use serde::de::IntoDeserializer;
 use std::collections::HashMap;
-
+/// Parse a systemd unit file from string, returning a `SystemdIni` struct.
+///
+/// # Errors
+///
+/// Returns an error if the string cannot be parsed as a valid systemd unit file.
+///
 pub fn parse(s: &str) -> Result<SystemdIni, Err> {
     Ok(SystemdIni {
         sections: parser::parse_str(s).map(|h| {
@@ -96,10 +101,7 @@ impl std::fmt::Display for SystemdIni {
                     Value::Array(v) => Box::new(v.iter().map(String::as_str)),
                 } as Box<dyn Iterator<Item = &str>>)
                 {
-                    f.write_fmt(format_args!(
-                        "{k}=\"{}\"\n",
-                        s.replace('"', "\\\"").replace('\n', "\\\n")
-                    ))?;
+                    f.write_fmt(format_args!("{k}={s}\n"))?;
                 }
             }
         }
@@ -108,7 +110,11 @@ impl std::fmt::Display for SystemdIni {
 }
 
 impl SystemdIni {
-    // XXX: why does this exist
+    /// Parse a systemd unit file from a string.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the string cannot be parsed as a valid systemd unit file.
     pub fn parse(&mut self, s: &str) -> Result<(), Err> {
         *self = parse(s)?;
         Ok(())
