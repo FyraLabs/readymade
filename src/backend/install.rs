@@ -54,6 +54,7 @@ pub struct InstallationState {
 impl Default for InstallationState {
     fn default() -> Self {
         Self {
+            tpm: false,
             langlocale: Option::default(),
             destination_disk: Option::default(),
             installation_type: if let [one] = &crate::CONFIG.read().install.allowed_installtypes[..]
