@@ -549,8 +549,6 @@ impl SimpleComponent for AddDialog {
             .as_str()
             .clone_into(&mut init.mountpoint);
         // populate partition dropdown list
-        let disk = (crate::INSTALLATION_STATE.read().destination_disk.clone()).unwrap();
-        let disk = disk.devpath.file_name().unwrap().to_str().unwrap();
         let mut mp_dropdown = PartitionTypeDropdown::builder()
             .launch(())
             .forward(sender.input_sender(), AddDialogMsg::SelectMnptType);
@@ -558,9 +556,9 @@ impl SimpleComponent for AddDialog {
         let dd_at = mp_dropdown.widget();
         let partlist = lsblk::BlockDevice::list().unwrap();
         let partlist = (partlist.iter())
-            .filter(|b| b.is_part() && b.disk_name().is_ok_and(|d| d == disk))
+            .filter(|b| b.is_part())
             .map(|p| p.fullname.clone());
-        let partvec = partlist.collect_vec();
+        let partvec = partlist.sorted().collect_vec();
         let partlist =
             &gtk::DropDown::from_strings(&partvec.iter().filter_map(|s| s.to_str()).collect_vec());
 
