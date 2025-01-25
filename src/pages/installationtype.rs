@@ -13,6 +13,7 @@ pub enum InstallationTypePageMsg {
     #[doc(hidden)]
     Navigate(NavigationAction),
     InstallationTypeSelected(InstallationType),
+    Next,
 }
 
 #[derive(Debug)]
@@ -115,6 +116,12 @@ impl SimpleComponent for InstallationTypePage {
                         set_sensitive: model.can_encrypt,
                         connect_toggled => |btn| INSTALLATION_STATE.write().encrypt = btn.is_active(),
                     },
+                    gtk::CheckButton {
+                        set_label: Some(&gettext("Enable TPM")),
+                        #[watch]
+                        set_sensitive: INSTALLATION_STATE.read().encrypt && model.can_encrypt,
+                        connect_toggled => |btn| INSTALLATION_STATE.write().tpm = btn.is_active(),
+                    },
                 },
 
                 gtk::Box {
@@ -128,8 +135,14 @@ impl SimpleComponent for InstallationTypePage {
                         connect_clicked => InstallationTypePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
                     },
 
-                    gtk::Box {
-                        set_hexpand: true,
+                    libhelium::Button {
+                        set_is_pill: true,
+                        #[watch]
+                        set_label: &gettext("Next"),
+                        add_css_class: "large-button",
+                        connect_clicked => InstallationTypePageMsg::Next,
+                        #[watch]
+                        set_sensitive: crate::INSTALLATION_STATE.read().installation_type.is_some(),
                     }
                 }
             }
@@ -154,46 +167,40 @@ impl SimpleComponent for InstallationTypePage {
         match message {
             InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk) => {
                 INSTALLATION_STATE.write().installation_type = Some(InstallationType::WholeDisk);
-                sender
-                    .output(InstallationTypePageOutput::Navigate(
-                        NavigationAction::GoTo(Page::Confirmation),
-                    ))
-                    .unwrap();
                 self.can_encrypt = true;
+                INSTALLATION_STATE.write().encrypt = true;
             }
             InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot(_)) => {
-                sender
-                    .output(InstallationTypePageOutput::Navigate(
-                        NavigationAction::GoTo(Page::InstallDual),
-                    ))
-                    .unwrap();
                 self.can_encrypt = true;
+                INSTALLATION_STATE.write().encrypt = true;
             }
             InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom) => {
                 INSTALLATION_STATE.write().installation_type = Some(InstallationType::Custom);
-                sender
-                    .output(InstallationTypePageOutput::Navigate(
-                        NavigationAction::GoTo(Page::InstallCustom),
-                    ))
-                    .unwrap();
                 self.can_encrypt = false;
+                INSTALLATION_STATE.write().encrypt = false;
             }
             InstallationTypePageMsg::InstallationTypeSelected(
                 InstallationType::ChromebookInstall,
             ) => {
                 INSTALLATION_STATE.write().installation_type =
                     Some(InstallationType::ChromebookInstall);
-                sender
-                    .output(InstallationTypePageOutput::Navigate(
-                        NavigationAction::GoTo(Page::Confirmation),
-                    ))
-                    .unwrap();
+                INSTALLATION_STATE.write().encrypt = true;
                 self.can_encrypt = true;
             }
             InstallationTypePageMsg::Navigate(action) => sender
                 .output(InstallationTypePageOutput::Navigate(action))
                 .unwrap(),
-            InstallationTypePageMsg::Update => {}
+            InstallationTypePageMsg::Next => {
+                sender.input(InstallationTypePageMsg::Navigate(NavigationAction::GoTo(
+                    match INSTALLATION_STATE.read().installation_type.unwrap() {
+                        InstallationType::WholeDisk => Page::Confirmation,
+                        InstallationType::DualBoot(_) => Page::InstallDual,
+                        InstallationType::ChromebookInstall => Page::Confirmation,
+                        InstallationType::Custom => Page::InstallCustom,
+                    },
+                )))
+            }
+            InstallationTypePageMsg::Update => {},
         }
     }
 }

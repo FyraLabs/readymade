@@ -47,6 +47,7 @@ pub struct InstallationState {
     pub mounttags: Option<crate::backend::custom::MountTargets>,
     pub postinstall: Vec<crate::backend::postinstall::Module>,
     pub encrypt: bool,
+    pub tpm: bool,
 }
 
 // TODO: remove this after have support for anything other than chromebook
@@ -326,12 +327,14 @@ impl InstallationState {
         })
     }
 
-    fn set_encrypt_to_file(f: &str) -> String {
+    fn set_encrypt_to_file(f: &str, tpm: bool) -> String {
         let mut f = serde_systemd_unit::parse(f).expect("cannot parse templates");
-        f.sections.get_mut("Partition").unwrap().insert(
-            "Encrypt".to_owned(),
-            serde_systemd_unit::Value::String("key-file".to_owned()),
-        );
+        let mut v = "key-file".to_owned();
+        if tpm {
+            v += "+tpm2";
+        }
+        (f.sections.get_mut("Partition").unwrap())
+            .insert("Encrypt".to_owned(), serde_systemd_unit::Value::String(v));
         f.to_string()
     }
 
@@ -343,7 +346,7 @@ impl InstallationState {
         }
         let root_file = cfgdir.join("50-root.conf");
         let f = std::fs::read_to_string(&root_file)?;
-        let f = Self::set_encrypt_to_file(&f);
+        let f = Self::set_encrypt_to_file(&f, self.tpm);
         std::fs::write(root_file, f)?;
         Ok(())
     }
@@ -434,7 +437,7 @@ mod tests {
     #[test]
     fn test_set_encrypt_to_file() {
         assert_eq!(
-            super::InstallationState::set_encrypt_to_file("[Partition]\nType=root"),
+            super::InstallationState::set_encrypt_to_file("[Partition]\nType=root", false),
             "[Partition]\nType=\"root\"\nEncrypt=\"key-file\"\n"
         );
     }
