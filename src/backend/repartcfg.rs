@@ -335,7 +335,7 @@ ini_enum! {
         Off,
         KeyFile,
         Tpm2,
-        KeyFileTpm2 => "key-file+tpm2",
+        KeyFileTpm2 => "keyfile+tpm2",
     }
 
     #[derive(Debug, Default, Deserialize)]
