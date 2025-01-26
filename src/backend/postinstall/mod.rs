@@ -26,6 +26,8 @@ pub struct Context {
     pub destination_disk: PathBuf,
     pub uefi: bool,
     pub esp_partition: Option<String>,
+    // Installs should always have an xbootldr partition
+    pub xbootldr_partition: String,
     pub lang: String,
 }
 

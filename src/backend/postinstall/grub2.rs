@@ -145,9 +145,19 @@ impl PostInstallModule for GRUB2 {
 
             stage!("Generating stage 1 grub.cfg in ESP..." {
                 let mut grub_cfg = std::fs::File::create("/boot/efi/EFI/fedora/grub.cfg")?;
-                // let's search for an xbootldr label
-                // because we never know what the device will be
-                // see the compile time included config file
+                let xbootldr_disk = &context.xbootldr_partition;
+                
+                let mut template_str = include_str!("../../../templates/fedora-grub.cfg");
+                // We used to blindly search for a partition labeled `xbootldr` here, but now that's not scalable.
+                // now that we are starting to support custom partitioning.
+                // So, now let's get the UUID of the xbootldr partition!
+                
+                
+                // todo: merge https://github.com/FyraLabs/lsblk-rs/pull/16
+                let xbootldr_uuid: &str = todo!();
+                
+                template_str.replace("$UUID$", xbootldr_uuid);
+                
                 grub_cfg.write_all(include_bytes!("../../../templates/fedora-grub.cfg"))?;
             });
 

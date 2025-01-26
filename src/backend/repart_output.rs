@@ -81,6 +81,13 @@ impl RepartOutput {
             .find(|part| part.part_type == "esp")
             .map(|part| part.node.clone())
     }
+    
+    pub fn get_xbootldr_partition(&self) -> std::option::Option<String> {
+        self.partitions
+            .iter()
+            .find(|part| part.part_type == "xbootldr")
+            .map(|part| part.node.clone())
+    }
 
     /// Create `tiffin::Container` from the repartitioning output with the mountpoints
     /// from the DDI partition types

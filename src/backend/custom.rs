@@ -156,8 +156,12 @@ pub fn install_custom(
     let efi = (mounttags.0.iter())
         .find(|part| part.mountpoint == std::path::Path::new("/boot/efi"))
         .and_then(|part| part.partition.to_str().map(ToOwned::to_owned));
+    let xbootldr = (mounttags.0.iter())
+        .find(|part| part.mountpoint == std::path::Path::new("/boot"))
+        .and_then(|part| part.partition.to_str().map(ToOwned::to_owned))
+        .ok_or_else(|| color_eyre::eyre::eyre!("cannot find xbootldr partition"))?;
 
-    container.run(|| state._inner_sys_setup(fstab, efi))??;
+    container.run(|| state._inner_sys_setup(fstab, efi, &xbootldr))??;
 
     Ok(())
 }

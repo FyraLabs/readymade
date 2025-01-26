@@ -1,6 +1,7 @@
 use color_eyre::eyre::bail;
 use color_eyre::eyre::eyre;
 use color_eyre::eyre::Context;
+use color_eyre::eyre::ContextCompat;
 use color_eyre::{Result, Section};
 use ipc_channel::ipc::IpcError;
 use ipc_channel::ipc::IpcOneShotServer;
@@ -224,20 +225,22 @@ impl InstallationState {
 
         // todo: Also handle custom installs? Needs more information
         let esp_node = check_uefi().then(|| output.get_esp_partition()).flatten();
+        let xbootldr_node = output.get_xbootldr_partition().context("No xbootldr partition found")?;
 
-        container.run(|| self._inner_sys_setup(fstab, esp_node))??;
+        container.run(|| self._inner_sys_setup(fstab, esp_node, &xbootldr_node))??;
 
         Ok(())
     }
 
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
-    pub fn _inner_sys_setup(&self, fstab: String, esp_node: Option<String>) -> Result<()> {
+    pub fn _inner_sys_setup(&self, fstab: String, esp_node: Option<String>, xbootldr_node: &str) -> Result<()> {
         // We will run the specified postinstall modules now
         let context = crate::backend::postinstall::Context {
             destination_disk: self.destination_disk.as_ref().unwrap().devpath.clone(),
             uefi: util::sys::check_uefi(),
             esp_partition: esp_node,
+            xbootldr_partition: xbootldr_node.to_owned(),
             lang: self.langlocale.clone().unwrap_or_else(|| "C.UTF-8".into()),
         };
 
