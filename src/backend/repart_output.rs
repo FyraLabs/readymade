@@ -347,6 +347,7 @@ mod tests {
 
     #[test]
     #[traced_test]
+    #[ignore = "Requires the config files to be present in the root context"]
     fn test_fstab() {
         let output = deserialize();
         let mountpoints = output.generate_fstab().unwrap();
