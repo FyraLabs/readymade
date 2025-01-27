@@ -34,6 +34,30 @@ fn remove_if_exists(path: &Path) -> color_eyre::Result<()> {
     Ok(())
 }
 
+pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
+    let to = to.as_ref();
+    let from = from.as_ref();
+    std::fs::create_dir_all(to)?;
+
+    
+    // use cp -a to copy and preserve all attributes
+    let mut process = std::process::Command::new("cp")
+        .arg("-a")
+        .arg(from)
+        .arg(to)
+        .spawn()
+        .map_err(|e| eyre!("Failed to spawn cp: {e}"))?;
+    
+    let status = process.wait().map_err(|e| eyre!("Failed to wait for cp: {e}"))?;
+    
+    
+    if !status.success() {
+        bail!("Failed to copy directory");
+    }
+
+    Ok(())
+}
+
 pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     use rayon::iter::{ParallelBridge, ParallelIterator};
 
