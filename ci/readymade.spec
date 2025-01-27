@@ -35,5 +35,7 @@ It is created as a replacement to Red Hat's Anaconda installer for Ultramarine L
 %files -f com.fyralabs.Readymade.lang
 %_bindir/readymade
 %_datadir/polkit-1/actions/com.fyralabs.pkexec.readymade.policy
+%{_datadir}/applications/com.fyralabs.Readymade.desktop
+%{_datadir}/icons/hicolor/*/apps/com.fyralabs.Readymade.*
 %_datadir/readymade
 %_sysconfdir/readymade.toml
