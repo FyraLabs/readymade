@@ -90,24 +90,23 @@ impl InstallationState {
 
         let (server, channel_id) = IpcOneShotServer::new()?;
         command.arg(channel_id);
-
-        if let Ok(value) = std::env::var("REPART_COPY_SOURCE") {
-            command.arg(format!("REPART_COPY_SOURCE={value}"));
+        
+        
+        // list envars
+        let envars = std::env::vars().collect::<Vec<_>>();
+        
+        for (key, value) in envars {
+            if key.starts_with("REPART_") || key.starts_with("READYMADE_") {
+                command.arg(format!("{}={}", key, value));
+            }
         }
 
-        if let Ok(value) = std::env::var("READYMADE_REPART_DIR") {
-            command.arg(format!("READYMADE_REPART_DIR={value}"));
-        }
-
-        if let Ok(value) = std::env::var("READYMADE_DRY_RUN") {
-            command.arg(format!("READYMADE_DRY_RUN={value}"));
-        }
 
         command.arg("NO_COLOR=1");
 
         command.arg(format!(
             "READYMADE_LOG={}",
-            std::env::var("READYMADE_LOG").as_deref().unwrap_or("trace")
+            std::env::var("READYMADE_LOG").as_deref().unwrap_or("info")
         ));
 
         let mut stdout_logs: Vec<u8> = Vec::new();

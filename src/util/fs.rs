@@ -1,6 +1,5 @@
 use std::{
-    os::unix::fs::{FileTypeExt, MetadataExt},
-    path::{Path, PathBuf},
+    ffi::OsString, os::unix::fs::{FileTypeExt, MetadataExt}, path::{Path, PathBuf}
 };
 
 use color_eyre::eyre::{bail, eyre};
@@ -41,17 +40,22 @@ fn remove_if_exists(path: &Path) -> color_eyre::Result<()> {
 /// Currently there are two methods available:
 ///
 /// - cp: Uses the `cp -a` command to copy the directory tree
-/// - recurse: Native Rust implementation that uses `std::fs` and `jwalk` to copy the directory tree, this one may be lossy and cause issues with special files
+/// - recurse: Native Rust implementation that uses `std::fs` and `jwalk` to copy the directory tree.
+/// - uutils: Uses uutil's implementation of `cp` to copy the directory tree, programmatically
 pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
-    let env = std::env::var("READYMADE_COPY_METHOD").unwrap_or_else(|_| "cp".to_string());
+    let env = std::env::var("READYMADE_COPY_METHOD").unwrap_or_else(|_| "rdm".to_string());
     match env.as_str() {
         "cp" => copy_dir_cp(from, to),
-        // "rsync" => copy_dir_rsync(from, to),
-        "recurse" => copy_dir_recurse(from, to),
+        #[cfg(feature = "uutils")]
+        "uutils" => copy_dir_uutils(from, to),
+        "recurse" | "rdm" => copy_dir_rdm(from, to),
         _ => Err(eyre!("Invalid COPY_METHOD")),
     }
 }
 
+/// Copy directory tree from one location to another using the `cp` command provided by coreutils.
+/// 
+/// This function uses the `cp -a` command to copy the directory tree.
 pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     let to = to.as_ref();
     let from = from.as_ref();
@@ -79,7 +83,12 @@ pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre
     Ok(())
 }
 
-pub fn copy_dir_recurse<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
+
+/// Readymade's internal implementation of a FS copy
+/// 
+/// This implementation uses Rust's `std::fs` and `jwalk` to copy the directory tree.
+/// 
+pub fn copy_dir_rdm<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     use rayon::iter::{ParallelBridge, ParallelIterator};
     let to = to.as_ref();
     let from = from.as_ref();
@@ -126,6 +135,101 @@ pub fn copy_dir_recurse<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color
         Err(res.unwrap_err())
     }
 }
+#[cfg(feature = "uutils")]
+/// Copy directory tree from one location to another using uutil's implementation of `cp`.
+/// 
+/// This function requires the `uutils` feature to be enabled, and will vendor in
+/// uutils' `cp` implementation to copy the directory tree.
+/// 
+/// May not be as stable as the other implementations, but is useful for testing.
+pub fn copy_dir_uutils<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
+    let opts = uu_cp::Options {
+        recursive: true,
+        overwrite: uu_cp::OverwriteMode::Clobber(uu_cp::ClobberMode::Force),
+        attributes: uu_cp::Attributes::ALL,
+        verbose: cfg!(debug_assertions),
+        progress_bar: false,
+        one_file_system: false,
+        attributes_only: false,
+        backup: uu_cp::BackupMode::NoBackup,
+        copy_contents: true,
+        cli_dereference: false,
+        copy_mode: uu_cp::CopyMode::Copy,
+        dereference: false,
+        no_target_dir: false,
+        parents: false,
+        sparse_mode: uu_cp::SparseMode::Auto,
+        strip_trailing_slashes: true,
+        reflink_mode: uu_cp::ReflinkMode::Never,
+        backup_suffix: "bak".into(),
+        target_dir: None,
+        update: uu_cp::UpdateMode::ReplaceAll,
+        debug: cfg!(debug_assertions),
+    };
+
+    let from = PathBuf::from(format!("{}/.", from.as_ref().display()));
+    let to = PathBuf::from(format!("{}", to.as_ref().display()));
+    tracing::info!(?from, ?to, "Copying directory using uutils cp");
+
+    uu_cp::copy(&[from], &to, &opts).map_err(|e| eyre!("Failed to copy directory: {e}"))?;
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::os::unix::fs::PermissionsExt;
+    use super::*;
+    use std::path::Path;
+    fn test_copy_impl<F>(name: &str, copy_fn: F) -> color_eyre::Result<()> 
+    where 
+        F: Fn(&Path, &Path) -> color_eyre::Result<()>
+    {
+        let src: &str = &format!("/tmp/test_src_{}", name);
+        let dest: &str = &format!("/tmp/test_dest_{}", name);
+
+        // set up test environment
+        std::fs::create_dir_all(src)?;
+        std::fs::write(format!("{}/test.txt", src), "test")?;
+        std::fs::set_permissions(format!("{}/test.txt", src), std::fs::Permissions::from_mode(0o700))?;
+
+        // dest
+        std::fs::create_dir_all(dest)?;
+
+        tracing::info!("Testing {} copy implementation", name);
+        let o = copy_fn(Path::new(src), Path::new(dest));
+
+        assert!(o.is_ok());
+        assert!(std::fs::metadata(format!("{}/test.txt", dest)).is_ok());
+
+        // check 700 permissions
+        let metadata = std::fs::metadata(format!("{}/test.txt", dest))?;
+        assert_eq!(metadata.permissions().mode() & 0o777, 0o700);
+
+        // cleanup
+        std::fs::remove_dir_all(src)?;
+        std::fs::remove_dir_all(dest)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_copy_recurse() -> color_eyre::Result<()> {
+        test_copy_impl("recurse", |from, to| copy_dir_rdm(from, to))
+    }
+
+    #[test] 
+    #[cfg(target_family = "unix")]  
+    fn test_copy_cp() -> color_eyre::Result<()> {
+        test_copy_impl("cp", |from, to| copy_dir_cp(from, to)) 
+    }
+
+    #[test]
+    #[cfg(feature = "uutils")]
+    fn test_copy_uucp() -> color_eyre::Result<()> {
+        test_copy_impl("uutils", |from, to| copy_dir_uutils(from, to))
+    }
+}
 
 fn to_timeval(time: std::time::SystemTime) -> nix::sys::time::TimeVal {
     let t = time.duration_since(std::time::UNIX_EPOCH).unwrap();
@@ -162,6 +266,7 @@ fn copy_attributes(
         Some(nix::unistd::Uid::from_raw(uid)),
         Some(nix::unistd::Gid::from_raw(gid)),
     )?;
+    std::fs::set_permissions(dest_path, metadata.permissions())?;
     Ok(())
 }
 
