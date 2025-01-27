@@ -43,7 +43,7 @@ fn remove_if_exists(path: &Path) -> color_eyre::Result<()> {
 /// - cp: Uses the `cp -a` command to copy the directory tree
 /// - recurse: Native Rust implementation that uses `std::fs` and `jwalk` to copy the directory tree, this one may be lossy and cause issues with special files
 pub fn copy_dir <P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
-    let env = std::env::var("READYMADE_COPY_METHOD").unwrap_or_else(|_| "recurse".to_string());
+    let env = std::env::var("READYMADE_COPY_METHOD").unwrap_or_else(|_| "cp".to_string());
     match env.as_str() {
         "cp" => copy_dir_cp(from, to),
         // "rsync" => copy_dir_rsync(from, to),
