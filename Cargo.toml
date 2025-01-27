@@ -23,7 +23,7 @@ gettext-rs = { version = "0.7.0", features = ["gettext-system"] }
 gnome-desktop = "0.4.2"
 paste = "1.0.15"
 tempfile = "3.10.1"
-lsblk = "0.4.0"
+lsblk = "0.5.0"
 const_format = "0.2.32"
 sys-mount = "3.0.1"
 serde = { version = "1.0.204", features = ["derive"] }
@@ -41,7 +41,7 @@ toml = "0.8.19"
 serde_valid = { version = "1.0.5", features = ["toml"] }
 os_pipe = "1.2.1"
 tee_readwrite = "0.2.0"
-nix = { version = "0.29.0", features = ["fs", "mount"] }
+nix = { version = "0.29.0", features = ["fs", "mount", "user"] }
 backhand = "0.20.0"
 glob = "0.3.1"
 enum_dispatch = "0.3.13"
@@ -53,11 +53,11 @@ ipc-channel = { version = "0.19.0", features = ["async"] }
 freedesktop-desktop-entry = "0.7.7"
 jwalk = "0.8.1"
 xattr = "1.4.0"
-filesystem-table = { version = "0.1.0", path = "filesystem-table" }
+filesystem-table = { version = "0.1.2", path = "./filesystem-table" }
 
-[dependencies.os-detect]
-git = "https://github.com/FyraLabs/distinst"
-branch = "master"
+# [dependencies.os-detect]
+# git = "https://github.com/FyraLabs/distinst"
+# branch = "master"
 
 [build-dependencies]
 glib-build-tools = "0.20.0"

@@ -1,5 +1,5 @@
 use std::{
-    os::unix::fs::FileTypeExt,
+    os::unix::fs::{FileTypeExt, MetadataExt},
     path::{Path, PathBuf},
 };
 
@@ -34,9 +34,16 @@ fn remove_if_exists(path: &Path) -> color_eyre::Result<()> {
     Ok(())
 }
 
-// wrap the below functions 
+/// Copy directory tree from one location to another
+/// 
+/// This function wraps around different backend methods to copy a directory tree.
+/// 
+/// Currently there are two methods available:
+/// 
+/// - cp: Uses the `cp -a` command to copy the directory tree
+/// - recurse: Native Rust implementation that uses `std::fs` and `jwalk` to copy the directory tree, this one may be lossy and cause issues with special files
 pub fn copy_dir <P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
-    let env = std::env::var("COPY_METHOD").unwrap_or_else(|_| "cp".to_string());
+    let env = std::env::var("READYMADE_COPY_METHOD").unwrap_or_else(|_| "cp".to_string());
     match env.as_str() {
         "cp" => copy_dir_cp(from, to),
         // "rsync" => copy_dir_rsync(from, to),
@@ -98,9 +105,12 @@ pub fn copy_dir_recurse<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color
             remove_if_exists(&dest_path)?;
             std::fs::copy(&src_path, &dest_path)?;
         }
-
-        // set attributes only for files and dirs, symlinks will fail with ENOENT
+        let uid = metadata.uid();
+        let gid = metadata.gid();
+        nix::unistd::chown(&dest_path, Some(uid.into()), Some(gid.into()))?;
+        // Preserve owners for files and directories
         if metadata.is_dir() || metadata.is_file() {
+
             set_attributes(&src_path, &dest_path, &metadata)?;
         }
 
