@@ -1,9 +1,9 @@
 use color_eyre::eyre::bail;
 use color_eyre::Result;
 use serde::{Deserialize, Serialize};
-use std::{io::Write, path::PathBuf};
 use std::path::Path;
 use std::process::Command;
+use std::{io::Write, path::PathBuf};
 use tracing::{debug, info, warn};
 
 use crate::stage;
@@ -146,18 +146,18 @@ impl PostInstallModule for GRUB2 {
             stage!("Generating stage 1 grub.cfg in ESP..." {
                 let mut grub_cfg = std::fs::File::create("/boot/efi/EFI/fedora/grub.cfg")?;
                 let xbootldr_disk = &context.xbootldr_partition;
-                
+
                 let template_str = include_str!("../../../templates/fedora-grub.cfg");
                 // We used to blindly search for a partition labeled `xbootldr` here, but now that's not scalable.
                 // now that we are starting to support custom partitioning.
                 // So, now let's get the UUID of the xbootldr partition!
-                
-                
+
+
                 // ?? For some testing environments, using lsblk::BlockDevice::from_path() returns a completely different
                 // UUID than what is actually on the disk itself when installing to a loopback device.
-                // 
+                //
                 // This seems to be some weird issue with the kernel's devfs.
-                // 
+                //
                 // So for now, we'll have to literally iterate through all the block devices and find the one that matches its full name.
                 let block_devices = lsblk::BlockDevice::list()?;
                 let xbootldr_uuid = block_devices
@@ -165,9 +165,9 @@ impl PostInstallModule for GRUB2 {
                     .find(|dev| dev.fullname == PathBuf::from(xbootldr_disk))
                     .and_then(|dev| dev.uuid.as_ref())
                     .ok_or_else(|| color_eyre::eyre::eyre!("Could not find UUID for xbootldr partition"))?;
-                
+
                 let final_str = template_str.replace("$UUID$", xbootldr_uuid);
-                
+
                 grub_cfg.write_all(&final_str.as_bytes())?;
             });
 

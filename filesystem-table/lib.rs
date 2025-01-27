@@ -259,31 +259,31 @@ pub fn read_fstab() -> Result<FsTable> {
 }
 
 /// Generate a new fstab from mtab, using a chroot prefix to generate the new fstab.
-/// 
+///
 /// This is useful when you want to generate a new fstab for a chroot environment.
-/// 
-/// 
+///
+///
 /// # Example
-/// 
+///
 /// ```rust
 /// let fstab = generate_fstab("/mnt/custom").unwrap();
-/// 
+///
 /// println!("{}", fstab.to_string());
 /// ```
-/// 
+///
 /// This will generate a new fstab for the `/mnt/custom` chroot.
 pub fn generate_fstab(prefix: &str) -> Result<FsTable> {
     let mtab = read_mtab()?;
-    
+
     // if prefix ends with /, strip it
-    // 
+    //
     // This solves some common cases where the prefix contains a trailing slash,
     // causing only the subdirectories to be matched.
     let prefix = prefix.trim_end_matches('/');
 
     let block_list = lsblk::BlockDevice::list()?;
 
-    // filter by prefix 
+    // filter by prefix
     let entries = (mtab.entries.into_iter())
         .filter(|entry| (entry.mountpoint.as_ref()).is_some_and(|mp| mp.starts_with(prefix)))
         .map(|mut entry| -> Result<FsEntry> {
@@ -375,13 +375,13 @@ mod tests {
 
         println!("{:#?}", table.to_string());
     }
-    
+
     #[test]
     fn test_generate_fstab() {
         let fstab = generate_fstab("/mnt/custom").unwrap();
 
         println!("{}", fstab.to_string());
-        
+
         // check if theres newlines
         assert!(fstab.to_string().contains('\n'));
     }

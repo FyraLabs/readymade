@@ -81,7 +81,7 @@ impl RepartOutput {
             .find(|part| part.part_type == "esp")
             .map(|part| part.node.clone())
     }
-    
+
     pub fn get_xbootldr_partition(&self) -> std::option::Option<String> {
         self.partitions
             .iter()

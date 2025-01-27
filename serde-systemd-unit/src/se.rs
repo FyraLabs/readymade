@@ -5,11 +5,10 @@ pub struct Serializer {
     output: String,
 }
 
-
 /// Serialize the given data structures back into a string, in systemd format.
-/// 
+///
 /// # Errors
-/// 
+///
 /// This function will return an error if the data structure cannot be serialized for any reason.
 pub fn to_string<T: Serialize>(value: &T) -> Result<String, ()> {
     let mut serializer = Serializer::default();

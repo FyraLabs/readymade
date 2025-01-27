@@ -87,16 +87,18 @@ pub fn install_custom(
     let destroot = Path::new("/mnt/custom");
     mounttags.sort_mounts();
     mounttags.mount_all(destroot)?;
-    
+
     // Let's declare fstab here
     // add a newline just in case
     let fstab = filesystem_table::generate_fstab("/mnt/custom")
-        .wrap_err("cannot generate fstab")?.to_string() + "\n";
+        .wrap_err("cannot generate fstab")?
+        .to_string()
+        + "\n";
 
     if fstab.is_empty() {
         color_eyre::eyre::bail!("generated fstab is empty!? what happened?");
     }
-    
+
     {
         scopeguard::defer! {
             if let Err(e) = mounttags.umount_all(destroot) {
@@ -139,7 +141,6 @@ pub fn install_custom(
         }
     }
 
-
     let temp_dir = tempfile::tempdir()?.into_path();
 
     let mut container = tiffin::Container::new(temp_dir);
@@ -158,7 +159,6 @@ pub fn install_custom(
             partition,
         );
     }
-
 
     let efi = (mounttags.0.iter())
         .find(|part| part.mountpoint == std::path::Path::new("/boot/efi"))

@@ -86,9 +86,9 @@ fn parser() -> impl Parser<char, IniIntermediate, Error = Simple<char>> {
 }
 
 /// Parse a string into an intermediate representation of an INI file.
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns a list of errors if the input is not a valid Systemd unit format
 pub fn parse_str(s: &str) -> Result<IniIntermediate, Err> {
     parser().parse(s)

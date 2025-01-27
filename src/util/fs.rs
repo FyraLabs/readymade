@@ -35,14 +35,14 @@ fn remove_if_exists(path: &Path) -> color_eyre::Result<()> {
 }
 
 /// Copy directory tree from one location to another
-/// 
+///
 /// This function wraps around different backend methods to copy a directory tree.
-/// 
+///
 /// Currently there are two methods available:
-/// 
+///
 /// - cp: Uses the `cp -a` command to copy the directory tree
 /// - recurse: Native Rust implementation that uses `std::fs` and `jwalk` to copy the directory tree, this one may be lossy and cause issues with special files
-pub fn copy_dir <P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
+pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     let env = std::env::var("READYMADE_COPY_METHOD").unwrap_or_else(|_| "cp".to_string());
     match env.as_str() {
         "cp" => copy_dir_cp(from, to),
@@ -52,14 +52,13 @@ pub fn copy_dir <P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::
     }
 }
 
-
 pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     let to = to.as_ref();
     let from = from.as_ref();
     std::fs::create_dir_all(to)?;
 
     tracing::info!(?from, ?to, "Copying directory using cp");
-    
+
     // use cp -a to copy and preserve all attributes
     let mut process = std::process::Command::new("cp")
         .arg("-a")
@@ -68,10 +67,11 @@ pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre
         .arg(format!("{to}/.", to = to.display()))
         .spawn()
         .map_err(|e| eyre!("Failed to spawn cp: {e}"))?;
-    
-    let status = process.wait().map_err(|e| eyre!("Failed to wait for cp: {e}"))?;
-    
-    
+
+    let status = process
+        .wait()
+        .map_err(|e| eyre!("Failed to wait for cp: {e}"))?;
+
     if !status.success() {
         bail!("Failed to copy directory");
     }
@@ -107,19 +107,17 @@ pub fn copy_dir_recurse<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color
             std::fs::copy(&src_path, &dest_path)?;
         }
 
-
         // Apply attributes to the node,
         // but not symlinks since they'll be for the target itself
         if !metadata.is_symlink() {
             copy_attributes(&src_path, &dest_path, &metadata)?;
         }
-        
+
         tracing::trace!(?src_path, ?dest_path, "File copy complete for file");
 
         Ok(())
     });
-    
-    
+
     if let Ok(()) = res {
         // sync the directory to disk
         std::fs::File::open(to)?.sync_all()?;
@@ -156,10 +154,14 @@ fn copy_attributes(
             tracing::warn!("Failed to set xattr {xattr:?}: {e}");
         }
     });
-    
+
     let uid = metadata.uid();
     let gid = metadata.gid();
-    nix::unistd::chown(dest_path, Some(nix::unistd::Uid::from_raw(uid)), Some(nix::unistd::Gid::from_raw(gid)))?;
+    nix::unistd::chown(
+        dest_path,
+        Some(nix::unistd::Uid::from_raw(uid)),
+        Some(nix::unistd::Gid::from_raw(gid)),
+    )?;
     Ok(())
 }
 
