@@ -1,6 +1,6 @@
 [package]
 name = "filesystem-table"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 authors = ["Cappy Ishihara <cappy@fyralabs.com>", "madonuko <mado@fyralabs.com>"]
@@ -16,3 +16,4 @@ path = "./lib.rs"
 
 [dependencies]
 thiserror = "2.0.11"
+lsblk = "0.5"

@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 
 use thiserror::Error;
 
@@ -15,6 +15,9 @@ pub enum FsTableError {
 
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[error("lsblk error: {0}")]
+    LsblkError(#[from] lsblk::LsblkError),
 }
 
 type Result<T> = std::result::Result<T, FsTableError>;
@@ -222,9 +225,18 @@ impl std::fmt::Display for FsTable {
         self.entries
             .iter()
             .map(|entry| entry.to_line_str())
-            .try_for_each(|s| f.write_str(&s))
+            .collect::<Vec<_>>()
+            .join("\n")
+            .as_str()
+            .fmt(f)
     }
 }
+
+// impl ToString for FsTable {
+//     fn to_string(&self) -> String {
+//         self.to_string()
+//     }
+// }
 
 impl TryFrom<&str> for FsTable {
     type Error = FsTableError;
@@ -250,34 +262,36 @@ pub fn read_fstab() -> Result<FsTable> {
 pub fn generate_fstab(prefix: &str) -> Result<FsTable> {
     let mtab = read_mtab()?;
 
-    let uuid_map: std::collections::HashMap<String, String> =
-        std::fs::read_dir("/dev/disk/by-uuid")?
-            .filter_map(|f| {
-                let f = f.ok()?;
-                Some((
-                    std::fs::read_link(f.path()).ok()?.to_str()?.to_owned(),
-                    f.file_name().to_str().expect("cannot get uuid").to_owned(),
-                ))
-            })
-            .collect();
+    let block_list = lsblk::BlockDevice::list()?;
 
-    // filter by prefix
+    // filter by prefix 
     let entries = (mtab.entries.into_iter())
-        .filter(|entry| (entry.mountpoint.as_ref()).is_some_and(|mp| mp.starts_with(prefix)));
-    let entries = entries.map(|mut entry| {
-        entry.mountpoint = Some(
-            match entry.mountpoint.unwrap().strip_prefix(prefix).unwrap() {
-                "" => "/",
-                path => path,
-            }
-            .to_string(),
-        );
-        let mut device_spec = String::from("UUID=");
-        device_spec += &uuid_map[&*entry.device_spec];
-        device_spec.clone_into(&mut entry.device_spec);
-        entry
-    });
-    let entries = entries.collect();
+        .filter(|entry| (entry.mountpoint.as_ref()).is_some_and(|mp| mp.starts_with(prefix)))
+        .map(|mut entry| -> Result<FsEntry> {
+            entry.mountpoint = Some(
+                match entry.mountpoint.unwrap().strip_prefix(prefix).unwrap() {
+                    "" => "/",
+                    path => path,
+                }
+                .to_string(),
+            );
+
+            let device_spec_og = entry.device_spec.clone();
+
+            let uuid = block_list
+                .iter()
+                .find(|dev| dev.fullname == PathBuf::from(&device_spec_og))
+                .and_then(|dev| dev.uuid.as_ref())
+                .ok_or_else(|| {
+                    FsTableError::InvalidEntry(format!(
+                        "Could not find UUID for device: {}",
+                        device_spec_og
+                    ))
+                })?;
+            entry.device_spec = format!("UUID={uuid}");
+            Ok(entry)
+        })
+        .collect::<Result<Vec<_>>>()?;
 
     Ok(FsTable { entries })
 }
@@ -341,5 +355,15 @@ mod tests {
         let table = FsTable::from_str(&mtab).unwrap();
 
         println!("{:#?}", table.to_string());
+    }
+    
+    #[test]
+    fn test_generate_fstab() {
+        let fstab = generate_fstab("/mnt/custom").unwrap();
+
+        println!("{}", fstab.to_string());
+        
+        // check if theres newlines
+        assert!(fstab.to_string().contains('\n'));
     }
 }
