@@ -43,7 +43,7 @@ fn remove_if_exists(path: &Path) -> color_eyre::Result<()> {
 /// - cp: Uses the `cp -a` command to copy the directory tree
 /// - recurse: Native Rust implementation that uses `std::fs` and `jwalk` to copy the directory tree, this one may be lossy and cause issues with special files
 pub fn copy_dir <P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
-    let env = std::env::var("READYMADE_COPY_METHOD").unwrap_or_else(|_| "cp".to_string());
+    let env = std::env::var("READYMADE_COPY_METHOD").unwrap_or_else(|_| "recurse".to_string());
     match env.as_str() {
         "cp" => copy_dir_cp(from, to),
         // "rsync" => copy_dir_rsync(from, to),
@@ -81,17 +81,18 @@ pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre
 
 pub fn copy_dir_recurse<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     use rayon::iter::{ParallelBridge, ParallelIterator};
-
     let to = to.as_ref();
     let from = from.as_ref();
     std::fs::create_dir_all(to)?;
+    tracing::info!(?from, ?to, "Copying directory using Rust implementation");
 
     let walkdir = jwalk::WalkDir::new(from).sort(true).into_iter();
 
-    (walkdir.par_bridge()).try_for_each(|entry| -> color_eyre::Result<()> {
+    let res = (walkdir.par_bridge()).try_for_each(|entry| -> color_eyre::Result<()> {
         let src_path = entry?.path();
         let dest_path = to.join(src_path.strip_prefix(from)?);
         let metadata = src_path.symlink_metadata()?;
+        tracing::trace!(?src_path, ?dest_path, "Copying file");
 
         if metadata.is_dir() {
             std::fs::create_dir_all(&dest_path)?;
@@ -105,17 +106,27 @@ pub fn copy_dir_recurse<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color
             remove_if_exists(&dest_path)?;
             std::fs::copy(&src_path, &dest_path)?;
         }
-        let uid = metadata.uid();
-        let gid = metadata.gid();
-        nix::unistd::chown(&dest_path, Some(uid.into()), Some(gid.into()))?;
-        // Preserve owners for files and directories
-        if metadata.is_dir() || metadata.is_file() {
 
-            set_attributes(&src_path, &dest_path, &metadata)?;
+
+        // Apply attributes to the node,
+        // but not symlinks since they'll be for the target itself
+        if !metadata.is_symlink() {
+            copy_attributes(&src_path, &dest_path, &metadata)?;
         }
+        
+        tracing::trace!(?src_path, ?dest_path, "File copy complete for file");
 
         Ok(())
-    })
+    });
+    
+    
+    if let Ok(()) = res {
+        // sync the directory to disk
+        std::fs::File::open(to)?.sync_all()?;
+        Ok(())
+    } else {
+        Err(res.unwrap_err())
+    }
 }
 
 fn to_timeval(time: std::time::SystemTime) -> nix::sys::time::TimeVal {
@@ -125,7 +136,8 @@ fn to_timeval(time: std::time::SystemTime) -> nix::sys::time::TimeVal {
         (t.as_micros() % 1_000_000).try_into().unwrap(),
     )
 }
-fn set_attributes(
+
+fn copy_attributes(
     src_path: &Path,
     dest_path: &Path,
     metadata: &std::fs::Metadata,
@@ -144,6 +156,10 @@ fn set_attributes(
             tracing::warn!("Failed to set xattr {xattr:?}: {e}");
         }
     });
+    
+    let uid = metadata.uid();
+    let gid = metadata.gid();
+    nix::unistd::chown(dest_path, Some(nix::unistd::Uid::from_raw(uid)), Some(nix::unistd::Gid::from_raw(gid)))?;
     Ok(())
 }
 
