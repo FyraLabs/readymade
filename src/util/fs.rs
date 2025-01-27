@@ -34,17 +34,31 @@ fn remove_if_exists(path: &Path) -> color_eyre::Result<()> {
     Ok(())
 }
 
+// wrap the below functions 
+pub fn copy_dir <P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
+    let env = std::env::var("COPY_METHOD").unwrap_or_else(|_| "cp".to_string());
+    match env.as_str() {
+        "cp" => copy_dir_cp(from, to),
+        // "rsync" => copy_dir_rsync(from, to),
+        "recurse" => copy_dir_recurse(from, to),
+        _ => Err(eyre!("Invalid COPY_METHOD")),
+    }
+}
+
+
 pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     let to = to.as_ref();
     let from = from.as_ref();
     std::fs::create_dir_all(to)?;
 
+    tracing::info!(?from, ?to, "Copying directory using cp");
     
     // use cp -a to copy and preserve all attributes
     let mut process = std::process::Command::new("cp")
         .arg("-a")
-        .arg(from)
-        .arg(to)
+        // we use /. to copy the contents of the directory, not the directory itself so it won't get nested
+        .arg(format!("{from}/.", from = from.display()))
+        .arg(format!("{to}/.", to = to.display()))
         .spawn()
         .map_err(|e| eyre!("Failed to spawn cp: {e}"))?;
     
@@ -58,7 +72,7 @@ pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre
     Ok(())
 }
 
-pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
+pub fn copy_dir_recurse<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     use rayon::iter::{ParallelBridge, ParallelIterator};
 
     let to = to.as_ref();

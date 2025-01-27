@@ -125,7 +125,7 @@ pub fn install_custom(
             });
         } else {
             crate::stage!("Copying files" {
-                crate::util::fs::copy_dir_cp(&copy_source, destroot)?;
+                crate::util::fs::copy_dir(&copy_source, destroot)?;
             });
         }
     }
