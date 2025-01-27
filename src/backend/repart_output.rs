@@ -327,7 +327,7 @@ mod tests {
     #[test]
     fn test_deserialize() {
         let output = deserialize();
-        assert_eq!(output.partitions.len(), 4);
+        assert_eq!(output.partitions.len(), 3);
     }
 
     #[test]

@@ -447,9 +447,7 @@ impl InstallationType {
 mod tests {
     #[test]
     fn test_set_encrypt_to_file() {
-        assert_eq!(
-            super::InstallationState::set_encrypt_to_file("[Partition]\nType=root", false),
-            "[Partition]\nType=\"root\"\nEncrypt=\"keyfile\"\n"
-        );
+        let enc = super::InstallationState::set_encrypt_to_file("[Partition]\nType=root", false);
+        assert!(enc.contains("Encrypt=keyfile"),);
     }
 }

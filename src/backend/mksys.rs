@@ -117,6 +117,7 @@ fn writef(
 mod test {
     use super::*;
     #[test]
+    #[ignore = "We actually mount the image now, so this is not needed"]
     fn test_unsquash() -> Result<()> {
         use std::path::PathBuf;
         std::process::Command::new("mksquashfs")
