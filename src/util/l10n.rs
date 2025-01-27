@@ -35,12 +35,13 @@ pub fn list_langs() -> HashMap<String, (String, String)> {
 mod tests {
     use super::*;
     #[test]
+    #[ignore = "CI actually doesn't have locales, and the FFI library segfaults due to use-after-free from C"]
     fn test_list_locales() {
         let locales = list_locales();
         assert!(!locales.is_empty());
         assert_eq!(list_langs().len(), locales.len());
     }
-
+    #[ignore = "CI actually doesn't have locales, and the FFI library segfaults due to use-after-free from C"]
     #[test]
     fn test_get_lang_from_locale() {
         assert_eq!(
