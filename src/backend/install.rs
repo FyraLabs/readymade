@@ -90,17 +90,15 @@ impl InstallationState {
 
         let (server, channel_id) = IpcOneShotServer::new()?;
         command.arg(channel_id);
-        
-        
+
         // list envars
         let envars = std::env::vars().collect::<Vec<_>>();
-        
+
         for (key, value) in envars {
             if key.starts_with("REPART_") || key.starts_with("READYMADE_") {
                 command.arg(format!("{}={}", key, value));
             }
         }
-
 
         command.arg("NO_COLOR=1");
 

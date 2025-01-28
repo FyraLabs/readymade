@@ -1,5 +1,6 @@
 use std::{
-    ffi::OsString, os::unix::fs::{FileTypeExt, MetadataExt}, path::{Path, PathBuf}
+    os::unix::fs::{FileExt, FileTypeExt, MetadataExt},
+    path::{Path, PathBuf},
 };
 
 use color_eyre::eyre::{bail, eyre};
@@ -23,14 +24,15 @@ pub fn exist_then_read_dir<A: AsRef<Path>>(
         Ok(x) => Ok(Box::new(x.flatten())),
     }
 }
-/// Attempt to remove a file, but ignore if the file didn't exist in the first place.
-fn remove_if_exists(path: &Path) -> color_eyre::Result<()> {
-    let rm = std::fs::remove_file(path);
-
-    if rm.is_err() && rm.as_ref().unwrap_err().kind() != std::io::ErrorKind::NotFound {
-        bail!(rm.unwrap_err());
-    }
-    Ok(())
+/// Removes a file if it exists, using a single syscall.
+fn remove_if_exists(path: &Path) -> std::io::Result<()> {
+    std::fs::remove_file(path).or_else(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            Ok(())
+        } else {
+            Err(e)
+        }
+    })
 }
 
 /// Copy directory tree from one location to another
@@ -54,7 +56,7 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::R
 }
 
 /// Copy directory tree from one location to another using the `cp` command provided by coreutils.
-/// 
+///
 /// This function uses the `cp -a` command to copy the directory tree.
 pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     let to = to.as_ref();
@@ -83,64 +85,184 @@ pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre
     Ok(())
 }
 
-
 /// Readymade's internal implementation of a FS copy
-/// 
+///
 /// This implementation uses Rust's `std::fs` and `jwalk` to copy the directory tree.
-/// 
+///
 pub fn copy_dir_rdm<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
-    use rayon::iter::{ParallelBridge, ParallelIterator};
+    use rayon::iter::ParallelIterator;
+    use rayon::prelude::*;
     let to = to.as_ref();
     let from = from.as_ref();
     std::fs::create_dir_all(to)?;
-    tracing::info!(?from, ?to, "Copying directory using Rust implementation");
+    tracing::info!(
+        ?from,
+        ?to,
+        "Copying directory using internal implementation"
+    );
 
-    let walkdir = jwalk::WalkDir::new(from).sort(true).into_iter();
-
-    let res = (walkdir.par_bridge()).try_for_each(|entry| -> color_eyre::Result<()> {
-        let src_path = entry?.path();
-        let dest_path = to.join(src_path.strip_prefix(from)?);
-        let metadata = src_path.symlink_metadata()?;
-        tracing::trace!(?src_path, ?dest_path, "Copying file");
-
-        if metadata.is_dir() {
-            std::fs::create_dir_all(&dest_path)?;
-        } else if metadata.is_symlink() {
-            std::fs::create_dir_all(dest_path.parent().unwrap())?;
-            let link = std::fs::read_link(&src_path)?;
-            remove_if_exists(&dest_path)?;
-            std::os::unix::fs::symlink(&link, &dest_path)?;
-        } else {
-            std::fs::create_dir_all(dest_path.parent().unwrap())?;
-            remove_if_exists(&dest_path)?;
-            std::fs::copy(&src_path, &dest_path)?;
-        }
-
-        // Apply attributes to the node,
-        // but not symlinks since they'll be for the target itself
-        if !metadata.is_symlink() {
-            copy_attributes(&src_path, &dest_path, &metadata)?;
-        }
-
-        tracing::trace!(?src_path, ?dest_path, "File copy complete for file");
-
-        Ok(())
+    // Configure jwalk to use parallel traversal and disable sorting unless required
+    let walkdir = jwalk::WalkDir::new(from).parallelism(jwalk::Parallelism::RayonDefaultPool {
+        busy_timeout: std::time::Duration::from_millis(100),
     });
 
-    if let Ok(()) = res {
-        // sync the directory to disk
-        std::fs::File::open(to)?.sync_all()?;
+    /// Re-implementation of `std::fs::copy` that handles I/O efficiently, and handles symlinks properly.
+    /// Also handles sparse files.
+    fn copy<P: AsRef<Path>, Q: AsRef<Path>>(
+        from: P,
+        to: Q,
+        metadata: &std::fs::Metadata,
+    ) -> color_eyre::Result<()> {
+        let from = from.as_ref();
+        let to = to.as_ref();
+        let parent = to.parent().unwrap();
+        std::fs::create_dir_all(parent)?;
+
+        remove_if_exists(&to)?;
+
+        if metadata.is_symlink() {
+            let link = std::fs::read_link(&from)?;
+            std::os::unix::fs::symlink(link, &to)?;
+        } else {
+            // Check if file is sparse
+            if metadata.blocks() * 512 < metadata.len() {
+                // File is sparse, need to copy with holes preserved
+                let input = std::fs::File::open(from)?;
+                let output = std::fs::File::create(to)?;
+                let mut buffer = vec![0; 1024 * 1024];
+                let mut offset = 0;
+
+                loop {
+                    match input.read_at(&mut buffer, offset)? {
+                        0 => break, // EOF
+                        n => {
+                            if !buffer[..n].iter().all(|&x| x == 0) {
+                                output.write_at(&buffer[..n], offset)?;
+                            }
+                            offset += n as u64;
+                        }
+                    }
+                }
+            } else {
+                // Not sparse, do regular copy
+                std::fs::copy(&from, &to)?;
+            }
+        }
+
         Ok(())
-    } else {
-        Err(res.unwrap_err())
     }
+    walkdir
+        .into_iter()
+        .par_bridge()
+        .try_for_each(|entry| -> color_eyre::Result<()> {
+            let entry = entry?;
+            let src_path = entry.path();
+            let dest_path = to.join(src_path.strip_prefix(from)?);
+            let metadata = entry.metadata().expect("Cached metadata");
+
+            // Pre-create all directories first
+            if metadata.is_dir() {
+                std::fs::create_dir_all(&dest_path)?;
+                copy_attributes(&src_path, &dest_path, &metadata)?;
+                return Ok(());
+            }
+
+            // Handle files and symlinks
+            copy(&src_path, &dest_path, &metadata)?;
+            copy_attributes(&src_path, &dest_path, &metadata)?;
+
+            Ok(())
+        })?;
+
+    std::fs::File::open(to)?.sync_all()?;
+
+    Ok(())
 }
+
+fn copy_attributes(
+    src_path: &Path,
+    dest_path: &Path,
+    metadata: &std::fs::Metadata,
+) -> Result<(), color_eyre::eyre::Error> {
+    use nix::sys::stat::{utimensat, UtimensatFlags};
+    use nix::sys::time::TimeSpec;
+    use std::os::unix::fs::MetadataExt;
+    use std::time::SystemTime;
+
+    // Preserve permissions
+    std::fs::set_permissions(dest_path, metadata.permissions())?;
+
+    // Convert SystemTime to TimeSpec with proper error handling
+    fn system_time_to_timespec(time: SystemTime) -> TimeSpec {
+        let duration = time
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_else(|_| std::time::Duration::from_secs(0));
+        TimeSpec::from(duration)
+    }
+
+    // Handle timestamps with proper error propagation
+    {
+        let atime = metadata.accessed()?;
+        let mtime = metadata.modified()?;
+
+        let atime_ts = system_time_to_timespec(atime);
+        let mtime_ts = system_time_to_timespec(mtime);
+
+        // Use safe wrapper for utimensat
+        utimensat(
+            None,
+            dest_path,
+            &atime_ts,
+            &mtime_ts,
+            UtimensatFlags::NoFollowSymlink,
+        )
+        .map_err(|e| color_eyre::eyre::eyre!("Failed to set timestamps: {}", e))?;
+    }
+
+    // xattrs
+    {
+        let xattrs = xattr::list(src_path)
+            .inspect_err(|e| {
+                tracing::warn!("Failed to list xattrs on {:?}: {}", src_path, e);
+            })
+            .ok()
+            .into_iter()
+            .flatten();
+
+        for attr in xattrs {
+            let value = match xattr::get(src_path, &attr) {
+                Ok(Some(v)) => v,
+                Ok(None) => Vec::new(),
+                Err(e) => {
+                    tracing::warn!("Failed to read xattr {:?} on {:?}: {}", attr, src_path, e);
+                    continue;
+                }
+            };
+
+            if let Err(e) = xattr::set(dest_path, &attr, &value) {
+                tracing::warn!("Failed to set xattr {:?} on {:?}: {}", attr, dest_path, e);
+            }
+        }
+    }
+
+    let chown = nix::unistd::chown(
+        dest_path,
+        Some(nix::unistd::Uid::from_raw(metadata.uid())),
+        Some(nix::unistd::Gid::from_raw(metadata.gid())),
+    );
+
+    if let Err(e) = chown {
+        tracing::warn!("Failed to set ownership: {}", e);
+    }
+    Ok(())
+}
+
 #[cfg(feature = "uutils")]
 /// Copy directory tree from one location to another using uutil's implementation of `cp`.
-/// 
+///
 /// This function requires the `uutils` feature to be enabled, and will vendor in
 /// uutils' `cp` implementation to copy the directory tree.
-/// 
+///
 /// May not be as stable as the other implementations, but is useful for testing.
 pub fn copy_dir_uutils<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     let opts = uu_cp::Options {
@@ -178,12 +300,12 @@ pub fn copy_dir_uutils<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_
 
 #[cfg(test)]
 mod tests {
-    use std::os::unix::fs::PermissionsExt;
     use super::*;
+    use std::os::unix::fs::PermissionsExt;
     use std::path::Path;
-    fn test_copy_impl<F>(name: &str, copy_fn: F) -> color_eyre::Result<()> 
-    where 
-        F: Fn(&Path, &Path) -> color_eyre::Result<()>
+    fn test_copy_impl<F>(name: &str, copy_fn: F) -> color_eyre::Result<()>
+    where
+        F: Fn(&Path, &Path) -> color_eyre::Result<()>,
     {
         let src: &str = &format!("/tmp/test_src_{}", name);
         let dest: &str = &format!("/tmp/test_dest_{}", name);
@@ -191,7 +313,10 @@ mod tests {
         // set up test environment
         std::fs::create_dir_all(src)?;
         std::fs::write(format!("{}/test.txt", src), "test")?;
-        std::fs::set_permissions(format!("{}/test.txt", src), std::fs::Permissions::from_mode(0o700))?;
+        std::fs::set_permissions(
+            format!("{}/test.txt", src),
+            std::fs::Permissions::from_mode(0o700),
+        )?;
 
         // dest
         std::fs::create_dir_all(dest)?;
@@ -218,10 +343,10 @@ mod tests {
         test_copy_impl("recurse", |from, to| copy_dir_rdm(from, to))
     }
 
-    #[test] 
-    #[cfg(target_family = "unix")]  
+    #[test]
+    #[cfg(target_family = "unix")]
     fn test_copy_cp() -> color_eyre::Result<()> {
-        test_copy_impl("cp", |from, to| copy_dir_cp(from, to)) 
+        test_copy_impl("cp", |from, to| copy_dir_cp(from, to))
     }
 
     #[test]
@@ -229,45 +354,6 @@ mod tests {
     fn test_copy_uucp() -> color_eyre::Result<()> {
         test_copy_impl("uutils", |from, to| copy_dir_uutils(from, to))
     }
-}
-
-fn to_timeval(time: std::time::SystemTime) -> nix::sys::time::TimeVal {
-    let t = time.duration_since(std::time::UNIX_EPOCH).unwrap();
-    nix::sys::time::TimeVal::new(
-        t.as_secs().try_into().unwrap(),
-        (t.as_micros() % 1_000_000).try_into().unwrap(),
-    )
-}
-
-fn copy_attributes(
-    src_path: &Path,
-    dest_path: &Path,
-    metadata: &std::fs::Metadata,
-) -> Result<(), color_eyre::eyre::Error> {
-    let atime = metadata.accessed().expect("cannot get atime");
-    let mtime = metadata.modified().expect("cannot get mtime");
-    nix::sys::stat::utimes(dest_path, &to_timeval(atime), &to_timeval(mtime))?;
-    let xattrs =
-        xattr::list(src_path).inspect_err(|e| tracing::warn!("Failed to list xattrs: {e}"));
-    (xattrs.into_iter().flat_map(IntoIterator::into_iter)).for_each(|xattr| {
-        let val = xattr::get(src_path, &xattr)
-            .inspect_err(|e| tracing::warn!("Failed to get xattr {xattr:?}: {e}"));
-        if let Some(e) =
-            (val.ok().flatten()).and_then(|val| xattr::set(dest_path, &xattr, &val).err())
-        {
-            tracing::warn!("Failed to set xattr {xattr:?}: {e}");
-        }
-    });
-
-    let uid = metadata.uid();
-    let gid = metadata.gid();
-    nix::unistd::chown(
-        dest_path,
-        Some(nix::unistd::Uid::from_raw(uid)),
-        Some(nix::unistd::Gid::from_raw(gid)),
-    )?;
-    std::fs::set_permissions(dest_path, metadata.permissions())?;
-    Ok(())
 }
 
 /// Get partition number from partition path
