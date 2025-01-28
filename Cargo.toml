@@ -55,6 +55,7 @@ jwalk = "0.8.1"
 xattr = "1.4.0"
 filesystem-table = { version = "0.1.2", path = "./filesystem-table" }
 uu_cp = { version = "0.0.29", features = ["exacl", "feat_acl", "feat_selinux", "selinux"], optional = true }
+kurage = "0.1.0"
 
 # [dependencies.os-detect]
 # git = "https://github.com/FyraLabs/distinst"

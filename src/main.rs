@@ -94,7 +94,7 @@ generate_pages!(Page AppModel AppMsg:
     Failure,
 );
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum NavigationAction {
     GoTo(Page),
     Quit,
