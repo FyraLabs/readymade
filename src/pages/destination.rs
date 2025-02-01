@@ -1,9 +1,5 @@
 use crate::prelude::*;
-use crate::{NavigationAction, INSTALLATION_STATE};
-use relm4::{
-    factory::{DynamicIndex, FactoryComponent, FactorySender, FactoryVecDeque},
-    ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent,
-};
+use relm4::factory::DynamicIndex;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 

@@ -8,13 +8,14 @@ pub use relm4::{
 };
 
 kurage::kurage_gen_macros!();
-kurage::generate_generator! { page => [<$name Page>]:
+kurage::generate_generator! { page => [<$name Page>]
     init: {
-        $root.set_vexpand(true);
+        INSTALLATION_STATE.subscribe($sender.input_sender(), |_| Self::Input::Update);
     }
 
     update: {
         Navigate(action: NavigationAction) => $sender.output([<$name PageOutput>]::Navigate(action)).unwrap(),
+        Update => {},
     } => { Navigate(NavigationAction), }
 
     libhelium::ViewMono {

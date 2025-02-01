@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 page!(Confirmation:
+    init(root, sender, model, widgets) {}
     update(self, message, sender) {
         StartInstallation => {
             sender

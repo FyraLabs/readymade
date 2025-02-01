@@ -2,6 +2,7 @@
 use crate::prelude::*;
 
 page!(Completed:
+    init(root, sender, model, widgets) {}
     update(self, message, sender) {
         Reboot => {
             // supposedly it should run pkexec automatically?
