@@ -16,12 +16,13 @@ page!(Confirmation:
         },
     } => { StartInstallation }
 
-    gtk::Box {
+    gtk::CenterBox {
         set_orientation: gtk::Orientation::Horizontal,
         set_valign: gtk::Align::Center,
-        set_spacing: 16,
+        set_vexpand: true,
 
-        gtk::Box {
+        #[wrap(Some)]
+        set_start_widget = &gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
             set_spacing: 2,
             set_vexpand: true,
@@ -46,13 +47,15 @@ page!(Confirmation:
             }
         },
 
-        gtk::Image {
+        #[wrap(Some)]
+        set_center_widget = &gtk::Image {
             set_icon_name: Some("go-next-symbolic"),
-            inline_css: "-gtk-icon-size: 64px"
+            inline_css: "-gtk-icon-size: 64px",
+            set_margin_horizontal: 16,
         },
 
-
-        gtk::Box {
+        #[wrap(Some)]
+        set_end_widget = &gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
             set_spacing: 2,
             set_vexpand: true,

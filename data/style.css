@@ -8,6 +8,15 @@
     background-repeat: no-repeat;
     background-position: center;
     background-size: cover;
+    transition: none;
+}
+
+.installation-bento-card:hover {
+    color: @accent_color;
+}
+
+.installation-bento-card:hover .content-block {
+    background: @surface_container_high_bg_color;
 }
 
 .installation-bento-card.welcome-card {
