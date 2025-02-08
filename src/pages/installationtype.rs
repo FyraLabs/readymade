@@ -220,11 +220,12 @@ impl SimpleComponent for InstallationTypePage {
             InstallationTypePageMsg::Navigate(action) => {
                 if INSTALLATION_STATE.read().encrypt {
                     let dialogue = EncryptPassDialogue::builder()
-                        .launch(self.root.as_ref().unwrap().toplevel_window().unwrap());
-                    dialogue.forward(
-                        sender.input_sender(),
-                        InstallationTypePageMsg::EncryptDialogue,
-                    );
+                        .launch(self.root.as_ref().unwrap().toplevel_window().unwrap())
+                        .forward(
+                            sender.input_sender(),
+                            InstallationTypePageMsg::EncryptDialogue,
+                        );
+                    dialogue.widget().present();
                     self.act = Some(action);
                     return;
                 }
@@ -255,7 +256,7 @@ kurage::generate_component!(EncryptPassDialogue {
 }:
     init[tf_repeat](root, sender, model, widgets) for root_window: gtk::Window {
         libhelium::prelude::WindowExt::set_parent(&root, Some(&root_window));
-        // model.btn_confirm = widgets.btn_confirm.clone();
+        model.btn_confirm = widgets.btn_confirm.clone();
     }
 
     update(self, message, sender) {
@@ -275,6 +276,9 @@ kurage::generate_component!(EncryptPassDialogue {
 
         #[wrap(Some)]
         set_child = &gtk::Box {
+            set_orientation: gtk::Orientation::Vertical,
+            
+            
             #[name = "tf_passwd"]
             gtk::PasswordEntry {
                 set_hexpand: true,
@@ -299,8 +303,23 @@ kurage::generate_component!(EncryptPassDialogue {
                 },
                 connect_activate => Self::Input::Enter,
             },
+
+            gtk::Box {
+                set_orientation: gtk::Orientation::Horizontal,
+                #[name(btn_confirm)]
+                libhelium::Button {
+                    set_label: &gettext("Confirm"),
+                    set_sensitive: false,
+                    connect_activate => Self::Input::Enter,
+                },
+
+                libhelium::Button {
+                    set_label: &gettext("Cancel"),
+                    connect_activate[sender] => move |_| sender.output(false).unwrap(),
+                },
+            },
         },
-        
+
         // FIXME: for some reason the libhelium crate does not contain these methods
         // (actually DialogExt is just totally missing)
 
