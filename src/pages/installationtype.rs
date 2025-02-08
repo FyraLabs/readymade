@@ -1,4 +1,5 @@
 use crate::prelude::*;
+
 use crate::{InstallationType, NavigationAction, Page, INSTALLATION_STATE};
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
@@ -7,6 +8,7 @@ pub struct InstallationTypePage {
     can_encrypt: bool,
     root: Option<libhelium::ViewMono>,
     act: Option<NavigationAction>,
+    encrypt_btn: gtk::CheckButton,
 }
 
 #[derive(Debug)]
@@ -130,6 +132,7 @@ impl SimpleComponent for InstallationTypePage {
                     set_orientation: gtk::Orientation::Vertical,
                     set_halign: gtk::Align::Center,
 
+                    #[local_ref] encrypt_btn ->
                     gtk::CheckButton {
                         set_label: Some(&gettext("Enable disk encryption")),
                         #[watch]
@@ -179,12 +182,13 @@ impl SimpleComponent for InstallationTypePage {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let mut model = Self::default();
+        let encrypt_btn = &model.encrypt_btn;
 
         let widgets = view_output!();
 
         INSTALLATION_STATE.subscribe(sender.input_sender(), |_| InstallationTypePageMsg::Update);
 
-        model.root = Some(root.clone());
+        model.root = Some(root);
 
         ComponentParts { model, widgets }
     }
@@ -211,6 +215,7 @@ impl SimpleComponent for InstallationTypePage {
             }
             InstallationTypePageMsg::EncryptDialogue(b) => {
                 INSTALLATION_STATE.write().encrypt = b;
+                self.encrypt_btn.set_active(b);
                 sender
                     .output(InstallationTypePageOutput::Navigate(
                         self.act.take().unwrap(),
@@ -219,13 +224,14 @@ impl SimpleComponent for InstallationTypePage {
             }
             InstallationTypePageMsg::Navigate(action) => {
                 if INSTALLATION_STATE.read().encrypt {
-                    let dialogue = EncryptPassDialogue::builder()
+                    let mut dialogue = EncryptPassDialogue::builder()
                         .launch(self.root.as_ref().unwrap().toplevel_window().unwrap())
                         .forward(
                             sender.input_sender(),
                             InstallationTypePageMsg::EncryptDialogue,
                         );
                     dialogue.widget().present();
+                    dialogue.detach_runtime();
                     self.act = Some(action);
                     return;
                 }
@@ -253,10 +259,12 @@ impl SimpleComponent for InstallationTypePage {
 kurage::generate_component!(EncryptPassDialogue {
     btn_confirm: libhelium::Button,
     tf_repeat: gtk::PasswordEntry,
+    root: libhelium::Dialog,
 }:
     init[tf_repeat](root, sender, model, widgets) for root_window: gtk::Window {
         libhelium::prelude::WindowExt::set_parent(&root, Some(&root_window));
         model.btn_confirm = widgets.btn_confirm.clone();
+        model.root = root;
     }
 
     update(self, message, sender) {
@@ -266,6 +274,8 @@ kurage::generate_component!(EncryptPassDialogue {
         Enter => {
             if self.btn_confirm.is_sensitive() {
                 sender.output(true).unwrap();
+                self.root.set_visible(false);
+                self.root.destroy();
             }
         },
     } => bool
@@ -277,7 +287,10 @@ kurage::generate_component!(EncryptPassDialogue {
         #[wrap(Some)]
         set_child = &gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
-            
+            set_vexpand: true,
+            set_hexpand: true,
+            set_margin_horizontal: 16,
+            set_margin_vertical: 16,
             
             #[name = "tf_passwd"]
             gtk::PasswordEntry {
@@ -305,17 +318,32 @@ kurage::generate_component!(EncryptPassDialogue {
             },
 
             gtk::Box {
+                set_vexpand: true,
+            },
+
+            gtk::Box {
+                set_hexpand: true,
                 set_orientation: gtk::Orientation::Horizontal,
+                set_valign: gtk::Align::End,
+
+                libhelium::Button {
+                    set_label: &gettext("Cancel"),
+                    connect_clicked[sender, root] => move |_| {
+                        root.set_visible(false);
+                        root.destroy();
+                        sender.output(false).unwrap();
+                    }
+                },
+
+                gtk::Box {
+                    set_vexpand: true,
+                },
+
                 #[name(btn_confirm)]
                 libhelium::Button {
                     set_label: &gettext("Confirm"),
                     set_sensitive: false,
-                    connect_activate => Self::Input::Enter,
-                },
-
-                libhelium::Button {
-                    set_label: &gettext("Cancel"),
-                    connect_activate[sender] => move |_| sender.output(false).unwrap(),
+                    connect_clicked => Self::Input::Enter,
                 },
             },
         },
