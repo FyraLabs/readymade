@@ -67,6 +67,25 @@ macro_rules! ini_enum {
                 )*})
             }
         }
+        impl<'de> serde::Deserialize<'de> for $name {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                let s = String::deserialize(deserializer)?;
+                match s.as_str() {
+                    $(
+                        s if s == ini_enum!(@match $field $(=> $s)?) => Ok(Self::$field),
+                    )*
+                    other => {
+                        let variants: &[&str] = &[$(
+                            stringify!($field),
+                        )*];
+                        Err(serde::de::Error::unknown_variant(other, variants))
+                    }
+                }
+            }
+        }
     };
     (
         $(#[$outmeta1:meta])*

@@ -316,8 +316,8 @@ impl<'de> serde::Deserialize<'de> for PartTypeIdent {
 }
 
 ini_enum! {
-    #[derive(Debug, serde::Deserialize)]
-    #[serde(rename_all = "lowercase")]
+    #[derive(Debug)]
+    // #[serde(rename_all = "lowercase")]
     pub enum FileSystem {
         Ext4,
         Btrfs,
@@ -328,8 +328,8 @@ ini_enum! {
         Swap,
     }
 
-    #[derive(Debug, Deserialize, Default)]
-    #[serde(rename_all = "lowercase")]
+    #[derive(Debug, Default)]
+    // #[serde(rename_all = "lowercase")]
     pub enum EncryptOption {
         #[default]
         Off,
@@ -338,8 +338,8 @@ ini_enum! {
         KeyFileTpm2 => "key-file+tpm2",
     }
 
-    #[derive(Debug, Default, Deserialize)]
-    #[serde(rename_all = "lowercase")]
+    #[derive(Debug, Default)]
+    // #[serde(rename_all = "lowercase")]
     pub enum Verity {
         #[default]
         Off,
