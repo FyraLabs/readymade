@@ -87,6 +87,12 @@ impl InstallationState {
         &self,
         sender: &relm4::Sender<InstallationMessage>,
     ) -> Result<()> {
+        if cfg!(debug_assertions) {
+            let installation_state_dump_path = std::env::temp_dir().join("readymade-installation-state.json");
+            tracing::debug!("Dumping installation state to {}", installation_state_dump_path.display());
+            std::fs::write(installation_state_dump_path, serde_json::to_string(self)?)?;
+        }
+        
         let mut command = Command::new("pkexec");
         command.arg(std::env::current_exe()?);
         command.arg("--non-interactive");
@@ -422,6 +428,13 @@ impl InstallationState {
         }
 
         let out = std::str::from_utf8(&repart_cmd.stdout)?;
+        
+        // Dump systemd-repart output to a file if in debug mode
+        if cfg!(debug_assertions) {
+            let repart_out_path = std::env::temp_dir().join("readymade-repart-output.json");
+            tracing::debug!("Dumping systemd-repart output to {}", repart_out_path.display());
+            std::fs::write(repart_out_path, out)?;
+        }
 
         // todo: wait for systemd 256 or genfstab magic
         tracing::debug!(out, "systemd-repart finished");

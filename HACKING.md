@@ -103,6 +103,9 @@ In case you have an alternate root mounted at `/mnt/squash` from an external sou
 sudo REPART_COPY_SOURCE=/mnt/rootfs readymade
 ```
 
+> [!NOTE]
+> If Readymade is built as a debug build, it will dump the installation state and the systemd-repart output to `/tmp/` for debugging purposes.
+
 ## Localization
 
 You can translate Readymade to your language by going to the [Fyra Labs Weblate](https://weblate.fyralabs.com/projects/tauOS/readymade/) page and translating the strings there.
