@@ -19,6 +19,7 @@ use std::{
 };
 use tee_readwrite::TeeReader;
 
+use crate::consts;
 use crate::consts::repart_dir;
 use crate::util::sys::check_uefi;
 use crate::{
@@ -49,6 +50,7 @@ pub struct InstallationState {
     pub postinstall: Vec<crate::backend::postinstall::Module>,
     pub encrypt: bool,
     pub tpm: bool,
+    pub encryption_key: Option<String>,
 }
 
 // TODO: remove this after have support for anything other than chromebook
@@ -67,6 +69,7 @@ impl Default for InstallationState {
             mounttags: Option::default(),
             postinstall: crate::CONFIG.read().postinstall.clone(),
             encrypt: false,
+            encryption_key: Option::default(),
         }
     }
 }
@@ -195,11 +198,17 @@ impl InstallationState {
             .devpath;
         let cfgdir = inst_type.cfgdir();
 
+        // Let's write the encryption key to the keyfile
+        let keyfile = std::path::Path::new(consts::LUKS_KEYFILE_PATH);
+        if let Some(key) = &self.encryption_key {
+            std::fs::write(keyfile, key)?;
+        }
+
         // TODO: encryption
         self.enable_encryption(&cfgdir)?;
         let repart_out = stage!("Creating partitions and copying files" {
             // todo: not freeze on error, show error message as err handler?
-            Self::systemd_repart(blockdev, &cfgdir)?
+            Self::systemd_repart(blockdev, &cfgdir, self.encrypt && self.encryption_key.is_some())?
         });
 
         tracing::info!("Copying files done, Setting up system...");
@@ -364,6 +373,7 @@ impl InstallationState {
     fn systemd_repart(
         blockdev: &Path,
         cfgdir: &Path,
+        use_keyfile: bool,
     ) -> Result<crate::backend::repart_output::RepartOutput> {
         let copy_source = Self::determine_copy_source();
 
@@ -371,7 +381,7 @@ impl InstallationState {
             std::env::var("READYMADE_DRY_RUN").map_or(cfg!(debug_assertions), |v| v == "1");
         let dry_run = if dry_run { "yes" } else { "no" };
 
-        let args = [
+        let mut args = vec![
             "--dry-run",
             dry_run,
             "--definitions",
@@ -384,8 +394,16 @@ impl InstallationState {
             &copy_source,
             "--json",
             "pretty",
-            blockdev.to_str().unwrap(),
         ];
+        
+        if use_keyfile {
+            let keyfile_path = consts::LUKS_KEYFILE_PATH;
+            tracing::debug!("Using keyfile for systemd-repart: {keyfile_path}");
+            args.push("--key-file");
+            args.push(keyfile_path);
+        }
+        
+        args.extend(&[blockdev.to_str().unwrap()]);
 
         tracing::debug!(?dry_run, ?args, "Running systemd-repart");
 
