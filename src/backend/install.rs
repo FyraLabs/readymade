@@ -346,7 +346,7 @@ impl InstallationState {
 
     fn set_encrypt_to_file(f: &str, tpm: bool) -> String {
         let mut f = serde_systemd_unit::parse(f).expect("cannot parse templates");
-        let mut v = "keyfile".to_owned();
+        let mut v = "key-file".to_owned();
         if tpm {
             v += "+tpm2";
         }
@@ -463,6 +463,6 @@ mod tests {
     #[test]
     fn test_set_encrypt_to_file() {
         let enc = super::InstallationState::set_encrypt_to_file("[Partition]\nType=root", false);
-        assert!(enc.contains("Encrypt=keyfile"),);
+        assert!(enc.contains("Encrypt=key-file"),);
     }
 }

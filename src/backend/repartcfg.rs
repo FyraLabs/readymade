@@ -333,9 +333,9 @@ ini_enum! {
     pub enum EncryptOption {
         #[default]
         Off,
-        KeyFile,
+        KeyFile => "key-file",
         Tpm2,
-        KeyFileTpm2 => "keyfile+tpm2",
+        KeyFileTpm2 => "key-file+tpm2",
     }
 
     #[derive(Debug, Default, Deserialize)]
