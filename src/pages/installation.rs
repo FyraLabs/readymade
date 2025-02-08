@@ -99,6 +99,8 @@ impl Component for InstallationPage {
 
     view! {
         libhelium::ViewMono {
+            // no close btn
+            set_show_right_title_buttons: false,
             #[wrap(Some)]
             set_title = &gtk::Label {
                 #[watch]
