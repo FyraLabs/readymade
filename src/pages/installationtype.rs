@@ -291,7 +291,12 @@ kurage::generate_component!(EncryptPassDialogue {
             set_hexpand: true,
             set_margin_horizontal: 16,
             set_margin_vertical: 16,
-            
+            set_spacing: 16,
+
+            gtk::Label {
+                set_label: "Please set the disk encryption password.\nIf you lose the password, your data will not be recoverable.",
+            },
+
             #[name = "tf_passwd"]
             gtk::PasswordEntry {
                 set_hexpand: true,
