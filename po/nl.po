@@ -32,7 +32,7 @@ msgstr "Sluiten"
 
 #: src/pages/completed.rs:56
 msgid "Reboot"
-msgstr "Opnieuw opstraten"
+msgstr "Opnieuw opstarten"
 
 #: src/pages/confirmation.rs:33
 msgid "Confirmation"
