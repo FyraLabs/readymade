@@ -135,11 +135,16 @@ impl RepartOutput {
                         // todo: is there a way for cryptsetup to output the /dev/mapper path so we don't have to guess?
                         .output()?;
                     
+                    if !cmd.status.success() {
+                        color_eyre::eyre::bail!("cryptsetup failed: {}", String::from_utf8_lossy(&cmd.stderr));
+                    }
+                    
                     // TODO: mount? (/dev/mapper?)
                     // 
                     let mapper = PathBuf::from(format!("/dev/mapper/{label}"));
                     
                     for (mntpoint, mntpoint_opts) in mntpoints {
+                        tracing::debug!("Mounting encrypted partition: {}", mntpoint);
                         let mnt_target = MountTarget {
                             target: PathBuf::from(mntpoint),
                             flags: MountFlags::empty(),

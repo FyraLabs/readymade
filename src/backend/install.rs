@@ -88,11 +88,15 @@ impl InstallationState {
         sender: &relm4::Sender<InstallationMessage>,
     ) -> Result<()> {
         if cfg!(debug_assertions) {
-            let installation_state_dump_path = std::env::temp_dir().join("readymade-installation-state.json");
-            tracing::debug!("Dumping installation state to {}", installation_state_dump_path.display());
+            let installation_state_dump_path =
+                std::env::temp_dir().join("readymade-installation-state.json");
+            tracing::debug!(
+                "Dumping installation state to {}",
+                installation_state_dump_path.display()
+            );
             std::fs::write(installation_state_dump_path, serde_json::to_string(self)?)?;
         }
-        
+
         let mut command = Command::new("pkexec");
         command.arg(std::env::current_exe()?);
         command.arg("--non-interactive");
@@ -263,6 +267,8 @@ impl InstallationState {
             lang: self.langlocale.clone().unwrap_or_else(|| "C.UTF-8".into()),
         };
 
+        // /etc should exist, so the mount order is somehow fucked up
+        std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc")?;
         std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
 
         for module in &self.postinstall {
@@ -370,7 +376,8 @@ impl InstallationState {
         let root_file = cfgdir.join("50-root.conf");
         let f = std::fs::read_to_string(&root_file)?;
         let f = Self::set_encrypt_to_file(&f, self.tpm);
-        std::fs::write(root_file, f)?;
+        std::fs::write("/tmp/50-root.conf", f)?;
+        // TODO: somehow actually use this config file
         Ok(())
     }
 
@@ -401,14 +408,14 @@ impl InstallationState {
             "--json",
             "pretty",
         ];
-        
+
         if use_keyfile {
             let keyfile_path = consts::LUKS_KEYFILE_PATH;
             tracing::debug!("Using keyfile for systemd-repart: {keyfile_path}");
             args.push("--key-file");
             args.push(keyfile_path);
         }
-        
+
         args.extend(&[blockdev.to_str().unwrap()]);
 
         tracing::debug!(?dry_run, ?args, "Running systemd-repart");
@@ -428,11 +435,14 @@ impl InstallationState {
         }
 
         let out = std::str::from_utf8(&repart_cmd.stdout)?;
-        
+
         // Dump systemd-repart output to a file if in debug mode
         if cfg!(debug_assertions) {
             let repart_out_path = std::env::temp_dir().join("readymade-repart-output.json");
-            tracing::debug!("Dumping systemd-repart output to {}", repart_out_path.display());
+            tracing::debug!(
+                "Dumping systemd-repart output to {}",
+                repart_out_path.display()
+            );
             std::fs::write(repart_out_path, out)?;
         }
 
