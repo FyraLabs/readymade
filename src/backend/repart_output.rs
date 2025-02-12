@@ -1,4 +1,5 @@
 use bytesize::ByteSize;
+use color_eyre::eyre::Context;
 use std::fmt::Write;
 use std::path::PathBuf;
 use sys_mount::MountFlags;
@@ -91,23 +92,91 @@ impl RepartOutput {
 
     /// Create `tiffin::Container` from the repartitioning output with the mountpoints
     /// from the DDI partition types
-    pub fn to_container(&self) -> color_eyre::Result<Container> {
+    pub fn to_container(&self, passphrase: Option<&str>) -> color_eyre::Result<Container> {
         let temp_dir = tempfile::tempdir()?.into_path();
 
-        let mut container = Container::new(temp_dir);
+        // let config: RepartConfig = serde_systemd_unit::from_str(&file_config)?;
 
-        for (mntpoint, node) in self.mountpoints() {
-            // strip
-            // mntpoint.trim_start_matches('/')
-            let mnt_target = MountTarget {
-                target: PathBuf::from(mntpoint),
-                flags: MountFlags::empty(),
-                data: None,
-                fstype: None,
-            };
+        let mut container = Container::new(temp_dir.clone());
 
-            container.add_mount(mnt_target, PathBuf::from(node));
+        fn is_luks(node: &str) -> bool {
+            let cmd = std::process::Command::new("cryptsetup")
+                .arg("isLuks")
+                .arg(node)
+                .output()
+                .unwrap();
+            cmd.status.success()
         }
+        
+        for part in &self.partitions {
+            let rpcfg: RepartConfig =
+                serde_systemd_unit::from_str(&std::fs::read_to_string(&part.file)?)?;
+            let mntpoints = rpcfg.partition.mount_point_as_tuple();
+            let label = part.label.clone();
+            let node = PathBuf::from(&part.node);
+            if rpcfg.partition.encrypt.is_on() {
+                // check if isLuks
+                if is_luks(&part.node) {
+                    let Some(pass) = passphrase else {
+                        panic!("Passphrase is empty when is_luks() is true");
+                    };
+                    let key_file_path = temp_dir.join("keyfile.txt");
+                    let mut key_file = std::fs::File::create(&key_file_path).wrap_err("cannot create key file")?;
+                    std::io::Write::write_all(&mut key_file, pass.as_bytes()).wrap_err("cannot write to key file")?;
+                    drop(key_file);
+                    // i guess to_container now also needs to accept an Option<String> for the passphrase
+                    let cmd = std::process::Command::new("cryptsetup")
+                        .arg("open")
+                        .arg(&node)
+                        .arg(&label)
+                        .arg("--batch-mode")
+                        .arg("--key-file")
+                        .arg(key_file_path)
+                        // todo: is there a way for cryptsetup to output the /dev/mapper path so we don't have to guess?
+                        .output()?;
+                    
+                    // TODO: mount? (/dev/mapper?)
+                    // 
+                    let mapper = PathBuf::from(format!("/dev/mapper/{label}"));
+                    
+                    for (mntpoint, mntpoint_opts) in mntpoints {
+                        let mnt_target = MountTarget {
+                            target: PathBuf::from(mntpoint),
+                            flags: MountFlags::empty(),
+                            data: None,
+                            fstype: None,
+                        };
+                        container.add_mount(mnt_target, mapper.clone());
+                    }
+                } else {
+                    // normal mountpath
+                    for (mntpoint, mntpoint_opts) in mntpoints {
+                        let mnt_target = MountTarget {
+                            target: PathBuf::from(mntpoint),
+                            flags: MountFlags::empty(),
+                            data: None,
+                            fstype: None,
+                        };
+
+                        container.add_mount(mnt_target, node.clone());
+                    }
+                }
+            }
+        }
+
+        // for (mntpoint, node) in self.mountpoints() {
+        //     // strip
+        //     // mntpoint.trim_start_matches('/')
+        //     // let rpcfg = serde_systemd_unit::from_str(&self.partitions)?;
+        //     let mnt_target = MountTarget {
+        //         target: PathBuf::from(mntpoint),
+        //         flags: MountFlags::empty(),
+        //         data: None,
+        //         fstype: None,
+        //     };
+
+        //     container.add_mount(mnt_target, PathBuf::from(node));
+        // }
 
         if check_uefi() {
             // add efivarfs

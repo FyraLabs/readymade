@@ -218,7 +218,7 @@ impl InstallationState {
         });
 
         tracing::info!("Copying files done, Setting up system...");
-        self.setup_system(repart_out)?;
+        self.setup_system(repart_out, self.encryption_key.as_ref().map(|s| s.as_str()))?;
 
         if let InstallationType::ChromebookInstall = inst_type {
             // FIXME: don't dd?
@@ -230,8 +230,8 @@ impl InstallationState {
     }
 
     #[tracing::instrument]
-    fn setup_system(&self, output: RepartOutput) -> Result<()> {
-        let mut container = output.to_container()?;
+    fn setup_system(&self, output: RepartOutput, passphrase: Option<&str>) -> Result<()> {
+        let mut container = output.to_container(passphrase)?;
 
         let fstab = output.generate_fstab()?;
 

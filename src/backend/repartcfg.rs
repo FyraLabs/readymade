@@ -316,7 +316,7 @@ impl<'de> serde::Deserialize<'de> for PartTypeIdent {
 }
 
 ini_enum! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone, Copy)]
     // #[serde(rename_all = "lowercase")]
     pub enum FileSystem {
         Ext4,
@@ -328,7 +328,7 @@ ini_enum! {
         Swap,
     }
 
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Clone, Copy)]
     // #[serde(rename_all = "lowercase")]
     pub enum EncryptOption {
         #[default]
@@ -338,7 +338,7 @@ ini_enum! {
         KeyFileTpm2 => "key-file+tpm2",
     }
 
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Clone, Copy)]
     // #[serde(rename_all = "lowercase")]
     pub enum Verity {
         #[default]
@@ -404,4 +404,11 @@ mod tests {
         .unwrap();
         println!("{res}");
     }*/
+}
+
+impl EncryptOption {
+    #[must_use]
+    pub const fn is_on(self) -> bool {
+        !matches!(self, EncryptOption::Off)
+    }
 }
