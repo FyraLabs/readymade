@@ -269,9 +269,11 @@ impl InstallationState {
 
         // /etc should exist, so the mount order is somehow fucked up
         std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc")?;
+        tracing::debug!("Writing fstab");
         std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
 
         for module in &self.postinstall {
+            tracing::debug!(?module, "Running module");
             module.run(&context)?;
         }
 
