@@ -21,7 +21,7 @@ sudo mount ${install_device}p2 install_root/boot
 sudo mount ${install_device}p1 install_root/boot/efi
 
 if [ ! -f test.img ]; then
-    fallocate -l 8G test.img
+    fallocate -l 20G test.img
 fi
 
 echo "Your test disk will be attached to the block device, install to it:"

@@ -5,4 +5,4 @@
 sudo umount dev/install_root -Rl
 sudo rm -rf dev/test.img
 sudo losetup -D
-fallocate -l 8G dev/test.img
+fallocate -l 20G dev/test.img
