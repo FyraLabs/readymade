@@ -1,12 +1,10 @@
 use bytesize::ByteSize;
 use color_eyre::eyre::{Context, OptionExt};
-use lsblk::Populate;
 use std::path::PathBuf;
 use std::{fmt::Write, sync::Arc};
 use sys_mount::MountFlags;
 use tiffin::{Container, MountTarget};
 
-use crate::INSTALLATION_STATE;
 use crate::{
     backend::repartcfg::{FileSystem, RepartConfig},
     util::sys::check_uefi,
@@ -48,15 +46,15 @@ impl MapperCache {
         }
     }
 
-    fn get(&self, node: &str) -> Option<&PathBuf> {
+    pub(crate) fn get(&self, node: &str) -> Option<&PathBuf> {
         self.cache.get(node)
     }
 
-    fn insert(&mut self, node: String, path: PathBuf) {
+    pub(crate) fn insert(&mut self, node: String, path: PathBuf) {
         self.cache.insert(node, path);
     }
 
-    fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         for (node, path) in self.cache.drain() {
             if let Err(e) = cryptsetup_close(&path.to_string_lossy()) {
                 tracing::error!(?node, ?e, "Failed to close mapper device");

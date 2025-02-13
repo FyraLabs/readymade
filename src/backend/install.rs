@@ -245,6 +245,23 @@ impl InstallationState {
             Self::dd_submarine(blockdev)?;
             InstallationType::set_cgpt_flags(blockdev)?;
         }
+        
+        tracing::info!("Cleaning up state...");
+        
+        if let Some(_key) = &self.encryption_key {
+            std::fs::remove_file(keyfile) // don't care if it fails
+                .unwrap_or_else(|e| tracing::warn!("Failed to remove keyfile: {e}"));
+            
+            // Close all mapped LUKS devices if exists
+            
+            if let Ok(mut cache) = super::repart_output::MAPPER_CACHE.try_write() {
+                if let Some(cache) = std::sync::Arc::get_mut(&mut cache) {
+                    cache.clear();
+                }
+            }
+            
+        }
+        
         tracing::info!("install() finished");
         Ok(())
     }
