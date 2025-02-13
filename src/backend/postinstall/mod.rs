@@ -1,5 +1,6 @@
 use cleanup_boot::CleanupBoot;
 use color_eyre::Result;
+use cryptsetup::CryptSetup;
 use dracut::Dracut;
 use efi_stub::EfiStub;
 use enum_dispatch::enum_dispatch;
@@ -21,6 +22,7 @@ pub mod language;
 pub mod prepare_fedora;
 pub mod reinstall_kernel;
 pub mod selinux;
+pub mod cryptsetup;
 
 pub struct Context {
     pub destination_disk: PathBuf,
@@ -49,4 +51,5 @@ pub enum Module {
     EfiStub,
     InitialSetup,
     Language,
+    CryptSetup,
 }

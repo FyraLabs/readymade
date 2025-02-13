@@ -168,7 +168,8 @@ pub fn install_custom(
         .and_then(|part| part.partition.to_str().map(ToOwned::to_owned))
         .ok_or_else(|| color_eyre::eyre::eyre!("cannot find xbootldr partition"))?;
 
-    container.run(|| state._inner_sys_setup(fstab, efi, &xbootldr))??;
+    // TODO: encryption support for custom
+    container.run(|| state._inner_sys_setup(fstab, None, efi, &xbootldr))??;
 
     Ok(())
 }

@@ -245,7 +245,9 @@ impl InstallationState {
             .get_xbootldr_partition()
             .context("No xbootldr partition found")?;
 
-        container.run(|| self._inner_sys_setup(fstab, esp_node, &xbootldr_node))??;
+        let crypttab = output.generate_crypttab();
+
+        container.run(|| self._inner_sys_setup(fstab, crypttab, esp_node, &xbootldr_node))??;
 
         Ok(())
     }
@@ -255,6 +257,7 @@ impl InstallationState {
     pub fn _inner_sys_setup(
         &self,
         fstab: String,
+        crypttab: Option<String>,
         esp_node: Option<String>,
         xbootldr_node: &str,
     ) -> Result<()> {
@@ -267,10 +270,11 @@ impl InstallationState {
             lang: self.langlocale.clone().unwrap_or_else(|| "C.UTF-8".into()),
         };
 
-        // /etc should exist, so the mount order is somehow fucked up
-        std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc")?;
-        tracing::debug!("Writing fstab");
         std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
+
+        if let Some(crypttab) = crypttab {
+            std::fs::write("/etc/crypttab", crypttab).wrap_err("cannot write to /etc/crypttab")?;
+        }
 
         for module in &self.postinstall {
             tracing::debug!(?module, "Running module");

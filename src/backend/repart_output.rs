@@ -28,6 +28,33 @@ impl RepartOutput {
             .filter_map(|part| part.ddi_mountpoint().map(|mp| (mp, part.node.clone())))
     }
 
+    pub fn generate_crypttab(&self) -> Option<String> {
+        // NOTE: https://www.man7.org/linux/man-pages/man5/crypttab.5.html
+        let mut crypttab = String::new();
+
+        // this should be generated before the initramfs is generated, so it boots properly
+
+        // Find any LUKS partitions
+        for part in &self.partitions {
+            if is_luks(&part.node) {
+                // Format is: <mapper name> <device> <key file> <options>
+                // We use UUID to reference device and auto-generated label as mapper name
+                // No key file used (password prompt)
+                let uuid = part.uuid.to_string();
+                writeln!(
+                    &mut crypttab,
+                    // systemd-repart's `uuid` field is actually partuuid in disguise
+                    // a poettering moment
+                    "{}\tPARTUUID={}\tnone\tluks,discard", // TODO: tpm
+                    part.label, uuid
+                )
+                .unwrap();
+            }
+        }
+
+        (!crypttab.is_empty()).then_some(crypttab)
+    }
+
     /// Generate a /etc/fstab file from the DDI partition types
     ///
     /// This function may be deprecated when systemd 256 hits f40, or when
