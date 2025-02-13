@@ -30,6 +30,8 @@ use crate::{
     stage, util,
 };
 
+use super::repart_output::CryptData;
+
 pub static IPC_CHANNEL: OnceLock<Mutex<IpcSender<InstallationMessage>>> = OnceLock::new();
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -193,20 +195,18 @@ impl InstallationState {
         }
     }
 
-    
     /// Copies the current config into a temporary directory, allowing them to be modified without
     /// affecting the original templates :D
     fn layer_configdir(&self, cfg_dir: &Path) -> Result<PathBuf> {
-        
         // /run/readymade-install
         let new_path = PathBuf::from("/run").join("readymade-install");
         std::fs::create_dir_all(&new_path)?;
         // Copy the contents of the cfg_dir to the new path
         util::fs::copy_dir(cfg_dir, "/run/readymade-install")?;
-        
+
         Ok(new_path)
     }
-    
+
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     pub fn install(&self) -> Result<()> {
@@ -220,9 +220,8 @@ impl InstallationState {
         let blockdev = &(self.destination_disk.as_ref())
             .expect("A valid destination device should be set before calling install()")
             .devpath;
-        
-        // let cfgdir = inst_type.cfgdir();
-        
+
+        tracing::info!("Layering repart templates");
         let cfgdir = self.layer_configdir(&inst_type.cfgdir())?;
 
         // Let's write the encryption key to the keyfile
@@ -252,6 +251,10 @@ impl InstallationState {
 
     #[tracing::instrument]
     fn setup_system(&self, output: RepartOutput, passphrase: Option<&str>) -> Result<()> {
+        // XXX: This is a bit hacky, but this function should be called before output.generate_fstab() for
+        // the fstab generator to be correct, IF we're using encryption
+        // 
+        // todo: Unfuck this
         let mut container = output.to_container(passphrase)?;
 
         let fstab = output.generate_fstab()?;
@@ -262,9 +265,9 @@ impl InstallationState {
             .get_xbootldr_partition()
             .context("No xbootldr partition found")?;
 
-        let crypttab = output.generate_crypttab();
+        let crypt_data = output.generate_cryptdata()?;
 
-        container.run(|| self._inner_sys_setup(fstab, crypttab, esp_node, &xbootldr_node))??;
+        container.run(|| self._inner_sys_setup(fstab, crypt_data, esp_node, &xbootldr_node))??;
 
         Ok(())
     }
@@ -274,7 +277,7 @@ impl InstallationState {
     pub fn _inner_sys_setup(
         &self,
         fstab: String,
-        crypttab: Option<String>,
+        crypt_data: Option<CryptData>,
         esp_node: Option<String>,
         xbootldr_node: &str,
     ) -> Result<()> {
@@ -285,12 +288,16 @@ impl InstallationState {
             esp_partition: esp_node,
             xbootldr_partition: xbootldr_node.to_owned(),
             lang: self.langlocale.clone().unwrap_or_else(|| "C.UTF-8".into()),
+            crypt_data: crypt_data.clone(),
         };
 
+        tracing::info!("Writing /etc/fstab...");
         std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
 
-        if let Some(crypttab) = crypttab {
-            std::fs::write("/etc/crypttab", crypttab).wrap_err("cannot write to /etc/crypttab")?;
+        if let Some(data) = crypt_data {
+            tracing::info!("Writing /etc/crypttab...");
+            std::fs::write("/etc/crypttab", data.crypttab)
+                .wrap_err("cannot write to /etc/crypttab")?;
         }
 
         for module in &self.postinstall {
@@ -393,9 +400,9 @@ impl InstallationState {
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     /// Enable encryption on the root partition config
-    /// 
+    ///
     /// This method will modify the root partition config file to enable encryption
-    /// 
+    ///
     /// Please use [`Self::layer_configdir`] before calling this method to avoid modifying the original config files
     fn enable_encryption(&self, cfgdir: &Path) -> Result<()> {
         if !self.encrypt {
@@ -405,10 +412,10 @@ impl InstallationState {
         let f = std::fs::read_to_string(&root_file)?;
         let f = Self::set_encrypt_to_file(&f, self.tpm);
         // We're gonna write directly to the file.
-        // 
+        //
         // Warning: Please don't use this method unless you're using layer_configdir
         std::fs::write(&root_file, f)?;
-        
+
         // TODO: somehow actually use this config file
         Ok(())
     }

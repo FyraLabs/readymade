@@ -13,6 +13,8 @@ use selinux::SELinux;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+use super::repart_output::CryptData;
+
 pub mod cleanup_boot;
 pub mod dracut;
 pub mod efi_stub;
@@ -31,6 +33,7 @@ pub struct Context {
     // Installs should always have an xbootldr partition
     pub xbootldr_partition: String,
     pub lang: String,
+    pub crypt_data: Option<CryptData>,
 }
 
 #[enum_dispatch(Module)]
