@@ -193,6 +193,20 @@ impl InstallationState {
         }
     }
 
+    
+    /// Copies the current config into a temporary directory, allowing them to be modified without
+    /// affecting the original templates :D
+    fn layer_configdir(&self, cfg_dir: &Path) -> Result<PathBuf> {
+        
+        // /run/readymade-install
+        let new_path = PathBuf::from("/run").join("readymade-install");
+        std::fs::create_dir_all(&new_path)?;
+        // Copy the contents of the cfg_dir to the new path
+        util::fs::copy_dir(cfg_dir, "/run/readymade-install")?;
+        
+        Ok(new_path)
+    }
+    
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     pub fn install(&self) -> Result<()> {
@@ -206,7 +220,10 @@ impl InstallationState {
         let blockdev = &(self.destination_disk.as_ref())
             .expect("A valid destination device should be set before calling install()")
             .devpath;
-        let cfgdir = inst_type.cfgdir();
+        
+        // let cfgdir = inst_type.cfgdir();
+        
+        let cfgdir = self.layer_configdir(&inst_type.cfgdir())?;
 
         // Let's write the encryption key to the keyfile
         let keyfile = std::path::Path::new(consts::LUKS_KEYFILE_PATH);
@@ -375,6 +392,11 @@ impl InstallationState {
 
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
+    /// Enable encryption on the root partition config
+    /// 
+    /// This method will modify the root partition config file to enable encryption
+    /// 
+    /// Please use [`Self::layer_configdir`] before calling this method to avoid modifying the original config files
     fn enable_encryption(&self, cfgdir: &Path) -> Result<()> {
         if !self.encrypt {
             return Ok(());
@@ -382,7 +404,11 @@ impl InstallationState {
         let root_file = cfgdir.join("50-root.conf");
         let f = std::fs::read_to_string(&root_file)?;
         let f = Self::set_encrypt_to_file(&f, self.tpm);
-        std::fs::write("/tmp/50-root.conf", f)?;
+        // We're gonna write directly to the file.
+        // 
+        // Warning: Please don't use this method unless you're using layer_configdir
+        std::fs::write(&root_file, f)?;
+        
         // TODO: somehow actually use this config file
         Ok(())
     }
