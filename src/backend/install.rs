@@ -43,7 +43,7 @@ pub enum InstallationType {
     Custom,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InstallationState {
     pub langlocale: Option<String>,
     pub destination_disk: Option<DiskInit>,
@@ -236,13 +236,15 @@ impl InstallationState {
             // todo: not freeze on error, show error message as err handler?
             Self::systemd_repart(blockdev, &cfgdir, self.encrypt && self.encryption_key.is_some())?
         });
+        
+        let repartcfg_export = super::export::SystemdRepartData::get_configs(&cfgdir)?;
 
         tracing::info!("Copying files done, Setting up system...");
-        self.setup_system(repart_out, self.encryption_key.as_ref().map(|s| s.as_str()))?;
+        self.setup_system(repart_out, self.encryption_key.as_ref().map(|s| s.as_str()), Some(repartcfg_export))?;
 
         if let InstallationType::ChromebookInstall = inst_type {
             // FIXME: don't dd?
-            Self::dd_submarine(blockdev)?;
+            Self::flash_submarine(blockdev)?;
             InstallationType::set_cgpt_flags(blockdev)?;
         }
         
@@ -267,7 +269,7 @@ impl InstallationState {
     }
 
     #[tracing::instrument]
-    fn setup_system(&self, output: RepartOutput, passphrase: Option<&str>) -> Result<()> {
+    fn setup_system(&self, output: RepartOutput, passphrase: Option<&str>, repart_cfgs: Option<super::export::SystemdRepartData>) -> Result<()> {
         // XXX: This is a bit hacky, but this function should be called before output.generate_fstab() for
         // the fstab generator to be correct, IF we're using encryption
         //
@@ -283,8 +285,10 @@ impl InstallationState {
             .context("No xbootldr partition found")?;
 
         let crypt_data = output.generate_cryptdata()?;
+        
+        let rdm_result = super::export::ReadymadeResult::new(self.clone(), repart_cfgs);
 
-        container.run(|| self._inner_sys_setup(fstab, crypt_data, esp_node, &xbootldr_node))??;
+        container.run(|| self._inner_sys_setup(fstab, crypt_data, esp_node, &xbootldr_node, rdm_result))??;
 
         Ok(())
     }
@@ -297,7 +301,8 @@ impl InstallationState {
         crypt_data: Option<CryptData>,
         esp_node: Option<String>,
         xbootldr_node: &str,
-    ) -> Result<()> {
+        state_dump: super::export::ReadymadeResult
+        ) -> Result<()> {
         // We will run the specified postinstall modules now
         let context = crate::backend::postinstall::Context {
             destination_disk: self.destination_disk.as_ref().unwrap().devpath.clone(),
@@ -310,6 +315,13 @@ impl InstallationState {
 
         tracing::info!("Writing /etc/fstab...");
         std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
+        
+        // Write the state dump to the chroot
+        let state_dump_path = Path::new(crate::consts::READYMADE_STATE_PATH);
+        let parent = state_dump_path.parent().ok_or_else(|| eyre!("Invalid state dump path - no parent directory"))?;
+        std::fs::create_dir_all(parent).wrap_err("Failed to create parent directories for state dump")?;
+        std::fs::write(&state_dump_path, state_dump.export_string().wrap_err("Failed to serialize state dump")?)
+            .wrap_err("Failed to write state dump file")?;
 
         if let Some(data) = crypt_data {
             tracing::info!("Writing /etc/crypttab...");
@@ -325,6 +337,45 @@ impl InstallationState {
         Ok(())
     }
 
+    #[tracing::instrument]
+    fn flash_submarine(blockdev: &Path) -> Result<()> {
+        tracing::debug!("Flashing submarine…");
+
+        // Find target submarine partition
+        let target_partition = lsblk::BlockDevice::list()?
+            .into_iter()
+            .find(|d| d.is_part()
+                && d.disk_name().ok().as_deref()
+                    == blockdev
+                        .strip_prefix("/dev/")
+                        .unwrap_or(&PathBuf::from(""))
+                        .to_str()
+                && d.name.ends_with('2'))
+            .ok_or_else(|| eyre!("Failed to find submarine partition"))?;
+
+        let source_path = Path::new("/usr/share/submarine/submarine.kpart");
+        let target_path = Path::new("/dev").join(&target_partition.name);
+
+        let mut source_file = std::fs::File::open(source_path)?;
+        let mut target_file = std::fs::OpenOptions::new()
+            .write(true)
+            .open(target_path)?;
+
+        std::io::copy(&mut source_file, &mut target_file)?;
+        target_file.sync_all()?;
+
+        Ok(())
+    }
+    // As of February 14, 2025, I have disabled the `dd` method for flashing the submarine partition,
+    // because we shouldn't really be dropping to shell commands for this kind of thing.
+    // 
+    // The `dd` method is still here for reference if we ever need to use it again.
+    // 
+    // See above for the new method of flashing the submarine partition,
+    // programmatically copying the submarine partition to the target disk.
+    // 
+    // - Cappy
+    /*
     #[tracing::instrument]
     fn dd_submarine(blockdev: &Path) -> Result<()> {
         tracing::debug!("dd-ing submarine…");
@@ -352,6 +403,7 @@ impl InstallationState {
         }
         Ok(())
     }
+    */
 
     /// Mount a device or file to /mnt/live-base
     fn mount_dev(dev: &str) -> std::io::Result<sys_mount::Mount> {
