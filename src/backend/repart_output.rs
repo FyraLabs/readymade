@@ -139,13 +139,21 @@ impl RepartOutput {
                     // We need to sanitize the label for the mapper device name, as it can't contain slashes
                     // 
                     // I forgot to account for this when I refactored it -Cappy
-                    let label = {
+                    let mut label = {
                         if mntpoint == "/" {
                             "root".to_owned()
                         } else {
                             mntpoint.trim_start_matches('/').replace("/", "-")
                         }
                     };
+
+                    // Check if mapper device already exists and append counter if needed
+                    let mut counter = 0;
+                    let base_label = label.clone();
+                    while std::path::Path::new(&format!("/dev/mapper/{}", label)).exists() {
+                        counter += 1;
+                        label = format!("{}-{}", base_label, counter);
+                    }
                     let mapper = luks_decrypt(&node, pass, &label)?;
                     decrypted_partitions.insert(node.clone(), mapper.clone());
                     mapper
