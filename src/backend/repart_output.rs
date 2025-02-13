@@ -136,7 +136,17 @@ impl RepartOutput {
                 } else {
                     let pass =
                         passphrase.ok_or_eyre("Passphrase is empty when is_luks() is true")?;
-                    let mapper = luks_decrypt(&node, pass, mntpoint)?;
+                    // We need to sanitize the label for the mapper device name, as it can't contain slashes
+                    // 
+                    // I forgot to account for this when I refactored it -Cappy
+                    let label = {
+                        if mntpoint == "/" {
+                            "root".to_owned()
+                        } else {
+                            mntpoint.trim_start_matches('/').replace("/", "-")
+                        }
+                    };
+                    let mapper = luks_decrypt(&node, pass, &label)?;
                     decrypted_partitions.insert(node.clone(), mapper.clone());
                     mapper
                 }
