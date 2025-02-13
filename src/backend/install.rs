@@ -253,7 +253,7 @@ impl InstallationState {
     fn setup_system(&self, output: RepartOutput, passphrase: Option<&str>) -> Result<()> {
         // XXX: This is a bit hacky, but this function should be called before output.generate_fstab() for
         // the fstab generator to be correct, IF we're using encryption
-        // 
+        //
         // todo: Unfuck this
         let mut container = output.to_container(passphrase)?;
 

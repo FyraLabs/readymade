@@ -16,6 +16,7 @@ use std::path::PathBuf;
 use super::repart_output::CryptData;
 
 pub mod cleanup_boot;
+pub mod cryptsetup;
 pub mod dracut;
 pub mod efi_stub;
 pub mod grub2;
@@ -24,7 +25,6 @@ pub mod language;
 pub mod prepare_fedora;
 pub mod reinstall_kernel;
 pub mod selinux;
-pub mod cryptsetup;
 
 pub struct Context {
     pub destination_disk: PathBuf,

@@ -213,8 +213,6 @@ fn main() -> Result<()> {
 
         IPC_CHANNEL.set(Mutex::new(channel)).unwrap();
         let install_state: InstallationState = serde_json::from_reader(std::io::stdin())?;
-        
-
 
         return install_state.install();
     }
@@ -268,9 +266,9 @@ fn setup_hooks() -> impl std::any::Any {
             std::env::set_var(key, value);
         }
     }
-    
+
     let is_non_interactive = std::env::args().any(|arg| arg == "--non-interactive");
-    
+
     let readymade_log_file = if !is_non_interactive {
         "readymade.log"
     } else {

@@ -55,7 +55,7 @@ impl MapperCache {
     fn insert(&mut self, node: String, path: PathBuf) {
         self.cache.insert(node, path);
     }
-    
+
     fn clear(&mut self) {
         for (node, path) in self.cache.drain() {
             if let Err(e) = cryptsetup_close(&path.to_string_lossy()) {
@@ -431,19 +431,19 @@ impl RepartPartition {
             // - Finding the UUID of the mapper device by doing some symlink magic (thanks udev!)
             // - Using that UUID for the fstab entry
 
-            
             // We're gonna be abusing the mapper cache, which should be populated by the time we get here
-            
+
             let mapper_cache = MAPPER_CACHE.read().unwrap();
             let mapper_path = mapper_cache.get(&self.node).unwrap();
-            
 
             tracing::trace!(?mapper_path, "Guessed mapper path as this");
 
             // Thankfully, since we made lsblk-rs we can do this easily.
             let device = lsblk::BlockDevice::from_path(&mapper_path)?;
             tracing::trace!(?device, "Found device from mapper path");
-            let uuid = device.uuid.ok_or_eyre("Could not find UUID of decrypted device")?;
+            let uuid = device
+                .uuid
+                .ok_or_eyre("Could not find UUID of decrypted device")?;
 
             // The mapper path should be a symlink to the /dev/dm-XX device
 
