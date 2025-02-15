@@ -25,6 +25,8 @@ It is created as a replacement to Red Hat's Anaconda installer for Ultramarine L
 %prep
 %autosetup -n %{name}-%{gitcommit}
 %cargo_prep_online
+# Add debug assertions to the rpm profile
+sed -i 's/^\[profile\.rpm\]/[profile.rpm]\ndebug-assertions = true/' .cargo/config
 
 %build
 
