@@ -19,6 +19,7 @@ pub struct CryptData {
 
     /// Extra cmdline options for the kernel
     pub cmdline_opts: Vec<String>,
+    pub tpm: bool,
 }
 
 fn cryptsetup_luks_uuid(node: &str) -> Result<String, color_eyre::eyre::Error> {
@@ -119,20 +120,48 @@ impl RepartOutput {
 
         let luks_partitions = self.partitions.iter().filter(|part| is_luks(&part.node));
 
+        let mut is_tpm = false;
+
         let has_luks = luks_partitions.clone().count() > 0;
         for part in luks_partitions {
             let uuid = cryptsetup_luks_uuid(&part.node).expect("Failed to get LUKS UUID");
             let label = &part.label;
 
-            writeln!(&mut crypttab, "{label}\tUUID={uuid}\tnone\tluks,discard")?;
+            let mut extra_opts = String::new();
+
+            let part_uses_tpm: bool = {
+                let file_config = std::fs::read_to_string(&part.file)?;
+                let config: RepartConfig = serde_systemd_unit::from_str(&file_config)?;
+
+                match config.partition.encrypt {
+                    super::repartcfg::EncryptOption::KeyFileTpm2 => true,
+                    super::repartcfg::EncryptOption::Tpm2 => true,
+                    _ => false,
+                }
+            };
+
+            if part_uses_tpm {
+                is_tpm = true;
+                extra_opts.push_str("tpm2-device=auto,");
+            }
+
+            writeln!(
+                &mut crypttab,
+                "{label}\tUUID={uuid}\tnone\t{extra_opts}luks,discard"
+            )?;
 
             cmdline_opts.push(format!("rd.luks.name={uuid}={label}"));
+        }
+        
+        if is_tpm {
+            cmdline_opts.push("rd.luks.options=tpm2-device=auto".to_string());
         }
 
         match has_luks {
             true => Ok(Some(CryptData {
                 crypttab,
                 cmdline_opts,
+                tpm: is_tpm,
             })),
             false => Ok(None),
         }
