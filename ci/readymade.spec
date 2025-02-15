@@ -14,6 +14,8 @@ BuildRequires:  clang-devel
 BuildRequires:  gcc
 BuildRequires:  mold
 BuildRequires:  cmake
+# We'll need cryptsetup to unlock disks for now
+Requires:       cryptsetup
 
 %description
 Readymade is a Linux Distribution installer based on the great distinst library by System76.
