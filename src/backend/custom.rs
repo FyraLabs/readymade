@@ -2,9 +2,9 @@ use std::path::Component;
 use std::path::Path;
 use std::path::PathBuf;
 
-use color_eyre::eyre::Context;
 use super::export::ReadymadeResult;
 use super::install::InstallationState;
+use color_eyre::eyre::Context;
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct MountTarget {

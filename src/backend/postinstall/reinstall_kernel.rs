@@ -1,11 +1,9 @@
+use super::{Context, PostInstallModule};
+use crate::stage;
 use color_eyre::{eyre::bail, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::process::Command;
-
-use crate::stage;
-
-use super::{Context, PostInstallModule};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ReinstallKernel;

@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 
 use super::{install::InstallationState, repartcfg::RepartConfig};
 /// The version of the result dump format, for backwards compat reasons
-/// 
+///
 /// If there's any changes to the format, this should be bumped up to the next version.
-/// 
+///
 const RESULT_DUMP_FORMAT_VERSION: &str = "0.1.0";
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ReadymadeResult {
@@ -27,7 +27,7 @@ impl ReadymadeResult {
     pub fn export_string(&self) -> Result<String> {
         Ok(serde_json::to_string_pretty(&self)?)
     }
-    
+
     pub fn new(state: InstallationState, systemd_repart_data: Option<SystemdRepartData>) -> Self {
         Self {
             version: RESULT_DUMP_FORMAT_VERSION,
@@ -37,7 +37,6 @@ impl ReadymadeResult {
             systemd_repart_data,
         }
     }
-
 }
 
 #[derive(Serialize, Deserialize, Debug)]
