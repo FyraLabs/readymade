@@ -1,7 +1,16 @@
+use std::sync::LazyLock;
+
 use crate::prelude::*;
 
 use crate::{InstallationType, NavigationAction, Page, INSTALLATION_STATE};
 use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
+
+static TPM_SUPPORT: LazyLock<bool> = LazyLock::new(|| {
+    std::fs::read_to_string("/sys/class/tpm/tpm0/tpm_version_major")
+        .ok()
+        .and_then(|s: String| s.parse::<usize>().ok())
+        .is_some_and(|ver| ver >= 2)
+});
 
 #[derive(Default)]
 pub struct InstallationTypePage {
@@ -142,7 +151,7 @@ impl SimpleComponent for InstallationTypePage {
                     gtk::CheckButton {
                         set_label: Some(&gettext("Enable TPM")),
                         #[watch]
-                        set_sensitive: INSTALLATION_STATE.read().encrypt && model.can_encrypt,
+                        set_sensitive: INSTALLATION_STATE.read().encrypt && model.can_encrypt && *TPM_SUPPORT,
                         connect_toggled => |btn| INSTALLATION_STATE.write().tpm = btn.is_active(),
                     },
                 },
