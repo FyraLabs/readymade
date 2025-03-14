@@ -1,7 +1,7 @@
 use bytesize::ByteSize;
 use color_eyre::eyre::{Context, OptionExt};
-use std::fmt::Write;
 use std::path::PathBuf;
+use std::{fmt::Write, sync::Arc};
 use sys_mount::MountFlags;
 use tiffin::{Container, MountTarget};
 
@@ -10,7 +10,92 @@ use crate::{
     util::sys::check_uefi,
 };
 
-/// Gets the systemd version
+/// Wrapper struct for encryption data, so we don't have to pass around multiple
+/// arguments
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize, Clone)]
+pub struct CryptData {
+    /// Contents of /etc/crypttab
+    pub crypttab: String,
+
+    /// Extra cmdline options for the kernel
+    pub cmdline_opts: Vec<String>,
+    pub tpm: bool,
+}
+
+fn cryptsetup_luks_uuid(node: &str) -> Result<String, color_eyre::eyre::Error> {
+    let cmd = std::process::Command::new("cryptsetup")
+        .arg("luksUUID")
+        .arg(node)
+        .output()?;
+    if !cmd.status.success() {
+        color_eyre::eyre::bail!(
+            "cryptsetup failed: {}",
+            String::from_utf8_lossy(&cmd.stderr)
+        );
+    }
+    Ok(String::from_utf8_lossy(&cmd.stdout).trim().to_string())
+}
+
+pub(crate) struct MapperCache {
+    cache: std::collections::HashMap<String, PathBuf>,
+}
+
+impl MapperCache {
+    fn new() -> Self {
+        Self {
+            cache: std::collections::HashMap::new(),
+        }
+    }
+
+    pub(crate) fn get(&self, node: &str) -> Option<&PathBuf> {
+        self.cache.get(node)
+    }
+
+    pub(crate) fn insert(&mut self, node: String, path: PathBuf) {
+        self.cache.insert(node, path);
+    }
+
+    pub(crate) fn clear(&mut self) {
+        for (node, path) in self.cache.drain() {
+            if let Err(e) = cryptsetup_close(&path.to_string_lossy()) {
+                tracing::error!(?node, ?e, "Failed to close mapper device");
+            }
+        }
+    }
+}
+
+pub fn cryptsetup_close(mapper: &str) -> Result<(), color_eyre::eyre::Error> {
+    let cmd = std::process::Command::new("cryptsetup")
+        .arg("close")
+        .arg(mapper)
+        .output()?;
+    if !cmd.status.success() {
+        color_eyre::eyre::bail!(
+            "cryptsetup failed: {}",
+            String::from_utf8_lossy(&cmd.stderr)
+        );
+    }
+    Ok(())
+}
+
+pub fn generate_unique_mapper_label(mntpoint: &str) -> String {
+    let mut label = {
+        if mntpoint == "/" {
+            "root".to_owned()
+        } else {
+            mntpoint.trim_start_matches('/').replace("/", "-")
+        }
+    };
+
+    // Check if mapper device already exists and append counter if needed
+    let mut counter = 0;
+    let base_label = label.clone();
+    while std::path::Path::new(&format!("/dev/mapper/{}", label)).exists() {
+        counter += 1;
+        label = format!("{}-{}", base_label, counter);
+    }
+    label
+}
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 // type should be just an array of partitions
@@ -28,31 +113,58 @@ impl RepartOutput {
             .filter_map(|part| part.ddi_mountpoint().map(|mp| (mp, part.node.clone())))
     }
 
-    pub fn generate_crypttab(&self) -> Option<String> {
+    pub fn generate_cryptdata(&self) -> Result<Option<CryptData>, color_eyre::eyre::Error> {
         // NOTE: https://www.man7.org/linux/man-pages/man5/crypttab.5.html
         let mut crypttab = String::new();
+        let mut cmdline_opts = vec![];
 
-        // this should be generated before the initramfs is generated, so it boots properly
+        let luks_partitions = self.partitions.iter().filter(|part| is_luks(&part.node));
 
-        // Find any LUKS partitions
-        for part in &self.partitions {
-            if is_luks(&part.node) {
-                // Format is: <mapper name> <device> <key file> <options>
-                // We use UUID to reference device and auto-generated label as mapper name
-                // No key file used (password prompt)
-                let uuid = part.uuid.to_string();
-                writeln!(
-                    &mut crypttab,
-                    // systemd-repart's `uuid` field is actually partuuid in disguise
-                    // a poettering moment
-                    "{}\tPARTUUID={}\tnone\tluks,discard", // TODO: tpm
-                    part.label, uuid
-                )
-                .unwrap();
+        let mut is_tpm = false;
+
+        let has_luks = luks_partitions.clone().count() > 0;
+        for part in luks_partitions {
+            let uuid = cryptsetup_luks_uuid(&part.node).expect("Failed to get LUKS UUID");
+            let label = &part.label;
+
+            let mut extra_opts = String::new();
+
+            let part_uses_tpm: bool = {
+                let file_config = std::fs::read_to_string(&part.file)?;
+                let config: RepartConfig = serde_systemd_unit::from_str(&file_config)?;
+
+                match config.partition.encrypt {
+                    super::repartcfg::EncryptOption::KeyFileTpm2 => true,
+                    super::repartcfg::EncryptOption::Tpm2 => true,
+                    _ => false,
+                }
+            };
+
+            if part_uses_tpm {
+                is_tpm = true;
+                extra_opts.push_str("tpm2-device=auto,");
             }
+
+            writeln!(
+                &mut crypttab,
+                "{label}\tUUID={uuid}\tnone\t{extra_opts}luks,discard"
+            )?;
+
+            cmdline_opts.push(format!("rd.luks.name={uuid}={label}"));
+        }
+        
+        if is_tpm {
+            cmdline_opts.push("rd.luks.options=tpm2-device=auto".to_string());
         }
 
-        (!crypttab.is_empty()).then_some(crypttab)
+        match has_luks {
+            true => Ok(Some(CryptData {
+                crypttab,
+                cmdline_opts,
+                tpm: is_tpm,
+            })),
+            false => Ok(None),
+        }
     }
 
     /// Generate a /etc/fstab file from the DDI partition types
@@ -117,9 +229,16 @@ impl RepartOutput {
             .map(|part| part.node.clone())
     }
 
+    /// Generates a unique label for a mapper device based on a mount point
+    ///
+    /// This function takes a mount point and generates a unique label for the mapper device by:
+    /// 1. Converting the mount point to a valid label format
+    /// 2. Checking if that label is already in use and appending a counter if needed
+
     /// Create `tiffin::Container` from the repartitioning output with the mountpoints
     /// from the DDI partition types
     pub fn to_container(&self, passphrase: Option<&str>) -> color_eyre::Result<Container> {
+        tracing::info!("Creating container from repartitioning output");
         let temp_dir = tempfile::tempdir()?.into_path();
         // A table of decrypted partitions, so we don't have to decrypt the same partition multiple times
         let mut decrypted_partitions: std::collections::HashMap<String, PathBuf> =
@@ -136,7 +255,16 @@ impl RepartOutput {
                 } else {
                     let pass =
                         passphrase.ok_or_eyre("Passphrase is empty when is_luks() is true")?;
-                    let mapper = luks_decrypt(&node, pass, mntpoint)?;
+                    // We need to sanitize the label for the mapper device name, as it can't contain slashes
+                    //
+                    // I forgot to account for this when I refactored it -Cappy
+                    //
+                    let label = generate_unique_mapper_label(&mntpoint);
+                    // XXX: This introduces some weird ordering issues with generate_fstab when decrypting from here
+                    // Because generate_fstab() assumes that the partitions are decrypted already.
+                    //
+                    // todo: add some global cache for decrypted partitions
+                    let mapper = luks_decrypt(&node, pass, &label)?;
                     decrypted_partitions.insert(node.clone(), mapper.clone());
                     mapper
                 }
@@ -180,11 +308,21 @@ fn is_luks(node: &str) -> bool {
     cmd.status.success()
 }
 
+// global cache, so we can clean up these devices later
+pub(crate) static MAPPER_CACHE: std::sync::LazyLock<std::sync::RwLock<Arc<MapperCache>>> =
+    std::sync::LazyLock::new(|| std::sync::RwLock::new(Arc::new(MapperCache::new())));
+
 fn luks_decrypt(
     node: &str,
     passphrase: &str,
     label: &str,
 ) -> Result<PathBuf, color_eyre::eyre::Error> {
+    // Check cache first
+    if let Some(path) = MAPPER_CACHE.read().unwrap().get(node) {
+        return Ok(path.clone());
+    }
+
+    tracing::debug!("Decrypting LUKS partition");
     let temp_dir = tempfile::tempdir()?.into_path();
     let key_file_path = temp_dir.join("keyfile.txt");
     let mut key_file = std::fs::File::create(&key_file_path).wrap_err("cannot create key file")?;
@@ -209,6 +347,13 @@ fn luks_decrypt(
     }
 
     let mapper = PathBuf::from(format!("/dev/mapper/{label}"));
+
+    // Add to cache
+    let mut cache = MAPPER_CACHE.write().unwrap();
+    Arc::get_mut(&mut *cache)
+        .unwrap()
+        .insert(node.to_string(), mapper.clone());
+
     Ok(mapper)
 }
 
@@ -302,7 +447,57 @@ impl RepartPartition {
 
         // let's get the UUID
 
-        let uuid = self.uuid.to_string();
+        // let uuid = self.uuid.to_string();
+        // Check if the disk is encrypted
+        let is_encrypted = is_luks(&self.node);
+        let uuid_string = if is_encrypted {
+            tracing::trace!("Partition is encrypted");
+            // We're gonna do what's called a pro gamer move.
+            // HACK: We will guess the UUID of the decrypted LUKS partition by:
+            // - Guessing where the mapper device will be
+            // - Finding the UUID of the mapper device by doing some symlink magic (thanks udev!)
+            // - Using that UUID for the fstab entry
+
+            // We're gonna be abusing the mapper cache, which should be populated by the time we get here
+
+            let mapper_cache = MAPPER_CACHE.read().unwrap();
+            let mapper_path = mapper_cache.get(&self.node).unwrap();
+
+            tracing::trace!(?mapper_path, "Guessed mapper path as this");
+
+            // Thankfully, since we made lsblk-rs we can do this easily.
+            let device = lsblk::BlockDevice::from_path(&mapper_path)?;
+            tracing::trace!(?device, "Found device from mapper path");
+            let uuid = device
+                .uuid
+                .ok_or_eyre("Could not find UUID of decrypted device")?;
+
+            // The mapper path should be a symlink to the /dev/dm-XX device
+
+            // let dm = std::fs::read_link(&mapper_path)?;
+
+            // tracing::trace!(?dm, "Found decrypted device");
+
+            // let uuid = std::fs::read_dir("/dev/disk/by-uuid")?
+            //     .find_map(|entry| {
+            //         let entry = entry.ok()?;
+            //         let path = entry.path();
+            //         let link = std::fs::read_link(&path).ok()?;
+            //         if link == dm {
+            //             Some(path.file_name()?.to_string_lossy().to_string())
+            //         } else {
+            //             None
+            //         }
+            //     })
+            //     .ok_or_eyre("Could not find UUID for decrypted device")?;
+
+            // tracing::trace!(?uuid, "Found UUID for decrypted device!");
+
+            format!("UUID={}", uuid)
+        } else {
+            tracing::trace!("Partition is not encrypted, using repart's");
+            format!("PARTUUID={}", self.uuid)
+        };
 
         // let's get the dump and pass values
 
@@ -328,7 +523,7 @@ impl RepartPartition {
 
         // now let's write the fstab entry
         Ok(format!(
-            "PARTUUID={uuid}\t{mntpoint}\t{fs_fmt_str}\t{mount_opts}\t{dump}\t{pass}"
+            "{uuid_string}\t{mntpoint}\t{fs_fmt_str}\t{mount_opts}\t{dump}\t{pass}"
         ))
     }
 

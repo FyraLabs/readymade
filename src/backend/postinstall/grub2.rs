@@ -126,7 +126,21 @@ pub struct GRUB2;
 impl PostInstallModule for GRUB2 {
     fn run(&self, context: &Context) -> Result<()> {
         stage!("Generating system grub defaults" {
-            let defaults = Grub2Defaults::default();
+            let mut defaults = Grub2Defaults::default();
+
+            // Now, let's add extra boot opts if they exist
+            if let Some(crypt_data) = &context.crypt_data {
+                // prepend
+                let current_value = defaults.cmdline_linux.clone();
+
+                // this is a mess.
+                // todo: In the event someone thinks this code stinks, please please PLEASE refactor it for us.
+
+                let joined_cmdline = crypt_data.cmdline_opts.join(" ");
+                tracing::info!("Adding cryptsetup cmdline options: {}", joined_cmdline);
+                defaults.cmdline_linux = format!("{} {}", joined_cmdline, current_value);
+            }
+
             let defaults_str = defaults.generate();
             std::fs::write("/etc/default/grub", defaults_str)?;
         });

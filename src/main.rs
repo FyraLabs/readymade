@@ -213,8 +213,6 @@ fn main() -> Result<()> {
 
         IPC_CHANNEL.set(Mutex::new(channel)).unwrap();
         let install_state: InstallationState = serde_json::from_reader(std::io::stdin())?;
-        
-
 
         return install_state.install();
     }
@@ -269,6 +267,14 @@ fn setup_hooks() -> impl std::any::Any {
         }
     }
 
+    let is_non_interactive = std::env::args().any(|arg| arg == "--non-interactive");
+
+    let readymade_log_file = if !is_non_interactive {
+        "readymade.log"
+    } else {
+        "readymade-non-interactive.log"
+    };
+
     color_eyre::install().expect("install color_eyre");
     let temp_dir = tempfile::Builder::new()
         .prefix("readymade-logs")
@@ -277,7 +283,7 @@ fn setup_hooks() -> impl std::any::Any {
         .into_path();
     // create dir
     std::fs::create_dir_all(&temp_dir).expect("create readymade logs tempdir");
-    let file_appender = tracing_appender::rolling::never(&temp_dir, "readymade.log");
+    let file_appender = tracing_appender::rolling::never(&temp_dir, readymade_log_file);
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
     tracing_subscriber::registry()

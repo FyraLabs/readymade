@@ -2,9 +2,9 @@ use std::path::Component;
 use std::path::Path;
 use std::path::PathBuf;
 
-use color_eyre::eyre::Context;
-
+use super::export::ReadymadeResult;
 use super::install::InstallationState;
+use color_eyre::eyre::Context;
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct MountTarget {
@@ -169,7 +169,8 @@ pub fn install_custom(
         .ok_or_else(|| color_eyre::eyre::eyre!("cannot find xbootldr partition"))?;
 
     // TODO: encryption support for custom
-    container.run(|| state._inner_sys_setup(fstab, None, efi, &xbootldr))??;
+    let rdm_result = ReadymadeResult::new(state.clone(), None);
+    container.run(|| state._inner_sys_setup(fstab, None, efi, &xbootldr, rdm_result))??;
 
     Ok(())
 }

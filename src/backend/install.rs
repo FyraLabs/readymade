@@ -30,6 +30,8 @@ use crate::{
     stage, util,
 };
 
+use super::repart_output::CryptData;
+
 pub static IPC_CHANNEL: OnceLock<Mutex<IpcSender<InstallationMessage>>> = OnceLock::new();
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -41,7 +43,7 @@ pub enum InstallationType {
     Custom,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InstallationState {
     pub langlocale: Option<String>,
     pub destination_disk: Option<DiskInit>,
@@ -193,6 +195,18 @@ impl InstallationState {
         }
     }
 
+    /// Copies the current config into a temporary directory, allowing them to be modified without
+    /// affecting the original templates :D
+    fn layer_configdir(&self, cfg_dir: &Path) -> Result<PathBuf> {
+        // /run/readymade-install
+        let new_path = PathBuf::from("/run").join("readymade-install");
+        std::fs::create_dir_all(&new_path)?;
+        // Copy the contents of the cfg_dir to the new path
+        util::fs::copy_dir(cfg_dir, "/run/readymade-install")?;
+
+        Ok(new_path)
+    }
+
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     pub fn install(&self) -> Result<()> {
@@ -206,7 +220,9 @@ impl InstallationState {
         let blockdev = &(self.destination_disk.as_ref())
             .expect("A valid destination device should be set before calling install()")
             .devpath;
-        let cfgdir = inst_type.cfgdir();
+
+        tracing::info!("Layering repart templates");
+        let cfgdir = self.layer_configdir(&inst_type.cfgdir())?;
 
         // Let's write the encryption key to the keyfile
         let keyfile = std::path::Path::new(consts::LUKS_KEYFILE_PATH);
@@ -221,20 +237,51 @@ impl InstallationState {
             Self::systemd_repart(blockdev, &cfgdir, self.encrypt && self.encryption_key.is_some())?
         });
 
+        let repartcfg_export = super::export::SystemdRepartData::get_configs(&cfgdir)?;
+
         tracing::info!("Copying files done, Setting up system...");
-        self.setup_system(repart_out, self.encryption_key.as_ref().map(|s| s.as_str()))?;
+        self.setup_system(
+            repart_out,
+            self.encryption_key.as_ref().map(|s| s.as_str()),
+            Some(repartcfg_export),
+        )?;
 
         if let InstallationType::ChromebookInstall = inst_type {
             // FIXME: don't dd?
-            Self::dd_submarine(blockdev)?;
+            Self::flash_submarine(blockdev)?;
             InstallationType::set_cgpt_flags(blockdev)?;
         }
+
+        tracing::info!("Cleaning up state...");
+
+        if let Some(_key) = &self.encryption_key {
+            std::fs::remove_file(keyfile) // don't care if it fails
+                .unwrap_or_else(|e| tracing::warn!("Failed to remove keyfile: {e}"));
+
+            // Close all mapped LUKS devices if exists
+
+            if let Ok(mut cache) = super::repart_output::MAPPER_CACHE.try_write() {
+                if let Some(cache) = std::sync::Arc::get_mut(&mut cache) {
+                    cache.clear();
+                }
+            }
+        }
+
         tracing::info!("install() finished");
         Ok(())
     }
 
     #[tracing::instrument]
-    fn setup_system(&self, output: RepartOutput, passphrase: Option<&str>) -> Result<()> {
+    fn setup_system(
+        &self,
+        output: RepartOutput,
+        passphrase: Option<&str>,
+        repart_cfgs: Option<super::export::SystemdRepartData>,
+    ) -> Result<()> {
+        // XXX: This is a bit hacky, but this function should be called before output.generate_fstab() for
+        // the fstab generator to be correct, IF we're using encryption
+        //
+        // todo: Unfuck this
         let mut container = output.to_container(passphrase)?;
 
         let fstab = output.generate_fstab()?;
@@ -245,9 +292,13 @@ impl InstallationState {
             .get_xbootldr_partition()
             .context("No xbootldr partition found")?;
 
-        let crypttab = output.generate_crypttab();
+        let crypt_data = output.generate_cryptdata()?;
 
-        container.run(|| self._inner_sys_setup(fstab, crypttab, esp_node, &xbootldr_node))??;
+        let rdm_result = super::export::ReadymadeResult::new(self.clone(), repart_cfgs);
+
+        container.run(|| {
+            self._inner_sys_setup(fstab, crypt_data, esp_node, &xbootldr_node, rdm_result)
+        })??;
 
         Ok(())
     }
@@ -257,9 +308,10 @@ impl InstallationState {
     pub fn _inner_sys_setup(
         &self,
         fstab: String,
-        crypttab: Option<String>,
+        crypt_data: Option<CryptData>,
         esp_node: Option<String>,
         xbootldr_node: &str,
+        state_dump: super::export::ReadymadeResult,
     ) -> Result<()> {
         // We will run the specified postinstall modules now
         let context = crate::backend::postinstall::Context {
@@ -268,12 +320,31 @@ impl InstallationState {
             esp_partition: esp_node,
             xbootldr_partition: xbootldr_node.to_owned(),
             lang: self.langlocale.clone().unwrap_or_else(|| "C.UTF-8".into()),
+            crypt_data: crypt_data.clone(),
         };
 
+        tracing::info!("Writing /etc/fstab...");
         std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
 
-        if let Some(crypttab) = crypttab {
-            std::fs::write("/etc/crypttab", crypttab).wrap_err("cannot write to /etc/crypttab")?;
+        // Write the state dump to the chroot
+        let state_dump_path = Path::new(crate::consts::READYMADE_STATE_PATH);
+        let parent = state_dump_path
+            .parent()
+            .ok_or_else(|| eyre!("Invalid state dump path - no parent directory"))?;
+        std::fs::create_dir_all(parent)
+            .wrap_err("Failed to create parent directories for state dump")?;
+        std::fs::write(
+            &state_dump_path,
+            state_dump
+                .export_string()
+                .wrap_err("Failed to serialize state dump")?,
+        )
+        .wrap_err("Failed to write state dump file")?;
+
+        if let Some(data) = crypt_data {
+            tracing::info!("Writing /etc/crypttab...");
+            std::fs::write("/etc/crypttab", data.crypttab)
+                .wrap_err("cannot write to /etc/crypttab")?;
         }
 
         for module in &self.postinstall {
@@ -284,6 +355,45 @@ impl InstallationState {
         Ok(())
     }
 
+    #[tracing::instrument]
+    fn flash_submarine(blockdev: &Path) -> Result<()> {
+        tracing::debug!("Flashing submarine…");
+
+        // Find target submarine partition
+        let target_partition = lsblk::BlockDevice::list()?
+            .into_iter()
+            .find(|d| {
+                d.is_part()
+                    && d.disk_name().ok().as_deref()
+                        == blockdev
+                            .strip_prefix("/dev/")
+                            .unwrap_or(&PathBuf::from(""))
+                            .to_str()
+                    && d.name.ends_with('2')
+            })
+            .ok_or_else(|| eyre!("Failed to find submarine partition"))?;
+
+        let source_path = Path::new("/usr/share/submarine/submarine.kpart");
+        let target_path = Path::new("/dev").join(&target_partition.name);
+
+        let mut source_file = std::fs::File::open(source_path)?;
+        let mut target_file = std::fs::OpenOptions::new().write(true).open(target_path)?;
+
+        std::io::copy(&mut source_file, &mut target_file)?;
+        target_file.sync_all()?;
+
+        Ok(())
+    }
+    // As of February 14, 2025, I have disabled the `dd` method for flashing the submarine partition,
+    // because we shouldn't really be dropping to shell commands for this kind of thing.
+    //
+    // The `dd` method is still here for reference if we ever need to use it again.
+    //
+    // See above for the new method of flashing the submarine partition,
+    // programmatically copying the submarine partition to the target disk.
+    //
+    // - Cappy
+    /*
     #[tracing::instrument]
     fn dd_submarine(blockdev: &Path) -> Result<()> {
         tracing::debug!("dd-ing submarine…");
@@ -311,6 +421,7 @@ impl InstallationState {
         }
         Ok(())
     }
+    */
 
     /// Mount a device or file to /mnt/live-base
     fn mount_dev(dev: &str) -> std::io::Result<sys_mount::Mount> {
@@ -375,6 +486,11 @@ impl InstallationState {
 
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
+    /// Enable encryption on the root partition config
+    ///
+    /// This method will modify the root partition config file to enable encryption
+    ///
+    /// Please use [`Self::layer_configdir`] before calling this method to avoid modifying the original config files
     fn enable_encryption(&self, cfgdir: &Path) -> Result<()> {
         if !self.encrypt {
             return Ok(());
@@ -382,7 +498,11 @@ impl InstallationState {
         let root_file = cfgdir.join("50-root.conf");
         let f = std::fs::read_to_string(&root_file)?;
         let f = Self::set_encrypt_to_file(&f, self.tpm);
-        std::fs::write("/tmp/50-root.conf", f)?;
+        // We're gonna write directly to the file.
+        //
+        // Warning: Please don't use this method unless you're using layer_configdir
+        std::fs::write(&root_file, f)?;
+
         // TODO: somehow actually use this config file
         Ok(())
     }

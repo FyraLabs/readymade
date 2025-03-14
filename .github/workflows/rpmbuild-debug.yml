@@ -1,33 +1,33 @@
 on:
-  push:
-  pull_request:
+    push:
+    pull_request:
 
 name: Build RPM snapshot package
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/terrapkg/builder:f41
-    steps:
-      - uses: actions/checkout@v4
+    build:
+        runs-on: ubuntu-latest
+        container:
+            image: ghcr.io/terrapkg/builder:f41
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          dnf4 up -y
-          dnf4 -y install dnf-plugins-core
-          # builddep is broken with dnf5 for some reason
-          dnf4 builddep -y ci/readymade.spec
-          dnf4 in -y rpmdevtools git rpm-build
+            - name: Install dependencies
+              run: |
+                  dnf4 up -y
+                  dnf4 -y install dnf-plugins-core
+                  # builddep is broken with dnf5 for some reason
+                  dnf4 builddep -y ci/readymade.spec
+                  dnf4 in -y rpmdevtools git rpm-build
 
-      - name: run rpmbuild
-        run: |
-          git_sha=${{ github.sha }}
-          git_short=${git_sha:0:7}
-          rpmdev-setuptree
-          rpmbuild -ba ci/readymade.spec --define "gitcommit $git_sha" --define "shortcommit $git_short" --define "_rpmdir $PWD/build" --define "_disable_source_fetch 0"
+            - name: run rpmbuild
+              run: |
+                  git_sha=${{ github.sha }}
+                  git_short=${git_sha:0:7}
+                  rpmdev-setuptree
+                  rpmbuild -ba ci/readymade.spec --define "gitcommit $git_sha" --define "shortcommit $git_short" --define "_rpmdir $PWD/build" --define "_disable_source_fetch 0"
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          path: build/**/*.rpm
+            - name: Upload artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  path: build/**/*.rpm
