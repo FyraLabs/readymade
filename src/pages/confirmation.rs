@@ -87,7 +87,7 @@ page!(Confirmation:
         libhelium::Button {
             set_is_pill: true,
             #[watch]
-            set_label: &gettext("Previous"),
+            set_label: &t!("prev"),
             add_css_class: "large-button",
             connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(
                 if crate::CONFIG.read().install.allowed_installtypes.len() == 1 {
@@ -105,7 +105,7 @@ page!(Confirmation:
         libhelium::Button {
             set_is_pill: true,
             #[watch]
-            set_label: &gettext("Install"),
+            set_label: &t!("page-welcome-install"),
             add_css_class: "large-button",
             add_css_class: "destructive-action",
             connect_clicked => ConfirmationPageMsg::StartInstallation

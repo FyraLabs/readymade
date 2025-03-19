@@ -1,5 +1,4 @@
 pub(crate) use crate::{NavigationAction, Page, INSTALLATION_STATE};
-pub use gettextrs::gettext;
 pub use itertools::Itertools;
 pub use libhelium::{glib::prelude::*, prelude::*};
 pub use relm4::{
@@ -22,8 +21,8 @@ kurage::generate_generator! { page => [<$name Page>]
         #[wrap(Some)]
         set_title = &gtk::Label {
             #[watch]
-            set_label: &gettext(pagename!()),
-            set_css_classes: &["view-title"]
+            set_label: &t_expr!(concat!("page-", stringify!([<$name:lower>]))),
+            set_css_classes: &["view-title"],
         },
         set_vexpand: true,
 
@@ -54,4 +53,18 @@ macro_rules! pagename {
 }
 
 // pub(crate) use kurage_generated_macros::kurage_page_pre;
-pub(crate) use {page, pagename};
+macro_rules! t {
+    ($msgid:literal $($tt:tt)*) => {
+        i18n_embed_fl::fl!($crate::LL.read().as_ref().unwrap(), $msgid $($tt)*)
+    };
+}
+
+macro_rules! t_expr {
+    ($msgid:expr$(, $($tt:tt)*)?) => {
+        paste::paste! { with_builtin_macros::with_builtin!(let $id = $msgid in {
+            i18n_embed_fl::fl!($crate::LL.read().as_ref().unwrap(), $id$(, $($tt)*)?)
+        })}
+    };
+}
+
+pub(crate) use {page, pagename, t, t_expr};

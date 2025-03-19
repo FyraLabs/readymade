@@ -3,12 +3,6 @@ use std::fmt::Write;
 
 const BUG_REPORT_LINK: &str = "https://github.com/FyraLabs/readymade/issues";
 
-macro_rules! pagename {
-    () => {
-        "Installation Failure"
-    };
-}
-
 page!(Failure {
     buffer: gtk::TextBuffer,
 }:
@@ -44,7 +38,7 @@ page!(Failure {
         libhelium::Button {
             set_is_textual: true,
             #[watch]
-            set_label: &gettext("Close"),
+            set_label: &t!("page-failure-close"),
             add_css_class: "large-button",
             connect_clicked => FailurePageMsg::Navigate(NavigationAction::Quit)
         },
@@ -56,7 +50,7 @@ page!(Failure {
         libhelium::Button {
             set_is_pill: true,
             #[watch]
-            set_label: &gettext("Report a bug"),
+            set_label: &t!("page-failure-bug"),
             add_css_class: "large-button",
             connect_clicked => FailurePageMsg::ReportBug,
         }

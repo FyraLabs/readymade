@@ -22,13 +22,13 @@ page!(Welcome:
 
         gtk::Label {
             #[watch]
-            set_label: &gettext("Welcome to %s").replace("%s", &crate::CONFIG.read().distro.name),
+            set_label: &t!("page-welcome", distro = crate::CONFIG.read().distro.name.clone()),
             inline_css: "font-weight: bold; font-size: 1.75rem",
         },
 
         gtk::Label {
             #[watch]
-            set_label: &gettext(r#"Either test %s from this installer or start the installation now. You can always return to this screen by selecting "Installer" in the menu."#).replace("%s", &crate::CONFIG.read().distro.name),
+            set_label: &t!("page-welcome-desc", distro = crate::CONFIG.read().distro.name.clone()),
             set_justify: gtk::Justification::Center,
             set_max_width_chars: 60,
             set_wrap: true
@@ -42,7 +42,7 @@ page!(Welcome:
         libhelium::Button {
             set_is_pill: true,
             #[watch]
-            set_label: &gettext("Try"),
+            set_label: &t!("page-welcome-try"),
             add_css_class: "large-button",
             connect_clicked => WelcomePageMsg::Navigate(NavigationAction::Quit)
         },
@@ -54,7 +54,7 @@ page!(Welcome:
         libhelium::Button {
             set_is_pill: true,
             #[watch]
-            set_label: &gettext("Install"),
+            set_label: &t!("page-welcome-install"),
             add_css_class: "suggested-action",
             add_css_class: "large-button",
             connect_clicked => WelcomePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))

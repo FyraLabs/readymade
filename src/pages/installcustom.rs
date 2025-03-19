@@ -60,7 +60,7 @@ impl SimpleComponent for InstallCustomPage {
             #[wrap(Some)]
             set_title = &gtk::Label {
                 #[watch]
-                set_label: &gettext("Custom Installation"),
+                set_label: &t!("page-installcustom"),
                 set_css_classes: &["view-title"],
             },
 
@@ -100,15 +100,15 @@ impl SimpleComponent for InstallCustomPage {
 
                 libhelium::BottomBar {
                     #[watch]
-                    set_title: &gettext("Partitions and Mountpoints"),
+                    set_title: &t!("page-installcustom-title"),
 
                     #[watch]
-                    set_description: &gettext("%s definition(s)").replace("%s", &model.choose_mount_factory.len().to_string()),
+                    set_description: &t!("page-installcustom-desc", num = model.choose_mount_factory.len()),
 
                     prepend_button[libhelium::BottomBarPosition::Right] = &libhelium::Button {
                         set_is_iconic: true,
                         #[watch]
-                        set_tooltip: &gettext("Open partitioning tool"),
+                        set_tooltip: &t!("page-installcustom-tool"),
 
                         set_icon: Some("preferences-system-symbolic"),
                         connect_clicked => InstallCustomPageMsg::OpenPartTool,
@@ -117,7 +117,7 @@ impl SimpleComponent for InstallCustomPage {
                     prepend_button[libhelium::BottomBarPosition::Left] = &libhelium::Button {
                         set_is_iconic: true,
                         #[watch]
-                        set_tooltip: &gettext("Add a new definition/row"),
+                        set_tooltip: &t!("page-installcustom-add"),
 
                         set_icon: Some("list-add"),
                         connect_clicked => InstallCustomPageMsg::AddRow,
@@ -253,7 +253,7 @@ impl FactoryComponent for ChooseMount {
             libhelium::Button {
                 set_icon_name: "document-edit-symbolic",
                 #[watch]
-                set_tooltip: &gettext("Remove mountpoint"),
+                set_tooltip: &t!("installtype-edit-mp"),
                 add_css_class: "suggested-action",
                 connect_clicked => ChooseMountMsg::Edit,
             },
@@ -261,7 +261,7 @@ impl FactoryComponent for ChooseMount {
             libhelium::Button {
                 set_icon_name: "edit-clear-symbolic",
                 #[watch]
-                set_tooltip: &gettext("Remove mountpoint"),
+                set_tooltip: &t!("installtype-rm-mp"),
                 add_css_class: "destructive-action",
                 connect_clicked => ChooseMountMsg::Remove,
             },
@@ -305,45 +305,44 @@ enum PartitionType {
     Other(String),
 }
 
-impl PartitionType {
-    #[must_use]
-    fn all() -> [Self; 6] {
-        use PartitionType::*;
-        [Root, ExtendedBoot, Esp, Home, Var, Other("".to_owned())]
-    }
-    fn as_str(&self) -> &str {
-        match self {
-            Self::Root => "/",
-            Self::ExtendedBoot => "/boot",
-            Self::Esp => "/boot/efi",
-            Self::Home => "/home",
-            Self::Var => "/var",
-            Self::Other(s) => s,
-        }
-    }
+macro_rules! impl_partition_type {
+    ($($entry:ident $s:literal),*$(,)?) => {
+        impl PartitionType {
+            #[must_use] fn all() -> &'static [Self] {
+                Box::leak(Box::new([$(Self::$entry),*, Self::Other("".to_owned())]))
+            }
 
-    fn from_str(s: &str) -> Self {
-        match s {
-            "/" => Self::Root,
-            "/boot" => Self::ExtendedBoot,
-            "/boot/efi" => Self::Esp,
-            "/home" => Self::Home,
-            "/var" => Self::Var,
-            _ => Self::Other(s.to_string()),
-        }
-    }
+            fn as_str(&self) -> &str {
+                match self {
+                    $(Self::$entry => $s,)*
+                    Self::Other(s) => s,
+                }
+            }
 
-    fn description_string(&self) -> String {
-        match self {
-            Self::Root => gettext("Filesystem root (/)"),
-            Self::ExtendedBoot => gettext("Extended Boot Loader Partition (/boot)"),
-            Self::Esp => gettext("EFI System Partition (/boot/efi)"),
-            Self::Home => gettext("User data (/home)"),
-            Self::Var => gettext("Variable data (/var)"),
-            Self::Other(_) => gettextrs::pgettext("Custom partitioning mountpoint", "Other"),
+            fn from_str(s: &str) -> Self {
+                match s {
+                    $($s => Self::$entry,)*
+                    _ => Self::Other(s.to_string()),
+                }
+            }
+
+            fn description_string(&self) -> String {
+                match self {
+                    $(Self::$entry =>
+                            paste::paste! {with_builtin_macros::with_builtin!(let $msgid =
+                                concat!("parttype-", stringify!([<$entry:lower>]))
+                                in { t!($msgid, path = $s) }
+                            )
+                        },
+                    )*
+                    Self::Other(_) => t!("parttype-other"),
+                }
+            }
         }
-    }
+    };
 }
+
+impl_partition_type!(Root "/", ExtendedBoot "/boot", Esp "/boot/efi", Home "/home", Var "/var");
 
 /// Dropdown the set the mountpoint type, for ease of use.
 ///
@@ -477,7 +476,7 @@ impl SimpleComponent for AddDialog {
 
                     gtk::Label {
                         #[watch]
-                        set_label: &gettext("Partition"),
+                        set_label: &t!("dialog-mp-part"),
                     },
                     #[local_ref]
                     partlist -> gtk::DropDown {
@@ -494,7 +493,7 @@ impl SimpleComponent for AddDialog {
 
                     gtk::Label {
                         #[watch]
-                        set_label: &gettext("Mount at"),
+                        set_label: &t!("dialog-mp-at"),
                     },
 
                     #[local_ref] dd_at ->
@@ -508,7 +507,7 @@ impl SimpleComponent for AddDialog {
 
                     gtk::Label {
                         #[watch]
-                        set_label: &gettext("Mount options"),
+                        set_label: &t!("dialog-mp-opts"),
                     },
                     #[name = "tf_opts"]
                     libhelium::TextField {
@@ -788,7 +787,7 @@ impl SimpleComponent for PartitionToolSelector {
 
     view! {
         libhelium::ApplicationWindow {
-            set_title: Some(&gettext("Select your partitioning tool")),
+            set_title: Some(&t!("installtype-parttool")),
 
             #[wrap(Some)]
             set_child = &gtk::Box {
@@ -812,7 +811,7 @@ impl SimpleComponent for PartitionToolSelector {
                         set_halign: gtk::Align::Center,
                         set_valign: gtk::Align::Start,
                         #[watch]
-                        set_label: &gettext("Select your partitioning tool"),
+                        set_label: &t!("installtype-parttool"),
                         set_css_classes: &["view-title"],
                     },
 

@@ -10,7 +10,7 @@ pub struct Dracut;
 
 impl PostInstallModule for Dracut {
     fn run(&self, _context: &Context) -> Result<()> {
-        stage!("Regenerating initramfs" {
+        stage!(initramfs {
             // We assume the installation wouldn't be used on another system (false only if you install
             // on something like a USB stick anyway)
             // → reduce size of initramfs aggressively for faster boot times

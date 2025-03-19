@@ -232,7 +232,7 @@ impl InstallationState {
 
         // TODO: encryption
         self.enable_encryption(&cfgdir)?;
-        let repart_out = stage!("Creating partitions and copying files" {
+        let repart_out = stage!(mkpart {
             // todo: not freeze on error, show error message as err handler?
             Self::systemd_repart(blockdev, &cfgdir, self.encrypt && self.encryption_key.is_some())?
         });

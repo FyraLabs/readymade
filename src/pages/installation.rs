@@ -104,7 +104,7 @@ impl Component for InstallationPage {
             #[wrap(Some)]
             set_title = &gtk::Label {
                 #[watch]
-                set_label: &gettext("Installation"),
+                set_label: &t!("page-installation"),
                 set_css_classes: &["view-title"]
             },
             set_vexpand: true,
@@ -131,11 +131,11 @@ impl Component for InstallationPage {
                         },
                         #[template_child]
                         title {
-                            set_label: &gettext("Welcome to Ultramarine Linux!"),
+                            set_label: &t!("page-welcome"),
                         },
                         #[template_child]
                         description {
-                            set_label: &gettext("Get to know your new operating system."),
+                            set_label: &t!("page-installation-welcome-desc"),
                         }
                     },
                     #[template]
@@ -149,11 +149,11 @@ impl Component for InstallationPage {
                         },
                         #[template_child]
                         title {
-                            set_label: &gettext("Need help?"),
+                            set_label: &t!("page-installation-help"),
                         },
                         #[template_child]
                         description {
-                            set_label: &gettext("Ask in one of our chats!"),
+                            set_label: &t!("page-installation-help-desc"),
                         }
                     },
                     #[template]
@@ -167,11 +167,11 @@ impl Component for InstallationPage {
                         },
                         #[template_child]
                         title {
-                            set_label: &gettext("Contribute to Ultramarine"),
+                            set_label: &t!("page-installation-contrib"),
                         },
                         #[template_child]
                         description {
-                            set_label: &gettext("Learn how to contribute your time, money, or hardware."),
+                            set_label: &t!("page-installation-contrib-desc"),
                         }
                     },
                     // #[template]
@@ -209,7 +209,7 @@ impl Component for InstallationPage {
     ) -> ComponentParts<Self> {
         let model = Self::default();
         let progress_bar = &model.progress_bar;
-        progress_bar.set_text(Some(&gettext("Installing base system...")));
+        progress_bar.set_text(Some(&t!("page-installation-progress")));
 
         let widgets = view_output!();
 

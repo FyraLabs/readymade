@@ -66,96 +66,11 @@ impl relm4::factory::FactoryComponent for LanguageRow {
     }
 }
 
-// Model
-pub struct LanguagePage {
-    btnfactory: Rc<relm4::factory::FactoryVecDeque<LanguageRow>>,
-    search: libhelium::TextField,
-}
-
 #[derive(Debug)]
-pub enum LanguagePageMsg {
-    #[doc(hidden)]
-    Navigate(NavigationAction),
-    #[doc(hidden)]
-    Selected,
-    Update,
-}
+struct BtnFactory(Rc<relm4::factory::FactoryVecDeque<LanguageRow>>);
 
-#[derive(Debug)]
-pub enum LanguagePageOutput {
-    Navigate(NavigationAction),
-}
-
-#[relm4::component(pub)]
-impl SimpleComponent for LanguagePage {
-    type Input = LanguagePageMsg;
-    type Output = LanguagePageOutput;
-    type Init = ();
-
-    view! {
-        libhelium::ViewMono {
-            #[wrap(Some)]
-            set_title = &gtk::Label {
-                #[watch]
-                set_label: &gettext("Language"),
-                set_css_classes: &["view-title"]
-            },
-            set_vexpand: true,
-            append = &gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 4,
-                set_vexpand: true,
-
-                #[local_ref]
-                search -> libhelium::TextField {
-                    set_is_search: true,
-                    set_is_outline: true,
-                    set_margin_top: 6,
-                    set_margin_bottom: 6,
-                    set_prefix_icon: Some("system-search-symbolic"),
-                    #[watch]
-                    set_placeholder_text: Some(&gettext("Search Language/Locale…")),
-                },
-                gtk::ScrolledWindow {
-
-                    #[local_ref]
-                    btnbox -> gtk::ListBox {
-                        add_css_class: "content-list",
-                        set_selection_mode: gtk::SelectionMode::Single,
-                        set_vexpand: true,
-                        set_hexpand: true,
-                        set_valign: gtk::Align::Center,
-                        set_halign: gtk::Align::Center,
-                        connect_selected_rows_changed => LanguagePageMsg::Selected,
-                    }
-                },
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_spacing: 4,
-
-                    gtk::Box {
-                        set_hexpand: true,
-                    },
-
-                    libhelium::Button {
-                        set_is_pill: true,
-                        #[watch]
-                        set_label: &gettext("Next"),
-                        add_css_class: "large-button",
-                        connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome)),
-                        #[watch]
-                        set_sensitive: crate::INSTALLATION_STATE.read().langlocale.is_some()
-                    }
-                }
-            }
-        }
-    }
-
-    fn init(
-        _init: Self::Init,
-        root: Self::Root,
-        sender: relm4::prelude::ComponentSender<Self>,
-    ) -> relm4::prelude::ComponentParts<Self> {
+impl Default for BtnFactory {
+    fn default() -> Self {
         let mut btnfactory = relm4::factory::FactoryVecDeque::builder()
             .launch(gtk::ListBox::default())
             .detach();
@@ -181,56 +96,114 @@ impl SimpleComponent for LanguagePage {
             btnfactory.guard().push_front(x.into());
         }
 
-        let model = Self {
-            btnfactory: Rc::new(btnfactory),
-            search: libhelium::TextField::new(),
-        };
-        let btnbox = model.btnfactory.widget();
-        let btnfactory2 = Rc::clone(&model.btnfactory);
-        model.search.internal_entry().connect_changed(move |en| {
+        Self(Rc::new(btnfactory))
+    }
+}
+
+impl std::ops::Deref for BtnFactory {
+    type Target = gtk::ListBox;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.widget()
+    }
+}
+impl AsRef<gtk::ListBox> for BtnFactory {
+    fn as_ref(&self) -> &gtk::ListBox {
+        &*self
+    }
+}
+impl AsRef<gtk::Widget> for BtnFactory {
+    fn as_ref(&self) -> &gtk::Widget {
+        self.0.widget().upcast_ref()
+    }
+}
+
+page!(Language {
+    btnfactory: BtnFactory,
+    search: libhelium::TextField,
+}:
+    // preinit {
+    //     let btnfactory = model.btnfactory.0.widget();
+    // }
+    init[search btnfactory { model.btnfactory.0.widget().clone() }](root, sender, model, widgets) {
+        let btnfactory2 = btnfactory.clone();
+        search.internal_entry().connect_changed(move |en| {
             *SEARCH_STATE.write() = en.text();
-            btnfactory2.widget().invalidate_filter();
+            btnfactory2.invalidate_filter();
             tracing::trace!(?en, "Search Changed!");
         });
-        let btnfactory = Rc::clone(&model.btnfactory);
-        btnbox.set_filter_func(move |row| {
+        let btnfactory3 = model.btnfactory.0.clone();
+        btnfactory.set_filter_func(move |row| {
             let s = SEARCH_STATE.read().as_str().to_ascii_lowercase();
             #[allow(clippy::cast_sign_loss)]
-            let lang = btnfactory.get(row.index() as usize).unwrap();
+            let lang = btnfactory3.get(row.index() as usize).unwrap();
             lang.locale.to_ascii_lowercase().starts_with(&s)
                 || lang.native_name.to_ascii_lowercase().contains(&s)
                 || lang.name.to_ascii_lowercase().starts_with(&s)
         });
-        let search = &model.search;
-        let widgets = view_output!();
-
-        // autoselect en_US (first entry)
-        let btnfactory = Rc::clone(&model.btnfactory);
-        btnfactory
-            .widget()
-            .select_row(btnfactory.widget().iter_children().next().as_ref());
-
+        btnfactory.select_row(btnfactory.iter_children().next().as_ref());
         INSTALLATION_STATE.subscribe(sender.input_sender(), |_| LanguagePageMsg::Update);
-
-        ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, sender: relm4::prelude::ComponentSender<Self>) {
-        match message {
-            LanguagePageMsg::Navigate(action) => {
-                sender.output(LanguagePageOutput::Navigate(action)).unwrap();
+    update(self, message, sender) {
+        Selected => {
+            if let Some(row) = self.btnfactory.selected_row() {
+                #[allow(clippy::cast_sign_loss)]
+                let language = self.btnfactory.0.get(row.index() as usize).unwrap();
+                tracing::info!(language.locale, "Using selected locale");
+                let loader = crate::LL
+                    .read()
+                    .as_ref()
+                    .unwrap()
+                    .select_languages(&[language
+                        .locale
+                        .replace('_', "-")
+                        .parse::<i18n_embed::unic_langid::LanguageIdentifier>()
+                        .unwrap()]);
+                *crate::LL.write() = Some(loader);
+                crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.clone());
             }
-            LanguagePageMsg::Selected => {
-                if let Some(row) = self.btnfactory.widget().selected_row() {
-                    #[allow(clippy::cast_sign_loss)]
-                    let language = self.btnfactory.get(row.index() as usize).unwrap();
-                    tracing::info!(language.locale, "Using selected locale");
-                    gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, &*language.locale)
-                        .unwrap();
-                    crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.clone());
-                }
-            }
-            LanguagePageMsg::Update => {}
+        }
+    } => {}
+
+    #[local_ref]
+    search -> libhelium::TextField {
+        set_is_search: true,
+        set_is_outline: true,
+        set_margin_top: 6,
+        set_margin_bottom: 6,
+        set_prefix_icon: Some("system-search-symbolic"),
+        #[watch]
+        set_placeholder_text: Some(&t!("page-language-search-lang")),
+    },
+    gtk::ScrolledWindow {
+        #[local_ref] btnfactory ->
+        gtk::ListBox {
+            add_css_class: "content-list",
+            set_selection_mode: gtk::SelectionMode::Single,
+            set_vexpand: true,
+            set_hexpand: true,
+            set_valign: gtk::Align::Center,
+            set_halign: gtk::Align::Center,
+            connect_selected_rows_changed => LanguagePageMsg::Selected,
+        }
+    },
+    gtk::Box {
+        set_orientation: gtk::Orientation::Horizontal,
+        set_spacing: 4,
+
+        gtk::Box {
+            set_hexpand: true,
+        },
+
+        libhelium::Button {
+            set_is_pill: true,
+            #[watch]
+            set_label: &t!("page-language-next"),
+            add_css_class: "large-button",
+            connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome)),
+            #[watch]
+            set_sensitive: crate::INSTALLATION_STATE.read().langlocale.is_some()
         }
     }
-}
+);

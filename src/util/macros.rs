@@ -1,14 +1,14 @@
 #[macro_export]
 macro_rules! stage {
     // todo: Export text to global progress text
-    ($s:literal $body:block) => {{
-        let s = tracing::info_span!($s);
+    ($s:ident $body:block) => {{
+        let s = tracing::info_span!(concat!("stage-", stringify!($s)));
 
         if let Some(m) = $crate::backend::install::IPC_CHANNEL.get() {
             let sender = m.lock().unwrap();
             // Then we are in a non-interactive install, which means we export IPC
             // to stdout
-            let status_localized = gettextrs::gettext($s).to_owned();
+            let status_localized = $crate::t_expr!(concat!("stage-", stringify!($s))).to_owned();
             let install_status =
                 $crate::backend::install::InstallationMessage::Status(status_localized);
             sender.send(install_status).unwrap();

@@ -19,7 +19,6 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tracing-appender = "0.2"
 itertools = "0.14.0"
 thiserror = "2.0.11"
-gettext-rs = { version = "0.7.0", features = ["gettext-system"] }
 gnome-desktop = "0.4.2"
 paste = "1.0.15"
 tempfile = "3.10.1"
@@ -61,6 +60,13 @@ uu_cp = { version = "0.0.29", features = [
     "feat_selinux",
     "selinux",
 ], optional = true }
+i18n-embed = { version = "0.15.3", features = [
+    "desktop-requester",
+    "fluent-system",
+] }
+i18n-embed-fl = "0.9.3"
+rust-embed = "8.5.0"
+with_builtin_macros = "0.1.0"
 
 # [dependencies.os-detect]
 # git = "https://github.com/FyraLabs/distinst"

@@ -30,7 +30,7 @@ page!(Completed:
 
         gtk::Label {
             #[watch]
-            set_label: &gettext("Installation complete. You may reboot now and enjoy your fresh system."),
+            set_label: &t!("page-completed-desc"),
             set_justify: gtk::Justification::Center,
             set_max_width_chars: 60,
             set_wrap: true
@@ -43,7 +43,7 @@ page!(Completed:
         libhelium::Button {
             set_is_textual: true,
             #[watch]
-            set_label: &gettext("Close"),
+            set_label: &t!("page-completed-close"),
             add_css_class: "large-button",
             connect_clicked => CompletedPageMsg::Close,
         },
@@ -55,7 +55,7 @@ page!(Completed:
         libhelium::Button {
             set_is_pill: true,
             #[watch]
-            set_label: &gettext("Reboot"),
+            set_label: &t!("page-completed-reboot"),
             add_css_class: "large-button",
             connect_clicked => CompletedPageMsg::Reboot,
         }

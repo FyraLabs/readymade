@@ -33,7 +33,7 @@ impl SimpleComponent for InstallDualPage {
             #[wrap(Some)]
             set_title = &gtk::Label {
                 #[watch]
-                set_label: &gettext("Dual Boot"),
+                set_label: &t!("page-installdual"),
                 set_css_classes: &["view-title"],
             },
             set_vexpand: true,
@@ -58,7 +58,7 @@ impl SimpleComponent for InstallDualPage {
                         set_size_request: ((model.paned.width() as f32 * (model.min_other_allocation as f32 / model.total_size as f32)) as i32, -1),
                         gtk::Label {
                             #[watch]
-                            set_label: &gettext("Other OS"),
+                            set_label: &t!("page-installdual-otheros"),
                         },
                         gtk::Label {
                             #[watch]
@@ -73,7 +73,7 @@ impl SimpleComponent for InstallDualPage {
                         set_size_request: ((model.paned.width() as f32 * (model.min_ultramarine_allocation as f32 / model.total_size as f32)) as i32, -1),
                         gtk::Label {
                             #[watch]
-                            set_label: &gettext("Ultramarine"),
+                            set_label: &crate::CONFIG.read().distro.name,
                         },
                         gtk::Label {
                             #[watch]

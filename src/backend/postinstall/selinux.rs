@@ -11,7 +11,7 @@ pub struct SELinux;
 
 impl PostInstallModule for SELinux {
     fn run(&self, _context: &Context) -> Result<()> {
-        stage!("Setting SELinux labels" {
+        stage!(selinux {
             let setfiles_cmd_status = Command::new("setfiles")
                 .args(["-e", "/proc", "-e", "/sys"])
                 .arg("/etc/selinux/targeted/contexts/files/file_contexts")

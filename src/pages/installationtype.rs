@@ -46,7 +46,7 @@ impl SimpleComponent for InstallationTypePage {
             #[wrap(Some)]
             set_title = &gtk::Label {
                 #[watch]
-                set_label: &gettext("Installation Type"),
+                set_label: &t!("page-installationtype"),
                 set_css_classes: &["view-title"]
             },
             set_vexpand: true,
@@ -97,7 +97,7 @@ impl SimpleComponent for InstallationTypePage {
                             #[watch]
                             set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
                             #[watch]
-                            set_label: &gettext("Entire Disk"),
+                            set_label: &t!("page-installationtype-entire"),
                             add_css_class: "large-button",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
                         },
@@ -108,7 +108,7 @@ impl SimpleComponent for InstallationTypePage {
                             #[watch]
                             set_is_outline: !matches!(crate::INSTALLATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
                             #[watch]
-                            set_label: &gettext("Dual Boot"),
+                            set_label: &t!("page-installationtype-dual"),
                             add_css_class: "large-button",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot(0)),
                         },
@@ -119,7 +119,7 @@ impl SimpleComponent for InstallationTypePage {
                             #[watch]
                             set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::Custom),
                             #[watch]
-                            set_label: &gettext("Custom"),
+                            set_label: &t!("page-installationtype-custom"),
                             add_css_class: "large-button",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
                         },
@@ -130,7 +130,7 @@ impl SimpleComponent for InstallationTypePage {
                             #[watch]
                             set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::ChromebookInstall),
                             #[watch]
-                            set_label: &gettext("Chromebook"),
+                            set_label: &t!("page-installationtype-chromebook"),
                             add_css_class: "large-button",
                             connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::ChromebookInstall)
                         },
@@ -143,13 +143,13 @@ impl SimpleComponent for InstallationTypePage {
 
                     #[local_ref] encrypt_btn ->
                     gtk::CheckButton {
-                        set_label: Some(&gettext("Enable disk encryption")),
+                        set_label: Some(&t!("page-installationtype-encrypt")),
                         #[watch]
                         set_sensitive: model.can_encrypt,
                         connect_toggled => |btn| INSTALLATION_STATE.write().encrypt = btn.is_active(),
                     },
                     gtk::CheckButton {
-                        set_label: Some(&gettext("Enable TPM")),
+                        set_label: Some(&t!("page-installationtype-tpm")),
                         #[watch]
                         set_sensitive: INSTALLATION_STATE.read().encrypt && model.can_encrypt && *TPM_SUPPORT,
                         connect_toggled => |btn| INSTALLATION_STATE.write().tpm = btn.is_active(),
@@ -163,7 +163,7 @@ impl SimpleComponent for InstallationTypePage {
                     libhelium::Button {
                         set_is_textual: true,
                         #[watch]
-                        set_label: &gettext("Previous"),
+                        set_label: &t!("prev"),
                         connect_clicked => InstallationTypePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
                     },
 
@@ -174,7 +174,7 @@ impl SimpleComponent for InstallationTypePage {
                     libhelium::Button {
                         set_is_pill: true,
                         #[watch]
-                        set_label: &gettext("Next"),
+                        set_label: &t!("next"),
                         add_css_class: "large-button",
                         connect_clicked => InstallationTypePageMsg::Next,
                         #[watch]
@@ -291,7 +291,7 @@ kurage::generate_component!(EncryptPassDialogue {
 
     libhelium::Dialog {
         set_modal: true,
-        set_title: Some(&gettext("Disk Encryption")),
+        set_title: Some(&t!("dialog-installtype-encrypt")),
 
         #[wrap(Some)]
         set_child = &gtk::Box {
@@ -303,7 +303,7 @@ kurage::generate_component!(EncryptPassDialogue {
             set_spacing: 16,
 
             gtk::Label {
-                set_label: "Please set the disk encryption password.\nIf you lose the password, your data will not be recoverable.",
+                set_label: &t!("dialog-installtype-encrypt-desc"),
             },
 
             #[name = "tf_passwd"]
@@ -311,7 +311,7 @@ kurage::generate_component!(EncryptPassDialogue {
                 set_hexpand: true,
                 set_halign: gtk::Align::Fill,
                 set_show_peek_icon: true,
-                set_placeholder_text: Some(&gettext("Password")),
+                set_placeholder_text: Some(&t!("dialog-installtype-password")),
                 connect_changed[sender, tf_repeat] => move |en| {
                     sender.input(Self::Input::SetBtnSensitive(en.text() == tf_repeat.text() && !en.text().is_empty()));
                     INSTALLATION_STATE.write().encryption_key = Some(en.text().to_string());
@@ -323,7 +323,7 @@ kurage::generate_component!(EncryptPassDialogue {
                 set_hexpand: true,
                 set_halign: gtk::Align::Fill,
                 set_show_peek_icon: true,
-                set_placeholder_text: Some(&gettext("Repeat Password")),
+                set_placeholder_text: Some(&t!("dialog-installtype-repeat")),
                 connect_changed[sender] => move |en| {
                     let pass = en.text().to_string();
                     sender.input(Self::Input::SetBtnSensitive(INSTALLATION_STATE.read().encryption_key.as_ref().is_some_and(|p| p == &pass && !pass.is_empty())));
@@ -341,7 +341,7 @@ kurage::generate_component!(EncryptPassDialogue {
                 set_valign: gtk::Align::End,
 
                 libhelium::Button {
-                    set_label: &gettext("Cancel"),
+                    set_label: &t!("dialog-installtype-cancel"),
                     connect_clicked[sender, root] => move |_| {
                         root.set_visible(false);
                         root.destroy();
@@ -355,7 +355,7 @@ kurage::generate_component!(EncryptPassDialogue {
 
                 #[name(btn_confirm)]
                 libhelium::Button {
-                    set_label: &gettext("Confirm"),
+                    set_label: &t!("dialog-installtype-confirm"),
                     set_sensitive: false,
                     connect_clicked => Self::Input::Enter,
                 },

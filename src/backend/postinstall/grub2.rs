@@ -125,7 +125,7 @@ pub struct GRUB2;
 
 impl PostInstallModule for GRUB2 {
     fn run(&self, context: &Context) -> Result<()> {
-        stage!("Generating system grub defaults" {
+        stage!(grub {
             let mut defaults = Grub2Defaults::default();
 
             // Now, let's add extra boot opts if they exist
@@ -157,7 +157,7 @@ impl PostInstallModule for GRUB2 {
             // todo: Add support for systemd-boot
             std::fs::create_dir_all("/boot/efi/EFI/fedora")?;
 
-            stage!("Generating stage 1 grub.cfg in ESP..." {
+            stage!(grub1 {
                 let mut grub_cfg = std::fs::File::create("/boot/efi/EFI/fedora/grub.cfg")?;
                 let xbootldr_disk = &context.xbootldr_partition;
 
@@ -185,7 +185,7 @@ impl PostInstallModule for GRUB2 {
                 grub_cfg.write_all(&final_str.as_bytes())?;
             });
 
-            stage!("Generating stage 2 grub.cfg in /boot/grub2/grub.cfg..." {
+            stage!(grub2 {
                 let grub_cmd_status = Command::new("grub2-mkconfig")
                     .arg("-o")
                     .arg("/boot/grub2/grub.cfg")
@@ -196,7 +196,7 @@ impl PostInstallModule for GRUB2 {
                 }
             });
         } else {
-            stage!("Installing BIOS Grub2" {
+            stage!(biosgrub {
                 grub2_install_bios(&context.destination_disk)?;
             });
         }

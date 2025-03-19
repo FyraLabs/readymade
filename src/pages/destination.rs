@@ -79,7 +79,7 @@ impl SimpleComponent for DestinationPage {
             #[wrap(Some)]
             set_title = &gtk::Label {
                 #[watch]
-                set_label: &gettext("Destination"),
+                set_label: &t!("page-destination"),
                 add_css_class: "view-title"
             },
             set_vexpand: true,
@@ -111,7 +111,7 @@ impl SimpleComponent for DestinationPage {
                     libhelium::Button {
                         set_is_textual: true,
                         #[watch]
-                        set_label: &gettext("Previous"),
+                        set_label: &t!("prev"),
                         connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome))
                     },
 
@@ -122,7 +122,7 @@ impl SimpleComponent for DestinationPage {
                     libhelium::Button {
                         set_is_pill: true,
                         #[watch]
-                        set_label: &gettext("Next"),
+                        set_label: &t!("next"),
                         add_css_class: "large-button",
                         connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(
                             if let [x] = crate::CONFIG.read().install.allowed_installtypes[..] {

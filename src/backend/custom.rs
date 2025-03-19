@@ -109,7 +109,7 @@ pub fn install_custom(
         let copy_source = PathBuf::from(InstallationState::determine_copy_source());
         tracing::trace!(?copy_source, ?destroot);
         if copy_source.is_file() {
-            crate::stage!("Extracting files" {
+            crate::stage!(extracting {
                 // super::mksys::unsquash_copy(&copy_source, destroot, |_, _| {})?;
                 //
                 // FIXME: I give up idk why this doesn't work
@@ -135,7 +135,7 @@ pub fn install_custom(
                 crate::util::fs::copy_dir("/mnt/rdmsqsh", destroot)?;
             });
         } else {
-            crate::stage!("Copying files" {
+            crate::stage!(copying {
                 crate::util::fs::copy_dir(&copy_source, destroot)?;
             });
         }

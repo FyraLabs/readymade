@@ -21,7 +21,7 @@ impl PostInstallModule for ReinstallKernel {
 
         // install kernel
 
-        stage!("Reinstalling kernels" {
+        stage!(kernel {
             let kernel_install_cmd_status = Command::new("kernel-install")
                 .arg("add")
                 .arg(kver)
