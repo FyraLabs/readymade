@@ -41,7 +41,7 @@ serde_valid = { version = "1.0.5", features = ["toml"] }
 os_pipe = "1.2.1"
 tee_readwrite = "0.2.0"
 nix = { version = "0.29.0", features = ["fs", "mount", "user"] }
-backhand = "0.20.0"
+backhand = "0.21.0"
 glob = "0.3.1"
 enum_dispatch = "0.3.13"
 scopeguard = "1.2.0"
@@ -49,12 +49,13 @@ tracing-test = "0.2.5"
 serde-systemd-unit = { path = "./serde-systemd-unit" }
 format-bytes = "0.3.0"
 ipc-channel = { version = "0.19.0", features = ["async"] }
+# FIXME: we should remove this crate (somehow this pulls in gettext… not so great)
 freedesktop-desktop-entry = "0.7.7"
 jwalk = "0.8.1"
 xattr = "1.4.0"
 filesystem-table = { version = "0.1.2", path = "./filesystem-table" }
-kurage = "0.1.0"
-uu_cp = { version = "0.0.29", features = [
+kurage = "0.1.3"
+uu_cp = { version = "0.0.30", features = [
     "exacl",
     "feat_acl",
     "feat_selinux",
