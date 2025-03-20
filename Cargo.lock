@@ -1843,8 +1843,6 @@ dependencies = [
 [[package]]
 name = "kurage"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "428d2955235f5f9d464009c8508cdd839ceeaeb9917e4df21b7e6d0c02ba6bc9"
 dependencies = [
  "kurage_macro_rules",
  "kurage_proc_macros",
@@ -1853,8 +1851,6 @@ dependencies = [
 [[package]]
 name = "kurage_macro_rules"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a9358d7b646f2b283482ded0dcbd53d07ea79b164eff325e55baf7605f23604"
 dependencies = [
  "paste",
  "relm4",
@@ -1864,8 +1860,6 @@ dependencies = [
 [[package]]
 name = "kurage_proc_macros"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "079cfa30ba7eec2703391deba1ddb04c21b066f592ccabf66d4ec6e79143b5db"
 dependencies = [
  "proc-macro2",
  "quote",

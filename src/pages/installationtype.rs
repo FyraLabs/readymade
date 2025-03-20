@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use crate::prelude::*;
 
 use crate::{InstallationType, NavigationAction, Page, INSTALLATION_STATE};
-use relm4::{ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
+use relm4::RelmWidgetExt;
 
 static TPM_SUPPORT: LazyLock<bool> = LazyLock::new(|| {
     std::fs::read_to_string("/sys/class/tpm/tpm0/tpm_version_major")
@@ -12,258 +12,182 @@ static TPM_SUPPORT: LazyLock<bool> = LazyLock::new(|| {
         .is_some_and(|ver| ver >= 2)
 });
 
-#[derive(Default)]
-pub struct InstallationTypePage {
+page!(InstallationType {
     can_encrypt: bool,
     root: Option<libhelium::ViewMono>,
     act: Option<NavigationAction>,
     encrypt_btn: gtk::CheckButton,
-}
-
-#[derive(Debug)]
-pub enum InstallationTypePageMsg {
-    Update,
-    #[doc(hidden)]
-    Navigate(NavigationAction),
-    InstallationTypeSelected(InstallationType),
-    EncryptDialogue(bool),
-    Next,
-}
-
-#[derive(Debug)]
-pub enum InstallationTypePageOutput {
-    Navigate(NavigationAction),
-}
-
-#[relm4::component(pub)]
-impl SimpleComponent for InstallationTypePage {
-    type Init = ();
-    type Input = InstallationTypePageMsg;
-    type Output = InstallationTypePageOutput;
-
-    view! {
-        libhelium::ViewMono {
-            #[wrap(Some)]
-            set_title = &gtk::Label {
-                #[watch]
-                set_label: &t!("page-installationtype"),
-                set_css_classes: &["view-title"]
-            },
-            set_vexpand: true,
-
-            append = &gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 6,
-
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    set_valign: gtk::Align::Center,
-                    set_spacing: 18,
-
-                    gtk::Box {
-                        set_orientation: gtk::Orientation::Vertical,
-                        set_spacing: 6,
-                        set_vexpand: true,
-                        set_hexpand: true,
-                        set_valign: gtk::Align::Center,
-                        set_halign: gtk::Align::Center,
-
-                        gtk::Image {
-                            set_icon_name: Some("drive-harddisk-symbolic"),
-                            inline_css: "-gtk-icon-size: 128px"
-                        },
-
-                        gtk::Label {
-                            #[watch]
-                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
-                            inline_css: "font-size: 16px; font-weight: bold"
-                        },
-
-                        gtk::Label {
-                            #[watch]
-                            set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or_default(),
-                        }
-                    },
-
-                    gtk::Box {
-                        set_spacing: 6,
-                        set_halign: gtk::Align::Center,
-                        set_valign: gtk::Align::End,
-                        set_homogeneous: true,
-                        libhelium::Button {
-                            set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::WholeDisk),
-                            #[watch]
-                            set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::WholeDisk),
-                            #[watch]
-                            set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
-                            #[watch]
-                            set_label: &t!("page-installationtype-entire"),
-                            add_css_class: "large-button",
-                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
-                        },
-                        libhelium::Button {
-                            set_visible: crate::CONFIG.read().install.allowed_installtypes.iter().any(|x| matches!(x, InstallationType::DualBoot(_))),
-                            #[watch]
-                            set_is_fill: matches!(crate::INSTALLATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
-                            #[watch]
-                            set_is_outline: !matches!(crate::INSTALLATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
-                            #[watch]
-                            set_label: &t!("page-installationtype-dual"),
-                            add_css_class: "large-button",
-                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot(0)),
-                        },
-                        libhelium::Button {
-                            set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::Custom),
-                            #[watch]
-                            set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::Custom),
-                            #[watch]
-                            set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::Custom),
-                            #[watch]
-                            set_label: &t!("page-installationtype-custom"),
-                            add_css_class: "large-button",
-                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
-                        },
-                        libhelium::Button {
-                            set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::ChromebookInstall),
-                            #[watch]
-                            set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::ChromebookInstall),
-                            #[watch]
-                            set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::ChromebookInstall),
-                            #[watch]
-                            set_label: &t!("page-installationtype-chromebook"),
-                            add_css_class: "large-button",
-                            connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::ChromebookInstall)
-                        },
-                    },
-                },
-
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    set_halign: gtk::Align::Center,
-
-                    #[local_ref] encrypt_btn ->
-                    gtk::CheckButton {
-                        set_label: Some(&t!("page-installationtype-encrypt")),
-                        #[watch]
-                        set_sensitive: model.can_encrypt,
-                        connect_toggled => |btn| INSTALLATION_STATE.write().encrypt = btn.is_active(),
-                    },
-                    gtk::CheckButton {
-                        set_label: Some(&t!("page-installationtype-tpm")),
-                        #[watch]
-                        set_sensitive: INSTALLATION_STATE.read().encrypt && model.can_encrypt && *TPM_SUPPORT,
-                        connect_toggled => |btn| INSTALLATION_STATE.write().tpm = btn.is_active(),
-                    },
-                },
-
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_spacing: 6,
-
-                    libhelium::Button {
-                        set_is_textual: true,
-                        #[watch]
-                        set_label: &t!("prev"),
-                        connect_clicked => InstallationTypePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
-                    },
-
-                    gtk::Box {
-                        set_hexpand: true,
-                    },
-
-                    libhelium::Button {
-                        set_is_pill: true,
-                        #[watch]
-                        set_label: &t!("next"),
-                        add_css_class: "large-button",
-                        connect_clicked => InstallationTypePageMsg::Next,
-                        #[watch]
-                        set_sensitive: crate::INSTALLATION_STATE.read().installation_type.is_some(),
-                    }
-                }
-            }
-        }
-    }
-
-    fn init(
-        _init: Self::Init,
-        root: Self::Root,
-        sender: ComponentSender<Self>,
-    ) -> ComponentParts<Self> {
-        let mut model = Self::default();
-        let encrypt_btn = &model.encrypt_btn;
-
-        let widgets = view_output!();
-
-        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| InstallationTypePageMsg::Update);
-
+}:
+    init[encrypt_btn](root, sender, model, widgets) {
         model.root = Some(root);
-
-        ComponentParts { model, widgets }
     }
-
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
-        match message {
-            InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk) => {
+    update(self, message, sender) {
+        InstallationTypeSelected(i: InstallationType) => match i {
+            InstallationType::WholeDisk => {
                 INSTALLATION_STATE.write().installation_type = Some(InstallationType::WholeDisk);
                 self.can_encrypt = true;
-            }
-            InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot(_)) => {
+            },
+            InstallationType::DualBoot(_) => {
                 self.can_encrypt = true;
-            }
-            InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom) => {
+            },
+            InstallationType::Custom => {
                 INSTALLATION_STATE.write().installation_type = Some(InstallationType::Custom);
                 self.can_encrypt = false;
-            }
-            InstallationTypePageMsg::InstallationTypeSelected(
-                InstallationType::ChromebookInstall,
-            ) => {
+            },
+            InstallationType::ChromebookInstall => {
                 INSTALLATION_STATE.write().installation_type =
                     Some(InstallationType::ChromebookInstall);
                 self.can_encrypt = true;
-            }
-            InstallationTypePageMsg::EncryptDialogue(b) => {
-                INSTALLATION_STATE.write().encrypt = b;
-                self.encrypt_btn.set_active(b);
-                sender
-                    .output(InstallationTypePageOutput::Navigate(
-                        self.act.take().unwrap(),
-                    ))
-                    .unwrap();
-            }
-            InstallationTypePageMsg::Navigate(action) => {
-                if INSTALLATION_STATE.read().encrypt {
-                    let mut dialogue = EncryptPassDialogue::builder()
-                        .launch(self.root.as_ref().unwrap().toplevel_window().unwrap())
-                        .forward(
-                            sender.input_sender(),
-                            InstallationTypePageMsg::EncryptDialogue,
-                        );
-                    dialogue.widget().present();
-                    dialogue.detach_runtime();
-                    self.act = Some(action);
-                    return;
+            },
+        },
+        EncryptDialogue(b: bool) => {
+            INSTALLATION_STATE.write().encrypt = b;
+            self.encrypt_btn.set_active(b);
+            sender
+                .output(InstallationTypePageOutput::Navigate(
+                    self.act.take().unwrap(),
+                ))
+                .unwrap();
+        },
+        Next => sender.input(InstallationTypePageMsg::Navigate(NavigationAction::GoTo({
+            let value = INSTALLATION_STATE.read().installation_type;
+            match value.unwrap() {
+                InstallationType::DualBoot(_) => Page::InstallDual,
+                InstallationType::ChromebookInstall | InstallationType::WholeDisk => {
+                    Page::Confirmation
                 }
-                sender
-                    .output(InstallationTypePageOutput::Navigate(action))
-                    .unwrap();
+                InstallationType::Custom => Page::InstallCustom,
             }
-            InstallationTypePageMsg::Next => {
-                sender.input(InstallationTypePageMsg::Navigate(NavigationAction::GoTo({
-                    let value = INSTALLATION_STATE.read().installation_type;
-                    match value.unwrap() {
-                        InstallationType::DualBoot(_) => Page::InstallDual,
-                        InstallationType::ChromebookInstall | InstallationType::WholeDisk => {
-                            Page::Confirmation
-                        }
-                        InstallationType::Custom => Page::InstallCustom,
-                    }
-                })));
+        })))
+    } => {}
+
+    gtk::Box {
+        set_orientation: gtk::Orientation::Vertical,
+        set_valign: gtk::Align::Center,
+        set_spacing: 18,
+
+        gtk::Box {
+            set_orientation: gtk::Orientation::Vertical,
+            set_spacing: 6,
+            set_vexpand: true,
+            set_hexpand: true,
+            set_valign: gtk::Align::Center,
+            set_halign: gtk::Align::Center,
+
+            gtk::Image {
+                set_icon_name: Some("drive-harddisk-symbolic"),
+                inline_css: "-gtk-icon-size: 128px"
+            },
+
+            gtk::Label {
+                #[watch]
+                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
+                inline_css: "font-size: 16px; font-weight: bold"
+            },
+
+            gtk::Label {
+                #[watch]
+                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or_default(),
             }
-            InstallationTypePageMsg::Update => {}
+        },
+
+        gtk::Box {
+            set_spacing: 6,
+            set_halign: gtk::Align::Center,
+            set_valign: gtk::Align::End,
+            set_homogeneous: true,
+            libhelium::Button {
+                set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::WholeDisk),
+                #[watch]
+                set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::WholeDisk),
+                #[watch]
+                set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
+                #[watch]
+                set_label: &t!("page-installationtype-entire"),
+                add_css_class: "large-button",
+                connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
+            },
+            libhelium::Button {
+                set_visible: crate::CONFIG.read().install.allowed_installtypes.iter().any(|x| matches!(x, InstallationType::DualBoot(_))),
+                #[watch]
+                set_is_fill: matches!(crate::INSTALLATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
+                #[watch]
+                set_is_outline: !matches!(crate::INSTALLATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
+                #[watch]
+                set_label: &t!("page-installationtype-dual"),
+                add_css_class: "large-button",
+                connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::DualBoot(0)),
+            },
+            libhelium::Button {
+                set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::Custom),
+                #[watch]
+                set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::Custom),
+                #[watch]
+                set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::Custom),
+                #[watch]
+                set_label: &t!("page-installationtype-custom"),
+                add_css_class: "large-button",
+                connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
+            },
+            libhelium::Button {
+                set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::ChromebookInstall),
+                #[watch]
+                set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::ChromebookInstall),
+                #[watch]
+                set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::ChromebookInstall),
+                #[watch]
+                set_label: &t!("page-installationtype-chromebook"),
+                add_css_class: "large-button",
+                connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::ChromebookInstall)
+            },
+        },
+    },
+
+    gtk::Box {
+        set_orientation: gtk::Orientation::Vertical,
+        set_halign: gtk::Align::Center,
+
+        #[local_ref] encrypt_btn ->
+        gtk::CheckButton {
+            set_label: Some(&t!("page-installationtype-encrypt")),
+            #[watch]
+            set_sensitive: model.can_encrypt,
+            connect_toggled => |btn| INSTALLATION_STATE.write().encrypt = btn.is_active(),
+        },
+        gtk::CheckButton {
+            set_label: Some(&t!("page-installationtype-tpm")),
+            #[watch]
+            set_sensitive: INSTALLATION_STATE.read().encrypt && model.can_encrypt && *TPM_SUPPORT,
+            connect_toggled => |btn| INSTALLATION_STATE.write().tpm = btn.is_active(),
+        },
+    },
+
+    gtk::Box {
+        set_orientation: gtk::Orientation::Horizontal,
+        set_spacing: 6,
+
+        libhelium::Button {
+            set_is_textual: true,
+            #[watch]
+            set_label: &t!("prev"),
+            connect_clicked => InstallationTypePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Destination))
+        },
+
+        gtk::Box {
+            set_hexpand: true,
+        },
+
+        libhelium::Button {
+            set_is_pill: true,
+            #[watch]
+            set_label: &t!("next"),
+            add_css_class: "large-button",
+            connect_clicked => InstallationTypePageMsg::Next,
+            #[watch]
+            set_sensitive: crate::INSTALLATION_STATE.read().installation_type.is_some(),
         }
     }
-}
+);
 
 kurage::generate_component!(EncryptPassDialogue {
     btn_confirm: libhelium::Button,

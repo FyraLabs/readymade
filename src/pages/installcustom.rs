@@ -426,123 +426,15 @@ impl SimpleComponent for PartitionTypeDropdown {
 // ────────────────────────────────────────────────────────────────────────────
 // AddDialog (also for edit)
 
-#[derive(Clone, Debug, Default)]
-struct AddDialog {
+kurage::generate_component!(AddDialog {
     partition: String,
     mountpoint: String,
     mountopts: String,
     index: usize,
     mnpt_type_is_other: bool,
-}
-
-#[derive(Debug)]
-enum AddDialogMsg {
-    ChangedPart(String),
-    // ChangedMnpt(String),
-    ChangedOpts(String),
-    Close(libhelium::Window),
-    SelectMnptType(PartitionType),
-}
-
-#[relm4::component]
-impl SimpleComponent for AddDialog {
-    type Init = Self;
-    type Input = AddDialogMsg;
-    type Output = Self;
-
-    view! {
-        #[name(window)]
-        libhelium::Window {
-            set_title: Some("Mount Target"),
-            set_default_width: 400,
-            set_default_height: 325,
-            set_vexpand: true,
-
-            #[wrap(Some)]
-            set_child = &gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_vexpand: true,
-                set_spacing: 4,
-                set_margin_all: 8,
-                set_margin_top: 0,
-
-                // NOTE: so that the window can actually be closed
-                libhelium::AppBar {},
-
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_hexpand: true,
-                    set_spacing: 6,
-
-                    gtk::Label {
-                        #[watch]
-                        set_label: &t!("dialog-mp-part"),
-                    },
-                    #[local_ref]
-                    partlist -> gtk::DropDown {
-                        set_halign: gtk::Align::End,
-                        set_enable_search: true,
-                        add_css_class: "monospace",
-                    },
-                },
-
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_hexpand: true,
-                    set_spacing: 3,
-
-                    gtk::Label {
-                        #[watch]
-                        set_label: &t!("dialog-mp-at"),
-                    },
-
-                    #[local_ref] dd_at ->
-                    gtk::Box {},
-                },
-
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_hexpand: true,
-                    set_spacing: 3,
-
-                    gtk::Label {
-                        #[watch]
-                        set_label: &t!("dialog-mp-opts"),
-                    },
-                    #[name = "tf_opts"]
-                    libhelium::TextField {
-                        set_halign: gtk::Align::Fill,
-                        set_hexpand: true,
-                        set_is_outline: true,
-                        add_css_class: "monospace",
-                    },
-                },
-
-                libhelium::OverlayButton {
-                    // set_halign: gtk::Align::End,
-                    // set_valign: gtk::Align::End,
-                    set_icon: "list-add",
-                    // set_is_iconic: true,
-                    connect_clicked[sender, window] => move |_| sender.input(AddDialogMsg::Close(window.clone())),
-
-                    #[watch]
-                    set_sensitive: !model.partition.is_empty() && !model.mountpoint.is_empty(),
-                    // HACK: relm4 doesn't perform the #[watch] until the UI is updated by the user
-                    // e.g. they typed something into the entry, then relm4 actually finally realize
-                    // it needs to set this as sensitive
-                    //
-                    // therefore right here we just have relm4 default to a sensitivity before any UI trigs
-                    set_sensitive: !model.partition.is_empty(),
-                },
-            },
-        }
-    }
-
-    fn init(
-        mut init: Self::Init,
-        root: Self::Root,
-        sender: ComponentSender<Self>,
-    ) -> ComponentParts<Self> {
+}:
+    preinit {
+        let mut init = init;
         tracing::trace!(?init, "Spawned AddDialog");
         PartitionType::default()
             .as_str()
@@ -582,7 +474,8 @@ impl SimpleComponent for AddDialog {
         // - get the value from the dropdown using the `to_string` method, and set the mountpoint to that value
 
         let mut model = init;
-        let widgets = view_output!();
+    }
+    init(root, sender, model, widgets) for init: Self {
         // connect signal for textfields
         widgets
             .tf_opts
@@ -601,20 +494,17 @@ impl SimpleComponent for AddDialog {
         }
         // widgets.tf_at.internal_entry().set_text(&model.mountpoint);
         widgets.tf_opts.internal_entry().set_text(&model.mountopts);
-
-        ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
-        match message {
-            AddDialogMsg::ChangedPart(part) => self.partition = part,
-            // AddDialogMsg::ChangedMnpt(mnpt) => self.mountpoint = mnpt,
-            AddDialogMsg::ChangedOpts(opts) => self.mountopts = opts,
-            AddDialogMsg::Close(window) => {
+    update(self, message, sender) {
+            ChangedPart(part: String) => self.partition = part,
+            // ChangedMnpt(mnpt) => self.mountpoint = mnpt,
+            ChangedOpts(opts: String) => self.mountopts = opts,
+            Close(window: libhelium::Window) => {
                 sender.output(std::mem::take(self)).unwrap();
                 window.close();
-            }
-            AddDialogMsg::SelectMnptType(t) => {
+            },
+            SelectMnptType(t: PartitionType) => {
                 // if let PartitionType::Other(_) = t {
                 //     self.mnpt_type_is_other = true;
                 // } else {
@@ -622,9 +512,94 @@ impl SimpleComponent for AddDialog {
                 // }
                 t.as_str().clone_into(&mut self.mountpoint);
             }
-        }
+    } => Self
+
+    #[name(window)]
+    libhelium::Window {
+        set_title: Some("Mount Target"),
+        set_default_width: 400,
+        set_default_height: 325,
+        set_vexpand: true,
+
+        #[wrap(Some)]
+        set_child = &gtk::Box {
+            set_orientation: gtk::Orientation::Vertical,
+            set_vexpand: true,
+            set_spacing: 4,
+            set_margin_all: 8,
+            set_margin_top: 0,
+
+            // NOTE: so that the window can actually be closed
+            libhelium::AppBar {},
+
+            gtk::Box {
+                set_orientation: gtk::Orientation::Horizontal,
+                set_hexpand: true,
+                set_spacing: 6,
+
+                gtk::Label {
+                    #[watch]
+                    set_label: &t!("dialog-mp-part"),
+                },
+                #[local_ref]
+                partlist -> gtk::DropDown {
+                    set_halign: gtk::Align::End,
+                    set_enable_search: true,
+                    add_css_class: "monospace",
+                },
+            },
+
+            gtk::Box {
+                set_orientation: gtk::Orientation::Horizontal,
+                set_hexpand: true,
+                set_spacing: 3,
+
+                gtk::Label {
+                    #[watch]
+                    set_label: &t!("dialog-mp-at"),
+                },
+
+                #[local_ref] dd_at ->
+                gtk::Box {},
+            },
+
+            gtk::Box {
+                set_orientation: gtk::Orientation::Horizontal,
+                set_hexpand: true,
+                set_spacing: 3,
+
+                gtk::Label {
+                    #[watch]
+                    set_label: &t!("dialog-mp-opts"),
+                },
+                #[name = "tf_opts"]
+                libhelium::TextField {
+                    set_halign: gtk::Align::Fill,
+                    set_hexpand: true,
+                    set_is_outline: true,
+                    add_css_class: "monospace",
+                },
+            },
+
+            libhelium::OverlayButton {
+                // set_halign: gtk::Align::End,
+                // set_valign: gtk::Align::End,
+                set_icon: "list-add",
+                // set_is_iconic: true,
+                connect_clicked[sender, window] => move |_| sender.input(AddDialogMsg::Close(window.clone())),
+
+                #[watch]
+                set_sensitive: !model.partition.is_empty() && !model.mountpoint.is_empty(),
+                // HACK: relm4 doesn't perform the #[watch] until the UI is updated by the user
+                // e.g. they typed something into the entry, then relm4 actually finally realize
+                // it needs to set this as sensitive
+                //
+                // therefore right here we just have relm4 default to a sensitivity before any UI trigs
+                set_sensitive: !model.partition.is_empty(),
+            },
+        },
     }
-}
+);
 
 impl From<&AddDialog> for ChooseMount {
     fn from(
@@ -736,14 +711,76 @@ const PARTITION_TOOLS_LIST: &[&str] = &[
 // ────────────────────────────────────────────────────────────────────────────
 // PartitionToolSelector
 
+kurage::generate_component!(PartitionToolSelector {
+    entry_factory: FactoryPartEntry,
+}:
+    init[entries { model.entry_factory.inner.widget() }](root, sender, model, widgets) {}
+    update(self, message, sender) {} => {}
+
+    libhelium::ApplicationWindow {
+        set_title: Some(&t!("installtype-parttool")),
+
+        #[wrap(Some)]
+        set_child = &gtk::Box {
+            set_orientation: gtk::Orientation::Vertical,
+            set_align: gtk::Align::Fill,
+            set_vexpand: true,
+            set_hexpand: true,
+
+            libhelium::AppBar {},
+
+            gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_spacing: 16,
+                set_align: gtk::Align::Fill,
+                set_margin_all: 16,
+                set_margin_top: 0,
+                set_vexpand: true,
+                set_hexpand: true,
+
+                gtk::Label {
+                    set_halign: gtk::Align::Center,
+                    set_valign: gtk::Align::Start,
+                    #[watch]
+                    set_label: &t!("installtype-parttool"),
+                    set_css_classes: &["view-title"],
+                },
+
+                #[local_ref] entries ->
+                gtk::Box {
+                    set_halign: gtk::Align::Center,
+                    set_valign: gtk::Align::End,
+                    set_orientation: gtk::Orientation::Horizontal,
+                    set_spacing: 16,
+                    set_homogeneous: true,
+                },
+            },
+        },
+    }
+);
+
+#[derive(Debug)]
+struct FactoryPartEntry {
+    inner: FactoryVecDeque<PartitionToolEntry>,
+}
+
+impl Default for FactoryPartEntry {
+    fn default() -> Self {
+        let mut inner = FactoryVecDeque::builder()
+            .launch(gtk::Box::default())
+            .detach();
+        let mut guard = inner.guard();
+        PartitionToolSelector::list_partitioning_tools().for_each(|entry| {
+            guard.push_back(entry);
+        });
+        drop(guard);
+        Self { inner }
+    }
+}
+
 /// A new pop-up window to select a partitioning tool, should take in a list of [`DesktopEntry`]'s
 /// and ask the user which one to open, then call some function to open the selected tool using the
 /// desktop entry data.
-///
-struct PartitionToolSelector {
-    entry_factory: FactoryVecDeque<PartitionToolEntry>,
-}
-
 impl PartitionToolSelector {
     fn list_partitioning_tools() -> impl Iterator<Item = freedesktop_desktop_entry::DesktopEntry> {
         PARTITION_TOOLS_LIST
@@ -779,78 +816,6 @@ impl PartitionToolSelector {
     }
 }
 
-#[relm4::component]
-impl SimpleComponent for PartitionToolSelector {
-    type Init = ();
-    type Input = ();
-    type Output = ();
-
-    view! {
-        libhelium::ApplicationWindow {
-            set_title: Some(&t!("installtype-parttool")),
-
-            #[wrap(Some)]
-            set_child = &gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_align: gtk::Align::Fill,
-                set_vexpand: true,
-                set_hexpand: true,
-
-                libhelium::AppBar {},
-
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    set_spacing: 16,
-                    set_align: gtk::Align::Fill,
-                    set_margin_all: 16,
-                    set_margin_top: 0,
-                    set_vexpand: true,
-                    set_hexpand: true,
-
-                    gtk::Label {
-                        set_halign: gtk::Align::Center,
-                        set_valign: gtk::Align::Start,
-                        #[watch]
-                        set_label: &t!("installtype-parttool"),
-                        set_css_classes: &["view-title"],
-                    },
-
-                    #[local_ref] entries ->
-                    gtk::Box {
-                        set_halign: gtk::Align::Center,
-                        set_valign: gtk::Align::End,
-                        set_orientation: gtk::Orientation::Horizontal,
-                        set_spacing: 16,
-                        set_homogeneous: true,
-                    },
-                },
-            },
-        }
-    }
-
-    fn init(
-        (): Self::Init,
-        root: Self::Root,
-        _sender: ComponentSender<Self>,
-    ) -> ComponentParts<Self> {
-        let mut entry_factory = FactoryVecDeque::builder()
-            .launch(gtk::Box::default())
-            .detach();
-        let mut guard = entry_factory.guard();
-        Self::list_partitioning_tools().for_each(|entry| {
-            guard.push_back(entry);
-        });
-        drop(guard);
-
-        let model = Self { entry_factory };
-
-        let entries = model.entry_factory.widget();
-        let widgets = view_output!();
-        ComponentParts { model, widgets }
-    }
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {}
-}
-
 /// Partition tool selector entry,
 /// should be a factory to generate from a single [`freedesktop_desktop_entry::DesktopEntry`]
 /// layout:
@@ -862,8 +827,17 @@ impl SimpleComponent for PartitionToolSelector {
 ///     }
 /// }
 /// ```
+#[derive(Debug)]
 struct PartitionToolEntry {
     desktop_entry: freedesktop_desktop_entry::DesktopEntry,
+}
+
+impl Default for PartitionToolEntry {
+    fn default() -> Self {
+        Self {
+            desktop_entry: freedesktop_desktop_entry::DesktopEntry::from_appid(String::default()),
+        }
+    }
 }
 
 #[relm4::factory(pub)]
