@@ -152,7 +152,7 @@ impl RepartOutput {
 
             cmdline_opts.push(format!("rd.luks.name={uuid}={label}"));
         }
-        
+
         if is_tpm {
             cmdline_opts.push("rd.luks.options=tpm2-device=auto".to_string());
         }
