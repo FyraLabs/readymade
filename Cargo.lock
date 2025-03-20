@@ -938,9 +938,9 @@ checksum = "6c2141d6d6c8512188a7891b4b01590a45f6dac67afb4f255c4124dbb86d4eaa"
 
 [[package]]
 name = "freedesktop-desktop-entry"
-version = "0.7.8"
+version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6a4cdc5571033a6a329b9e8a8430594d1e3b60f42bb79e79686cadef34740ea"
+checksum = "7e5e2bd2e383df08a8439c2e096be16d5355aa00f976b295cf8e077ea5953d5d"
 dependencies = [
  "cached",
  "gettext-rs",
@@ -1842,7 +1842,9 @@ dependencies = [
 
 [[package]]
 name = "kurage"
-version = "0.1.3"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f09bdd3a13b3e4c38a0094b684ee3fcfe89979e8ae6db8069ecfb26030555fe0"
 dependencies = [
  "kurage_macro_rules",
  "kurage_proc_macros",
@@ -1850,7 +1852,9 @@ dependencies = [
 
 [[package]]
 name = "kurage_macro_rules"
-version = "0.1.3"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e0adf3e872365f3ef4230acfdea771def6db6e8dd5dcfdd1163fed3f0448182"
 dependencies = [
  "paste",
  "relm4",
@@ -1859,7 +1863,9 @@ dependencies = [
 
 [[package]]
 name = "kurage_proc_macros"
-version = "0.1.3"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b849c0209bf6715a212cb5aedea88f8a644a2a0b32776eda85a837cecac72a82"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3193,9 +3199,9 @@ checksum = "bc1ee6eef34f12f765cb94725905c6312b6610ab2b0940889cfe58dae7bc3c72"
 
 [[package]]
 name = "tempfile"
-version = "3.19.0"
+version = "3.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "488960f40a3fd53d72c2a29a58722561dee8afdd175bd88e3db4677d7b2ba600"
+checksum = "7437ac7763b9b123ccf33c338a5cc1bac6f69b45a136c19bdd8a65e3916435bf"
 dependencies = [
  "fastrand",
  "getrandom 0.3.2",
