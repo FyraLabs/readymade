@@ -34,9 +34,7 @@ sed -i 's/^\[profile\.rpm\]/[profile.rpm]\ndebug-assertions = true/' .cargo/conf
 %cargo_install
 ./install.sh %buildroot
 
-%find_lang com.fyralabs.Readymade
-
-%files -f com.fyralabs.Readymade.lang
+%files
 %_bindir/readymade
 %_datadir/polkit-1/actions/com.fyralabs.pkexec.readymade.policy
 %{_datadir}/applications/com.fyralabs.Readymade.desktop
