@@ -156,7 +156,8 @@ page!(Language {
                         .inspect_err(|e| tracing::error!(?e, "Cannot apply language"))
                 {
                     let mut locales = crate::process_locale(&crate::LL.read().as_ref().unwrap().available_languages(&crate::Localizations).unwrap())(locale);
-                    let loader = i18n_embed::fluent::FluentLanguageLoader::new("readymade", locales.first().map_or_else(|| "en-US".parse().unwrap(), Clone::clone));
+                    // let loader = i18n_embed::fluent::FluentLanguageLoader::new("readymade", locales.first().map_or_else(|| "en-US".parse().unwrap(), Clone::clone));
+                    let loader = i18n_embed::fluent::FluentLanguageLoader::new("readymade", "en-US".parse().unwrap());
                     if locales.len() == 0 {
                         locales.push("en-US".parse().unwrap());
                     }
