@@ -1,8 +1,6 @@
 use crate::prelude::*;
-use crate::NavigationAction;
-use crate::INSTALLATION_STATE;
 use relm4::RelmIterChildrenExt;
-use relm4::{ComponentParts, SharedState, SimpleComponent};
+use relm4::SharedState;
 use std::rc::Rc;
 
 static SEARCH_STATE: SharedState<gtk::glib::GString> = SharedState::new();
@@ -109,7 +107,7 @@ impl std::ops::Deref for BtnFactory {
 }
 impl AsRef<gtk::ListBox> for BtnFactory {
     fn as_ref(&self) -> &gtk::ListBox {
-        &*self
+        self
     }
 }
 impl AsRef<gtk::Widget> for BtnFactory {
@@ -151,17 +149,16 @@ page!(Language {
                 #[allow(clippy::cast_sign_loss)]
                 let language = self.btnfactory.0.get(row.index() as usize).unwrap();
                 tracing::info!(language.locale, "Using selected locale");
-                let loader = crate::LL
-                    .read()
-                    .as_ref()
-                    .unwrap()
-                    .select_languages(&[language
-                        .locale
-                        .replace('_', "-")
-                        .parse::<i18n_embed::unic_langid::LanguageIdentifier>()
-                        .unwrap()]);
-                *crate::LL.write() = Some(loader);
-                crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.clone());
+                if let Some(lang) = {
+                    let lang = language.locale.replace('_', "-");
+                    lang.split_once('.').map(|(left, _)| left.clone()).unwrap_or(&*lang).to_string().parse::<i18n_embed::unic_langid::LanguageIdentifier>().inspect_err(|e| {
+                        tracing::error!(?e, "Cannot apply language");
+                    }).ok()
+                } {
+                    let loader = crate::LL.read().as_ref().unwrap().select_languages(&[lang]);
+                    *crate::LL.write() = Some(loader);
+                    crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.clone());
+                }
             }
         }
     } => {}
