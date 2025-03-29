@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use i18n_embed::LanguageLoader;
 use relm4::RelmIterChildrenExt;
 use relm4::SharedState;
 use std::rc::Rc;
@@ -140,24 +141,30 @@ page!(Language {
                 || lang.name.to_ascii_lowercase().starts_with(&s)
         });
         btnfactory.select_row(btnfactory.iter_children().next().as_ref());
-        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| LanguagePageMsg::Update);
     }
 
     update(self, message, sender) {
         Selected => {
             if let Some(row) = self.btnfactory.selected_row() {
                 #[allow(clippy::cast_sign_loss)]
-                let language = self.btnfactory.0.get(row.index() as usize).unwrap();
-                tracing::info!(language.locale, "Using selected locale");
-                if let Some(lang) = {
-                    let lang = language.locale.replace('_', "-");
-                    lang.split_once('.').map(|(left, _)| left.clone()).unwrap_or(&*lang).to_string().parse::<i18n_embed::unic_langid::LanguageIdentifier>().inspect_err(|e| {
-                        tracing::error!(?e, "Cannot apply language");
-                    }).ok()
-                } {
-                    let loader = crate::LL.read().as_ref().unwrap().select_languages(&[lang]);
+                let lang = self.btnfactory.0.get(row.index() as usize).unwrap();
+                tracing::info!(lang.locale, "Using selected locale");
+                if let Ok(locale) =
+                    lang.locale.split_once('.').map(|(left, _)| left.clone())
+                        .unwrap_or(&*lang.locale).to_string()
+                        .parse::<i18n_embed::unic_langid::LanguageIdentifier>()
+                        .inspect_err(|e| tracing::error!(?e, "Cannot apply language"))
+                {
+                    let mut locales = crate::process_locale(&crate::LL.read().as_ref().unwrap().available_languages(&crate::Localizations).unwrap())(locale);
+                    let loader = i18n_embed::fluent::FluentLanguageLoader::new("readymade", locales.first().map_or_else(|| "en-US".parse().unwrap(), Clone::clone));
+                    if locales.len() == 0 {
+                        locales.push("en-US".parse().unwrap());
+                    }
+                    loader.load_languages(&crate::Localizations, &locales).expect("fail to load languages");
+                    // let loader = crate::LL.read().as_ref().unwrap().select_languages(&locales);
+                    tracing::debug!(lang=?loader.current_languages(), welcome=loader.get_args_concrete("page-welcome", std::collections::HashMap::from_iter(std::iter::once(("distro", "Ultramarine Linux".into())))), "new loader");
                     *crate::LL.write() = Some(loader);
-                    crate::INSTALLATION_STATE.write().langlocale = Some(language.locale.clone());
+                    crate::INSTALLATION_STATE.write().langlocale = Some(lang.locale.to_string());
                 }
             }
         }

@@ -10,6 +10,8 @@ kurage::kurage_gen_macros!();
 kurage::generate_generator! { page => [<$name Page>]
     init: {
         INSTALLATION_STATE.subscribe($sender.input_sender(), |_| Self::Input::Update);
+        //crate::LL.subscribe($sender.input_sender(), |_| Self::Input::Update);
+        tracing::debug!("page initialised");
     }
 
     update: {
@@ -38,20 +40,6 @@ kurage::generate_generator! { page => [<$name Page>]
     },
 }
 
-macro_rules! pagename {
-    () => {{
-        let s = std::path::Path::new(file!())
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap();
-        &format!(
-            "{}{}",
-            s.chars().nth(0).unwrap().to_ascii_uppercase(),
-            &s[1..s.len() - 3]
-        )
-    }};
-}
-
 // pub(crate) use kurage_generated_macros::kurage_page_pre;
 macro_rules! t {
     ($msgid:literal $($tt:tt)*) => {
@@ -67,4 +55,4 @@ macro_rules! t_expr {
     };
 }
 
-pub(crate) use {page, pagename, t, t_expr};
+pub(crate) use {page, t, t_expr};

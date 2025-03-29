@@ -42,7 +42,7 @@ page-installation-contrib = Contribute to Ultramarine
 page-installation-contrib-desc = Learn how to contribute your time, money, or hardware.
 page-installation-progress = Installing base system...
 
-page-installcustom = "Custom Installation"
+page-installcustom = Custom Installation
 page-installcustom-title = Partitions and Mountpoints
 page-installcustom-desc = {$num} definition(s)
 page-installcustom-tool = Open partitioning tool

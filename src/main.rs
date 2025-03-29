@@ -201,11 +201,61 @@ impl SimpleComponent for AppModel {
     }
 }
 
+fn process_locale(
+    available_langs: &[i18n_embed::unic_langid::LanguageIdentifier],
+) -> impl FnMut(
+    i18n_embed::unic_langid::LanguageIdentifier,
+) -> Vec<i18n_embed::unic_langid::LanguageIdentifier>
+       + use<'_> {
+    |mut li: i18n_embed::unic_langid::LanguageIdentifier| {
+        if li.language == "zh" {
+            if available_langs.iter().contains(&li) {
+            } else if li.script.is_some() {
+                li.clear_variants();
+            } else if li
+                .region
+                .is_some_and(|region| ["HK", "TW", "MO"].contains(&region.as_str()))
+            {
+                li.script =
+                    Some(i18n_embed::unic_langid::subtags::Script::from_bytes(b"Hant").unwrap());
+            } else {
+                li.script =
+                    Some(i18n_embed::unic_langid::subtags::Script::from_bytes(b"Hans").unwrap());
+            }
+            return [
+                li.clone(),
+                {
+                    let mut li = li.clone();
+                    li.region = None;
+                    li
+                },
+                {
+                    let mut li = li.clone();
+                    li.script = None;
+                    li
+                },
+                {
+                    let mut li = li.clone();
+                    li.script = None;
+                    li.region = None;
+                    li
+                },
+            ]
+            .into_iter()
+            .filter(|li| available_langs.contains(li))
+            .collect();
+        }
+        if available_langs.contains(&li) {
+            vec![li]
+        } else {
+            vec![]
+        }
+    }
+}
+
 fn handle_l10n() -> i18n_embed::fluent::FluentLanguageLoader {
     use i18n_embed::{
-        fluent::fluent_language_loader,
-        unic_langid::{subtags::Script, LanguageIdentifier},
-        LanguageLoader,
+        fluent::fluent_language_loader, unic_langid::LanguageIdentifier, LanguageLoader,
     };
     use std::str::FromStr;
     let loader = fluent_language_loader!();
@@ -220,21 +270,7 @@ fn handle_l10n() -> i18n_embed::fluent::FluentLanguageLoader {
                     .collect_vec()
             })
         })
-        .update(|li| {
-            if li.language == "zh" {
-                if available_langs.iter().contains(li) {
-                } else if li.script.is_some() {
-                    li.clear_variants();
-                } else if li
-                    .region
-                    .is_some_and(|region| ["HK", "TW", "MO"].contains(&region.as_str()))
-                {
-                    li.script = Some(Script::from_bytes(b"Hant").unwrap());
-                } else {
-                    li.script = Some(Script::from_bytes(b"Hans").unwrap());
-                }
-            }
-        })
+        .flat_map(|lang| process_locale(&available_langs)(lang))
         .collect_vec();
     if langs.is_empty() {
         langs = vec![loader.fallback_language().clone()];
