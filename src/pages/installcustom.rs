@@ -6,14 +6,6 @@ use crate::{
     backend::custom::MountTarget as ChooseMount, prelude::*, NavigationAction, INSTALLATION_STATE,
 };
 
-/// List of magic mountpoint labels, should not be forced but if labeled, suggested by default
-const MAGIC_MOUNTPOINT_LABELS: &[(&[&str], &str)] = &[
-    (&["ROOT"], "/"),
-    (&["ESP", "EFI"], "/boot/efi"),
-    (&["XBOOTLDR", "BOOT"], "/boot"),
-    (&["HOME"], "/home"),
-];
-
 /// Wizard to set up custom partitioning.
 ///
 /// Users should also be able to label their partition with a special magic value to suggest
@@ -290,7 +282,7 @@ impl FactoryComponent for ChooseMount {
 // ────────────────────────────────────────────────────────────────────────────
 // PartitionTypeDropdown
 #[derive(Debug, Default, Clone)]
-enum PartitionType {
+pub enum PartitionType {
     /// Root partition
     #[default]
     Root,
@@ -319,6 +311,7 @@ macro_rules! impl_partition_type {
                 }
             }
 
+            #[cfg(any())]
             fn from_str(s: &str) -> Self {
                 match s {
                     $($s => Self::$entry,)*

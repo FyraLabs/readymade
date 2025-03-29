@@ -113,6 +113,9 @@ impl RepartOutput {
             .filter_map(|part| part.ddi_mountpoint().map(|mp| (mp, part.node.clone())))
     }
 
+    #[allow(clippy::unwrap_in_result)]
+    /// # Panics
+    /// if LUKS UUID cannot be obtained.
     pub fn generate_cryptdata(&self) -> Result<Option<CryptData>, color_eyre::eyre::Error> {
         // NOTE: https://www.man7.org/linux/man-pages/man5/crypttab.5.html
         let mut crypttab = String::new();
@@ -133,11 +136,11 @@ impl RepartOutput {
                 let file_config = std::fs::read_to_string(&part.file)?;
                 let config: RepartConfig = serde_systemd_unit::from_str(&file_config)?;
 
-                match config.partition.encrypt {
-                    super::repartcfg::EncryptOption::KeyFileTpm2 => true,
-                    super::repartcfg::EncryptOption::Tpm2 => true,
-                    _ => false,
-                }
+                matches!(
+                    config.partition.encrypt,
+                    super::repartcfg::EncryptOption::KeyFileTpm2
+                        | super::repartcfg::EncryptOption::Tpm2
+                )
             };
 
             if part_uses_tpm {
@@ -157,14 +160,11 @@ impl RepartOutput {
             cmdline_opts.push("rd.luks.options=tpm2-device=auto".to_owned());
         }
 
-        match has_luks {
-            true => Ok(Some(CryptData {
-                crypttab,
-                cmdline_opts,
-                tpm: is_tpm,
-            })),
-            false => Ok(None),
-        }
+        Ok(has_luks.then_some(CryptData {
+            crypttab,
+            cmdline_opts,
+            tpm: is_tpm,
+        }))
     }
 
     /// Generate a /etc/fstab file from the DDI partition types
@@ -234,7 +234,7 @@ impl RepartOutput {
     /// This function takes a mount point and generates a unique label for the mapper device by:
     /// 1. Converting the mount point to a valid label format
     /// 2. Checking if that label is already in use and appending a counter if needed
-
+    ///
     /// Create `tiffin::Container` from the repartitioning output with the mountpoints
     /// from the DDI partition types
     pub fn to_container(&self, passphrase: Option<&str>) -> color_eyre::Result<Container> {
@@ -331,11 +331,7 @@ fn luks_decrypt(
     drop(key_file);
     // i guess to_container now also needs to accept an Option<String> for the passphrase
     let cmd = std::process::Command::new("cryptsetup")
-        .arg("open")
-        .arg(node)
-        .arg(label)
-        .arg("--batch-mode")
-        .arg("--key-file")
+        .args(["open", node, label, "--batch-mode", "--key-file"])
         .arg(key_file_path)
         .output()?;
 
@@ -349,8 +345,7 @@ fn luks_decrypt(
     let mapper = PathBuf::from(format!("/dev/mapper/{label}"));
 
     // Add to cache
-    let mut cache = MAPPER_CACHE.write().unwrap();
-    Arc::get_mut(&mut *cache)
+    Arc::get_mut(&mut *MAPPER_CACHE.write().unwrap())
         .unwrap()
         .insert(node.to_owned(), mapper.clone());
 
@@ -467,6 +462,7 @@ impl RepartPartition {
 
             // Thankfully, since we made lsblk-rs we can do this easily.
             let device = lsblk::BlockDevice::from_path(mapper_path)?;
+            drop(mapper_cache);
             tracing::trace!(?device, "Found device from mapper path");
             let uuid = device
                 .uuid

@@ -1,6 +1,8 @@
+use nix::sys::time::TimeSpec;
 use std::{
     os::unix::fs::{FileExt, FileTypeExt, MetadataExt},
     path::{Path, PathBuf},
+    time::SystemTime,
 };
 
 use color_eyre::eyre::{bail, eyre};
@@ -92,19 +94,6 @@ pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre
 pub fn copy_dir_rdm<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     use rayon::iter::ParallelIterator;
     use rayon::prelude::*;
-    let to = to.as_ref();
-    let from = from.as_ref();
-    std::fs::create_dir_all(to)?;
-    tracing::info!(
-        ?from,
-        ?to,
-        "Copying directory using internal implementation"
-    );
-
-    // Configure jwalk to use parallel traversal and disable sorting unless required
-    let walkdir = jwalk::WalkDir::new(from).parallelism(jwalk::Parallelism::RayonDefaultPool {
-        busy_timeout: std::time::Duration::from_millis(100),
-    });
 
     /// Re-implementation of `std::fs::copy` that handles I/O efficiently, and handles symlinks properly.
     /// Also handles sparse files.
@@ -123,34 +112,52 @@ pub fn copy_dir_rdm<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyr
         if metadata.is_symlink() {
             let link = std::fs::read_link(from)?;
             std::os::unix::fs::symlink(link, to)?;
-        } else {
-            // Check if file is sparse
-            if metadata.blocks() * 512 < metadata.len() {
-                // File is sparse, need to copy with holes preserved
-                let input = std::fs::File::open(from)?;
-                let output = std::fs::File::create(to)?;
-                let mut buffer = vec![0; 1024 * 1024];
-                let mut offset = 0;
+            return Ok(());
+        }
 
-                loop {
-                    match input.read_at(&mut buffer, offset)? {
-                        0 => break, // EOF
-                        n => {
-                            if !buffer[..n].iter().all(|&x| x == 0) {
-                                output.write_at(&buffer[..n], offset)?;
-                            }
-                            offset += n as u64;
-                        }
+        // Check if file is sparse
+        if metadata.blocks() * 512 >= metadata.len() {
+            // Not sparse, do regular copy
+            std::fs::copy(from, to)?;
+            return Ok(());
+        }
+
+        // File is sparse, need to copy with holes preserved
+        let input = std::fs::File::open(from)?;
+        let output = std::fs::File::create(to)?;
+        let mut buffer = vec![0; 1024 * 1024];
+        let mut offset = 0;
+
+        loop {
+            match input.read_at(&mut buffer, offset)? {
+                0 => break, // EOF
+                n => {
+                    #[allow(clippy::indexing_slicing)]
+                    if !buffer[..n].iter().all(|&x| x == 0) {
+                        output.write_at(&buffer[..n], offset)?;
                     }
+                    offset += n as u64;
                 }
-            } else {
-                // Not sparse, do regular copy
-                std::fs::copy(from, to)?;
             }
         }
 
         Ok(())
     }
+
+    let to = to.as_ref();
+    let from = from.as_ref();
+    std::fs::create_dir_all(to)?;
+    tracing::info!(
+        ?from,
+        ?to,
+        "Copying directory using internal implementation"
+    );
+
+    // Configure jwalk to use parallel traversal and disable sorting unless required
+    let walkdir = jwalk::WalkDir::new(from).parallelism(jwalk::Parallelism::RayonDefaultPool {
+        busy_timeout: std::time::Duration::from_millis(100),
+    });
+
     walkdir
         .into_iter()
         .par_bridge()
@@ -179,71 +186,26 @@ pub fn copy_dir_rdm<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyr
     Ok(())
 }
 
+// Convert SystemTime to TimeSpec with proper error handling
+fn system_time_to_timespec(time: SystemTime) -> TimeSpec {
+    let duration = time
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_else(|_| std::time::Duration::from_secs(0));
+    TimeSpec::from(duration)
+}
+
 fn copy_attributes(
     src_path: &Path,
     dest_path: &Path,
     metadata: &std::fs::Metadata,
 ) -> Result<(), color_eyre::eyre::Error> {
-    use nix::sys::stat::{utimensat, UtimensatFlags};
-    use nix::sys::time::TimeSpec;
     use std::os::unix::fs::MetadataExt;
-    use std::time::SystemTime;
 
-    // Preserve permissions
     std::fs::set_permissions(dest_path, metadata.permissions())?;
 
-    // Convert SystemTime to TimeSpec with proper error handling
-    fn system_time_to_timespec(time: SystemTime) -> TimeSpec {
-        let duration = time
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_else(|_| std::time::Duration::from_secs(0));
-        TimeSpec::from(duration)
-    }
+    copy_attributes_handle_timestamps(dest_path, metadata)?;
 
-    // Handle timestamps with proper error propagation
-    {
-        let atime = metadata.accessed()?;
-        let mtime = metadata.modified()?;
-
-        let atime_ts = system_time_to_timespec(atime);
-        let mtime_ts = system_time_to_timespec(mtime);
-
-        // Use safe wrapper for utimensat
-        utimensat(
-            None,
-            dest_path,
-            &atime_ts,
-            &mtime_ts,
-            UtimensatFlags::NoFollowSymlink,
-        )
-        .map_err(|e| color_eyre::eyre::eyre!("Failed to set timestamps: {}", e))?;
-    };
-
-    // xattrs
-    {
-        let xattrs = xattr::list(src_path)
-            .inspect_err(|e| {
-                tracing::warn!("Failed to list xattrs on {:?}: {}", src_path, e);
-            })
-            .ok()
-            .into_iter()
-            .flatten();
-
-        for attr in xattrs {
-            let value = match xattr::get(src_path, &attr) {
-                Ok(Some(v)) => v,
-                Ok(None) => Vec::new(),
-                Err(e) => {
-                    tracing::warn!("Failed to read xattr {:?} on {:?}: {}", attr, src_path, e);
-                    continue;
-                }
-            };
-
-            if let Err(e) = xattr::set(dest_path, &attr, &value) {
-                tracing::warn!("Failed to set xattr {:?} on {:?}: {}", attr, dest_path, e);
-            }
-        }
-    }
+    copy_attributes_handle_xattr(src_path, dest_path);
 
     let chown = nix::unistd::chown(
         dest_path,
@@ -252,8 +214,52 @@ fn copy_attributes(
     );
 
     if let Err(e) = chown {
-        tracing::warn!("Failed to set ownership: {}", e);
+        tracing::warn!("Failed to set ownership: {e}");
     }
+    Ok(())
+}
+
+fn copy_attributes_handle_xattr(src_path: &Path, dest_path: &Path) {
+    let xattrs = xattr::list(src_path)
+        .inspect_err(|e| {
+            tracing::warn!("Failed to list xattrs on {src_path:?}: {e}");
+        })
+        .ok()
+        .into_iter()
+        .flatten();
+    for attr in xattrs {
+        let value = match xattr::get(src_path, &attr) {
+            Ok(Some(v)) => v,
+            Ok(None) => Vec::new(),
+            Err(e) => {
+                tracing::warn!("Failed to read xattr {attr:?} on {src_path:?}: {e}");
+                continue;
+            }
+        };
+
+        if let Err(e) = xattr::set(dest_path, &attr, &value) {
+            tracing::warn!("Failed to set xattr {attr:?} on {dest_path:?}: {e}");
+        }
+    }
+}
+
+fn copy_attributes_handle_timestamps(
+    dest_path: &Path,
+    metadata: &std::fs::Metadata,
+) -> Result<(), color_eyre::eyre::Error> {
+    use nix::sys::stat::{utimensat, UtimensatFlags};
+    let atime = metadata.accessed()?;
+    let mtime = metadata.modified()?;
+    let atime_ts = system_time_to_timespec(atime);
+    let mtime_ts = system_time_to_timespec(mtime);
+    utimensat(
+        None,
+        dest_path,
+        &atime_ts,
+        &mtime_ts,
+        UtimensatFlags::NoFollowSymlink,
+    )
+    .map_err(|e| color_eyre::eyre::eyre!("Failed to set timestamps: {}", e))?;
     Ok(())
 }
 

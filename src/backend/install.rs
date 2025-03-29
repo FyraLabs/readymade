@@ -197,7 +197,7 @@ impl InstallationState {
 
     /// Copies the current config into a temporary directory, allowing them to be modified without
     /// affecting the original templates :D
-    fn layer_configdir(&self, cfg_dir: &Path) -> Result<PathBuf> {
+    fn layer_configdir(cfg_dir: &Path) -> Result<PathBuf> {
         // /run/readymade-install
         let new_path = PathBuf::from("/run").join("readymade-install");
         std::fs::create_dir_all(&new_path)?;
@@ -222,7 +222,7 @@ impl InstallationState {
             .devpath;
 
         tracing::info!("Layering repart templates");
-        let cfgdir = self.layer_configdir(&inst_type.cfgdir())?;
+        let cfgdir = Self::layer_configdir(&inst_type.cfgdir())?;
 
         // Let's write the encryption key to the keyfile
         let keyfile = std::path::Path::new(consts::LUKS_KEYFILE_PATH);
