@@ -380,7 +380,7 @@ mod tests {
     fn test_generate_fstab() {
         let fstab = generate_fstab("/mnt/custom").unwrap();
 
-        println!("{}", fstab.to_string());
+        println!("{}", fstab);
 
         // check if theres newlines
         assert!(fstab.to_string().contains('\n'));

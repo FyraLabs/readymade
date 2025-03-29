@@ -111,7 +111,7 @@ impl InstallationState {
 
         for (key, value) in envars {
             if key.starts_with("REPART_") || key.starts_with("READYMADE_") {
-                command.arg(format!("{}={}", key, value));
+                command.arg(format!("{key}={value}"));
             }
         }
 
@@ -242,7 +242,7 @@ impl InstallationState {
         tracing::info!("Copying files done, Setting up system...");
         self.setup_system(
             repart_out,
-            self.encryption_key.as_ref().map(|s| s.as_str()),
+            self.encryption_key.as_deref(),
             Some(repartcfg_export),
         )?;
 
@@ -334,7 +334,7 @@ impl InstallationState {
         std::fs::create_dir_all(parent)
             .wrap_err("Failed to create parent directories for state dump")?;
         std::fs::write(
-            &state_dump_path,
+            state_dump_path,
             state_dump
                 .export_string()
                 .wrap_err("Failed to serialize state dump")?,

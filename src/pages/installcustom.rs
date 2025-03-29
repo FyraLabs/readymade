@@ -401,8 +401,8 @@ impl SimpleComponent for PartitionTypeDropdown {
     ) -> ComponentParts<Self> {
         let model = Self::default();
         let parttypes = PartitionType::all()
-            .into_iter()
-            .map(|s| s.description_string())
+            .iter()
+            .map(PartitionType::description_string)
             .collect_vec();
 
         let dropdown =
@@ -786,7 +786,7 @@ impl PartitionToolSelector {
         PARTITION_TOOLS_LIST
             .iter()
             .copied()
-            .filter_map(|p| Self::query_desktop_entry(p))
+            .filter_map(Self::query_desktop_entry)
     }
     /// Get the XDG desktop entry for a given desktop entry name.
     ///

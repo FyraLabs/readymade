@@ -28,7 +28,7 @@ pub fn parse(s: &str) -> Result<SystemdIni, Err> {
                         section,
                         entries
                             .into_iter()
-                            .map(|(k, v): (_, Vec<_>)| (k, Value::from_vec(&*v)))
+                            .map(|(k, v): (_, Vec<_>)| (k, Value::from_vec(&v)))
                             .collect(),
                     )
                 })

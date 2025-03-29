@@ -45,7 +45,7 @@ fn remove_if_exists(path: &Path) -> std::io::Result<()> {
 /// - recurse: Native Rust implementation that uses `std::fs` and `jwalk` to copy the directory tree.
 /// - uutils: Uses uutil's implementation of `cp` to copy the directory tree, programmatically
 pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
-    let env = std::env::var("READYMADE_COPY_METHOD").unwrap_or_else(|_| "rdm".to_string());
+    let env = std::env::var("READYMADE_COPY_METHOD").unwrap_or_else(|_| "rdm".to_owned());
     match env.as_str() {
         "cp" => copy_dir_cp(from, to),
         #[cfg(feature = "uutils")]
@@ -118,11 +118,11 @@ pub fn copy_dir_rdm<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyr
         let parent = to.parent().unwrap();
         std::fs::create_dir_all(parent)?;
 
-        remove_if_exists(&to)?;
+        remove_if_exists(to)?;
 
         if metadata.is_symlink() {
-            let link = std::fs::read_link(&from)?;
-            std::os::unix::fs::symlink(link, &to)?;
+            let link = std::fs::read_link(from)?;
+            std::os::unix::fs::symlink(link, to)?;
         } else {
             // Check if file is sparse
             if metadata.blocks() * 512 < metadata.len() {
@@ -145,7 +145,7 @@ pub fn copy_dir_rdm<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyr
                 }
             } else {
                 // Not sparse, do regular copy
-                std::fs::copy(&from, &to)?;
+                std::fs::copy(from, to)?;
             }
         }
 
@@ -217,7 +217,7 @@ fn copy_attributes(
             UtimensatFlags::NoFollowSymlink,
         )
         .map_err(|e| color_eyre::eyre::eyre!("Failed to set timestamps: {}", e))?;
-    }
+    };
 
     // xattrs
     {
@@ -307,14 +307,14 @@ mod tests {
     where
         F: Fn(&Path, &Path) -> color_eyre::Result<()>,
     {
-        let src: &str = &format!("/tmp/test_src_{}", name);
-        let dest: &str = &format!("/tmp/test_dest_{}", name);
+        let src: &str = &format!("/tmp/test_src_{name}");
+        let dest: &str = &format!("/tmp/test_dest_{name}");
 
         // set up test environment
         std::fs::create_dir_all(src)?;
-        std::fs::write(format!("{}/test.txt", src), "test")?;
+        std::fs::write(format!("{src}/test.txt"), "test")?;
         std::fs::set_permissions(
-            format!("{}/test.txt", src),
+            format!("{src}/test.txt"),
             std::fs::Permissions::from_mode(0o700),
         )?;
 
@@ -324,11 +324,11 @@ mod tests {
         tracing::info!("Testing {} copy implementation", name);
         let o = copy_fn(Path::new(src), Path::new(dest));
 
-        assert!(o.is_ok());
-        assert!(std::fs::metadata(format!("{}/test.txt", dest)).is_ok());
+        o.unwrap();
+        std::fs::metadata(format!("{dest}/test.txt")).unwrap();
 
         // check 700 permissions
-        let metadata = std::fs::metadata(format!("{}/test.txt", dest))?;
+        let metadata = std::fs::metadata(format!("{dest}/test.txt"))?;
         assert_eq!(metadata.permissions().mode() & 0o777, 0o700);
 
         // cleanup

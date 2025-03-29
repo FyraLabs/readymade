@@ -409,6 +409,6 @@ mod tests {
 impl EncryptOption {
     #[must_use]
     pub const fn is_on(self) -> bool {
-        !matches!(self, EncryptOption::Off)
+        !matches!(self, Self::Off)
     }
 }

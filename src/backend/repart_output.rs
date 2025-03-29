@@ -33,10 +33,10 @@ fn cryptsetup_luks_uuid(node: &str) -> Result<String, color_eyre::eyre::Error> {
             String::from_utf8_lossy(&cmd.stderr)
         );
     }
-    Ok(String::from_utf8_lossy(&cmd.stdout).trim().to_string())
+    Ok(String::from_utf8_lossy(&cmd.stdout).trim().to_owned())
 }
 
-pub(crate) struct MapperCache {
+pub struct MapperCache {
     cache: std::collections::HashMap<String, PathBuf>,
 }
 
@@ -83,16 +83,16 @@ pub fn generate_unique_mapper_label(mntpoint: &str) -> String {
         if mntpoint == "/" {
             "root".to_owned()
         } else {
-            mntpoint.trim_start_matches('/').replace("/", "-")
+            mntpoint.trim_start_matches('/').replace('/', "-")
         }
     };
 
     // Check if mapper device already exists and append counter if needed
     let mut counter = 0;
     let base_label = label.clone();
-    while std::path::Path::new(&format!("/dev/mapper/{}", label)).exists() {
+    while std::path::Path::new(&format!("/dev/mapper/{label}")).exists() {
         counter += 1;
-        label = format!("{}-{}", base_label, counter);
+        label = format!("{base_label}-{counter}");
     }
     label
 }
@@ -154,7 +154,7 @@ impl RepartOutput {
         }
 
         if is_tpm {
-            cmdline_opts.push("rd.luks.options=tpm2-device=auto".to_string());
+            cmdline_opts.push("rd.luks.options=tpm2-device=auto".to_owned());
         }
 
         match has_luks {
@@ -259,7 +259,7 @@ impl RepartOutput {
                     //
                     // I forgot to account for this when I refactored it -Cappy
                     //
-                    let label = generate_unique_mapper_label(&mntpoint);
+                    let label = generate_unique_mapper_label(mntpoint);
                     // XXX: This introduces some weird ordering issues with generate_fstab when decrypting from here
                     // Because generate_fstab() assumes that the partitions are decrypted already.
                     //
@@ -309,7 +309,7 @@ fn is_luks(node: &str) -> bool {
 }
 
 // global cache, so we can clean up these devices later
-pub(crate) static MAPPER_CACHE: std::sync::LazyLock<std::sync::RwLock<Arc<MapperCache>>> =
+pub static MAPPER_CACHE: std::sync::LazyLock<std::sync::RwLock<Arc<MapperCache>>> =
     std::sync::LazyLock::new(|| std::sync::RwLock::new(Arc::new(MapperCache::new())));
 
 fn luks_decrypt(
@@ -352,7 +352,7 @@ fn luks_decrypt(
     let mut cache = MAPPER_CACHE.write().unwrap();
     Arc::get_mut(&mut *cache)
         .unwrap()
-        .insert(node.to_string(), mapper.clone());
+        .insert(node.to_owned(), mapper.clone());
 
     Ok(mapper)
 }
@@ -466,7 +466,7 @@ impl RepartPartition {
             tracing::trace!(?mapper_path, "Guessed mapper path as this");
 
             // Thankfully, since we made lsblk-rs we can do this easily.
-            let device = lsblk::BlockDevice::from_path(&mapper_path)?;
+            let device = lsblk::BlockDevice::from_path(mapper_path)?;
             tracing::trace!(?device, "Found device from mapper path");
             let uuid = device
                 .uuid
@@ -493,7 +493,7 @@ impl RepartPartition {
 
             // tracing::trace!(?uuid, "Found UUID for decrypted device!");
 
-            format!("UUID={}", uuid)
+            format!("UUID={uuid}")
         } else {
             tracing::trace!("Partition is not encrypted, using repart's");
             format!("PARTUUID={}", self.uuid)

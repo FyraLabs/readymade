@@ -96,7 +96,7 @@ fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> Result<()> {
 
         // Check if the file still exists
         if !Path::new("/boot/grub/grub.cfg").exists() {
-            return Err(e).map_err(Into::into);
+            return Err(Into::into(e));
         }
     }
     info!("Blessing the disk with GRUB2...");
@@ -131,14 +131,14 @@ impl PostInstallModule for GRUB2 {
             // Now, let's add extra boot opts if they exist
             if let Some(crypt_data) = &context.crypt_data {
                 // prepend
-                let current_value = defaults.cmdline_linux.clone();
+                let current_value = defaults.cmdline_linux;
 
                 // this is a mess.
                 // todo: In the event someone thinks this code stinks, please please PLEASE refactor it for us.
 
                 let joined_cmdline = crypt_data.cmdline_opts.join(" ");
                 tracing::info!("Adding cryptsetup cmdline options: {}", joined_cmdline);
-                defaults.cmdline_linux = format!("{} {}", joined_cmdline, current_value);
+                defaults.cmdline_linux = format!("{joined_cmdline} {current_value}");
             }
 
             let defaults_str = defaults.generate();
@@ -182,7 +182,7 @@ impl PostInstallModule for GRUB2 {
 
                 let final_str = template_str.replace("$UUID$", xbootldr_uuid);
 
-                grub_cfg.write_all(&final_str.as_bytes())?;
+                grub_cfg.write_all(final_str.as_bytes())?;
             });
 
             stage!(grub2 {

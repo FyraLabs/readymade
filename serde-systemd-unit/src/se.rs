@@ -24,7 +24,7 @@ impl serde::ser::Error for Err {
     where
         T: std::fmt::Display,
     {
-        Err
+        Self
     }
 }
 

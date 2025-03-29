@@ -45,14 +45,14 @@ pub struct SystemdRepartData {
 }
 
 impl SystemdRepartData {
-    pub fn new(configs: BTreeMap<String, RepartConfig>) -> Self {
+    pub const fn new(configs: BTreeMap<String, RepartConfig>) -> Self {
         Self { configs }
     }
 
     pub fn get_configs(cfg_path: &Path) -> Result<Self> {
         let mut configs = BTreeMap::new();
         // Read path
-        for entry in std::fs::read_dir(&cfg_path)? {
+        for entry in std::fs::read_dir(cfg_path)? {
             let entry = entry?;
             let path = entry.path();
             if !path.is_file() {
@@ -74,12 +74,12 @@ impl SystemdRepartData {
 }
 
 pub fn prep_state_for_export(state: InstallationState) -> Result<InstallationState> {
-    let mut new_state = state.clone();
+    let mut new_state = state;
 
     // Clear out passwords
     if let Some(ref mut enc_key) = new_state.encryption_key {
         enc_key.clear();
-        new_state.encryption_key = Some("REDACTED".to_string());
+        new_state.encryption_key = Some("REDACTED".to_owned());
     }
     Ok(new_state)
 }

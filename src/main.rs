@@ -349,10 +349,10 @@ fn setup_hooks() -> impl std::any::Any {
 
     let is_non_interactive = std::env::args().any(|arg| arg == "--non-interactive");
 
-    let readymade_log_file = if !is_non_interactive {
-        "readymade.log"
-    } else {
+    let readymade_log_file = if is_non_interactive {
         "readymade-non-interactive.log"
+    } else {
+        "readymade.log"
     };
 
     color_eyre::install().expect("install color_eyre");
