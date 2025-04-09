@@ -230,14 +230,15 @@ impl InstallationState {
             std::fs::write(keyfile, key)?;
         }
 
-        // TODO: encryption
         self.enable_encryption(&cfgdir)?;
         let repart_out = stage!(mkpart {
             // todo: not freeze on error, show error message as err handler?
-            Self::systemd_repart(blockdev, &cfgdir, self.encrypt && self.encryption_key.is_some())?
+            Self::systemd_repart(blockdev, &cfgdir, self.encrypt && self.encryption_key.is_some(), crate::CONFIG.read().install.copy_mode)?
         });
 
         let repartcfg_export = super::export::SystemdRepartData::get_configs(&cfgdir)?;
+
+        self.bootc_copy(&repart_out, self.encryption_key.as_deref())?;
 
         tracing::info!("Copying files done, Setting up system...");
         self.setup_system(
@@ -268,6 +269,31 @@ impl InstallationState {
         }
 
         tracing::info!("install() finished");
+        Ok(())
+    }
+
+    fn bootc_copy(&self, output: &RepartOutput, passphrase: Option<&str>) -> Result<()> {
+        if crate::CONFIG.read().install.copy_mode != crate::cfg::CopyMode::Bootc {
+            return Ok(());
+        }
+        let imgref = std::env::var("COPY_SOURCE")
+            .ok()
+            .or_else(|| crate::CONFIG.read().install.bootc_imgref.clone())
+            .ok_or_else(|| {
+                eyre!(r#"neither $COPY_SOURCE nor `[install] bootc_imgref = "…"` are supplied"#)
+            })?;
+
+        let mut container = output.to_container(passphrase)?;
+        container.mount()?;
+
+        let cmd = Command::new("bootc")
+            .args(["install", "to-filesystem"])
+            .args(["--source-imgref", &imgref])
+            .arg(&container.root)
+            .status()?;
+        if !cmd.success() {
+            return Err(eyre!("`bootc install to-filesystem` failed"));
+        }
         Ok(())
     }
 
@@ -507,12 +533,20 @@ impl InstallationState {
         Ok(())
     }
 
+    // fn disable_repart_copy(&self, cfgdir: &Path) -> Result<()> {
+    //     if CONFIG.read().install.copy_mode == crate::cfg::CopyMode::Repart {
+    //         return Ok(());
+    //     }
+    //     for file in []
+    // }
+
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     fn systemd_repart(
         blockdev: &Path,
         cfgdir: &Path,
         use_keyfile: bool,
+        copy_mode: crate::cfg::CopyMode,
     ) -> Result<crate::backend::repart_output::RepartOutput> {
         let copy_source = Self::determine_copy_source();
 
@@ -529,11 +563,15 @@ impl InstallationState {
             "force",
             "--offline",
             "false",
-            "--copy-source",
-            &copy_source,
             "--json",
             "pretty",
         ];
+
+        if copy_mode == crate::cfg::CopyMode::Repart {
+            args.extend_from_slice(&["--copy-source", &copy_source]);
+        } else {
+            //idk
+        }
 
         if use_keyfile {
             let keyfile_path = consts::LUKS_KEYFILE_PATH;
