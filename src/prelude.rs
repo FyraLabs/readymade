@@ -10,7 +10,6 @@ kurage::kurage_gen_macros!();
 kurage::generate_generator! { page => [<$name Page>]
     init: {
         INSTALLATION_STATE.subscribe($sender.input_sender(), |_| Self::Input::Update);
-        //crate::LL.subscribe($sender.input_sender(), |_| Self::Input::Update);
         tracing::debug!("page initialised");
     }
 

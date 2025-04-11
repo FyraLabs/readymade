@@ -295,6 +295,17 @@ impl RepartOutput {
             container.add_mount(mnt_target, PathBuf::from("/sys/firmware/efi/efivars"));
         }
 
+        // expose host rootfs
+        container.add_mount(
+            MountTarget {
+                target: PathBuf::from("/run/host"),
+                fstype: None,
+                flags: MountFlags::BIND,
+                data: None,
+            },
+            PathBuf::from("/"),
+        );
+
         Ok(container)
     }
 }

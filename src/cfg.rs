@@ -10,7 +10,8 @@ use crate::backend::postinstall::Module;
 
 const DEFAULT_CFG_PATH: &str = "/etc/readymade.toml";
 
-#[derive(Deserialize, Serialize, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum CopyMode {
     #[default]
     Repart,
@@ -23,6 +24,7 @@ pub struct Install {
     pub allowed_installtypes: Vec<InstallationType>,
     #[serde(default)]
     pub copy_mode: CopyMode,
+    pub bootc_imgref: Option<String>,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq)]
@@ -106,6 +108,7 @@ mod tests {
                 install: Install {
                     allowed_installtypes: vec![InstallationType::ChromebookInstall],
                     copy_mode: CopyMode::Bootc,
+                    bootc_imgref: None,
                 },
                 postinstall: vec![
                     crate::backend::postinstall::grub2::GRUB2.into(),

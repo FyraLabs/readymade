@@ -9,6 +9,7 @@ use initial_setup::InitialSetup;
 use language::Language;
 use prepare_fedora::PrepareFedora;
 use reinstall_kernel::ReinstallKernel;
+use script::Script;
 use selinux::SELinux;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -24,8 +25,10 @@ pub mod initial_setup;
 pub mod language;
 pub mod prepare_fedora;
 pub mod reinstall_kernel;
+pub mod script;
 pub mod selinux;
 
+#[derive(serde::Serialize)]
 pub struct Context {
     pub destination_disk: PathBuf,
     pub uefi: bool,
@@ -34,6 +37,7 @@ pub struct Context {
     pub xbootldr_partition: String,
     pub lang: String,
     pub crypt_data: Option<CryptData>,
+    pub distro_name: String,
 }
 
 #[enum_dispatch(Module)]
@@ -55,4 +59,5 @@ pub enum Module {
     InitialSetup,
     Language,
     CryptSetup,
+    Script,
 }

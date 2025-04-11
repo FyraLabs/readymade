@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 const EFI_SHIM_X86_64: &str = "\\EFI\\fedora\\shimx64.efi";
 const EFI_SHIM_AA64: &str = "\\EFI\\fedora\\shimaa64.efi";
-pub const OS_NAME: &str = "Ultramarine Linux";
 pub const LIVE_BASE: &str = "/dev/mapper/live-base";
 pub const ROOTFS_BASE: &str = "/run/rootfsbase";
 pub const LUKS_KEYFILE_PATH: &str = "/run/readymade-luks.key";

@@ -58,7 +58,7 @@ page!(InstallationType {
                 }
                 InstallationType::Custom => Page::InstallCustom,
             }
-        })))
+        }))),
     } => {}
 
     gtk::Box {
