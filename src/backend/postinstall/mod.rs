@@ -37,6 +37,7 @@ pub struct Context {
     pub xbootldr_partition: String,
     pub lang: String,
     pub crypt_data: Option<CryptData>,
+    pub distro_name: String,
 }
 
 #[enum_dispatch(Module)]

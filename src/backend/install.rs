@@ -53,6 +53,7 @@ pub struct InstallationState {
     pub encrypt: bool,
     pub tpm: bool,
     pub encryption_key: Option<String>,
+    pub distro_name: String,
 }
 
 // TODO: remove this after have support for anything other than chromebook
@@ -72,6 +73,7 @@ impl Default for InstallationState {
             postinstall: crate::CONFIG.read().postinstall.clone(),
             encrypt: false,
             encryption_key: Option::default(),
+            distro_name: crate::CONFIG.read().distro.name.clone(),
         }
     }
 }
@@ -347,6 +349,7 @@ impl InstallationState {
             xbootldr_partition: xbootldr_node.to_owned(),
             lang: self.langlocale.clone().unwrap_or_else(|| "C.UTF-8".into()),
             crypt_data: crypt_data.clone(),
+            distro_name: self.distro_name.clone(),
         };
 
         tracing::info!("Writing /etc/fstab...");
