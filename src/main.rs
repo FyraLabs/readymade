@@ -367,7 +367,7 @@ fn setup_hooks() -> impl std::any::Any {
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
     tracing_subscriber::registry()
-        .with(fmt::layer().pretty())
+        .with(fmt::layer().pretty().with_ansi(!no_color::is_no_color()))
         .with(EnvFilter::from_env("READYMADE_LOG"))
         .with(
             tracing_journald::layer()
