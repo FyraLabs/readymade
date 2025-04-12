@@ -1,3 +1,5 @@
+use std::os::unix::fs::PermissionsExt;
+
 use color_eyre::{eyre::Context as _, Result, Section as _};
 use serde::{Deserialize, Serialize};
 
@@ -31,29 +33,35 @@ impl PostInstallModule for Script {
             handle_process(context, "/usr/share/readymade/postinstall.sh", cmd)?;
         }
 
-        let cmd = std::process::Command::new("sh")
-            .args([
-                "-c",
-                "set -x; for f in /etc/readymade/postinstall.d/*.sh; do sh $f; done",
-            ])
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .spawn()?;
+        if std::fs::exists("/etc/readymade/postinstall.d/").is_ok_and(|x| x) {
+            for f in std::fs::read_dir("/etc/readymade/postinstall.d/")? {
+                let f = f?;
+                if f.metadata()?.is_file() && f.metadata()?.permissions().mode() & 0o111 != 0 {
+                    let cmd = std::process::Command::new("sh")
+                        .arg(f.path())
+                        .stdin(std::process::Stdio::piped())
+                        .stdout(std::process::Stdio::piped())
+                        .stderr(std::process::Stdio::piped())
+                        .spawn()?;
+                    handle_process(context, f.path().to_string_lossy().as_ref(), cmd)?;
+                }
+            }
+        }
 
-        handle_process(context, "/etc/readymade/postinstall.d/*.sh", cmd)?;
-
-        let cmd = std::process::Command::new("sh")
-            .args([
-                "-c",
-                "set -x; for f in /usr/share/readymade/postinstall.d/*.sh; do sh $f; done",
-            ])
-            .stdin(std::process::Stdio::piped())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .spawn()?;
-
-        handle_process(context, "/usr/share/readymade/postinstall.d/*.sh", cmd)?;
+        if std::fs::exists("/usr/share/readymade/postinstall.d/").is_ok_and(|x| x) {
+            for f in std::fs::read_dir("/usr/share/readymade/postinstall.d/")? {
+                let f = f?;
+                if f.metadata()?.is_file() && f.metadata()?.permissions().mode() & 0o111 != 0 {
+                    let cmd = std::process::Command::new("sh")
+                        .arg(f.path())
+                        .stdin(std::process::Stdio::piped())
+                        .stdout(std::process::Stdio::piped())
+                        .stderr(std::process::Stdio::piped())
+                        .spawn()?;
+                    handle_process(context, f.path().to_string_lossy().as_ref(), cmd)?;
+                }
+            }
+        }
 
         Ok(())
     }

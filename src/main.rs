@@ -283,6 +283,8 @@ fn handle_l10n() -> i18n_embed::fluent::FluentLanguageLoader {
 #[allow(clippy::missing_panics_doc)]
 fn main() -> Result<()> {
     let _guard = setup_hooks();
+    *LL.write() = Some(handle_l10n());
+
     if let Some((i, _)) = std::env::args().find_position(|arg| arg == "--non-interactive") {
         tracing::info!("Running in non-interactive mode");
         // Get installation state from stdin json instead
@@ -300,7 +302,7 @@ fn main() -> Result<()> {
     }
 
     *CONFIG.write() = cfg::get_cfg()?;
-    *LL.write() = Some(handle_l10n());
+    *INSTALLATION_STATE.write() = InstallationState::from(&*CONFIG.read());
 
     gtk::gio::resources_register_include!("resources.gresource")?;
 
