@@ -1,7 +1,7 @@
 #![allow(clippy::str_to_string)]
 use color_eyre::eyre::eyre;
 use color_eyre::Result;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_valid::toml::FromTomlStr;
 use serde_valid::Validate;
 
@@ -10,7 +10,7 @@ use crate::backend::postinstall::Module;
 
 const DEFAULT_CFG_PATH: &str = "/etc/readymade.toml";
 
-#[derive(Deserialize, Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum CopyMode {
     #[default]
@@ -78,6 +78,7 @@ mod tests {
 
                 [install]
                 allowed_installtypes = ["chromebookinstall"]
+                copy_mode = "bootc"
 
                 [[postinstall]]
                 module = "GRUB2"
@@ -106,7 +107,7 @@ mod tests {
                 },
                 install: Install {
                     allowed_installtypes: vec![InstallationType::ChromebookInstall],
-                    copy_mode: CopyMode::Repart,
+                    copy_mode: CopyMode::Bootc,
                     bootc_imgref: None,
                 },
                 postinstall: vec![
