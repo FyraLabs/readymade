@@ -8,6 +8,7 @@ use ipc_channel::ipc::IpcError;
 use ipc_channel::ipc::IpcOneShotServer;
 use ipc_channel::ipc::IpcSender;
 use itertools::Itertools;
+use lsblk::Populate;
 use serde::{Deserialize, Serialize};
 use std::io::BufRead;
 use std::io::BufReader;
@@ -290,23 +291,13 @@ impl InstallationState {
             return Ok(());
         };
 
-        tracing::info!(?imgref, "pulling container image with pull");
-
-        let cmd = Command::new("podman")
-            .args(["pull", imgref])
-            .status()
-            .wrap_err("cannot run podman")?;
-
-        if !cmd.success() {
-            return Err(eyre!("`podman pull {imgref}` failed"));
-        }
-
         tracing::info!(?imgref, "running bootc install to-filesystem");
 
         let targetroot = tempfile::tempdir()?;
         let targetroot = targetroot.path();
         let mut decrypted_partitions: std::collections::HashMap<String, PathBuf> =
             std::collections::HashMap::new();
+        let mut boot_mount_spec = Default::default();
         let mounts = output
             .mountpoints()
             .map(|(mntpoint, node)| {
@@ -334,6 +325,9 @@ impl InstallationState {
                 } else {
                     PathBuf::from(node)
                 };
+                if mntpoint == "/boot/efi" {
+                    node.clone_into(&mut boot_mount_spec);
+                }
                 Result::<_, color_eyre::eyre::Error>::Ok((node, PathBuf::from(mntpoint)))
             })
             .try_collect::<_, Vec<_>, _>()?
@@ -360,9 +354,23 @@ impl InstallationState {
             })
             .collect::<Result<Vec<_>, color_eyre::Report>>()?;
 
+        if boot_mount_spec == PathBuf::default() {
+            return Err(eyre!("partition with mountpoint `/boot/efi` not found"));
+        }
+        let mut boot_mount_spec = lsblk::BlockDevice::from_abs_path_unpopulated(boot_mount_spec);
+
         let cmd = Command::new("bootc")
             .args(["install", "to-filesystem"])
             .args(["--source-imgref", imgref])
+            .args([
+                "--boot-mount-spec",
+                &format!(
+                    "UUID={}",
+                    boot_mount_spec
+                        .populate_uuid()?
+                        .expect("/boot/efi has no uuid")
+                ),
+            ])
             .arg(targetroot)
             .status()
             .wrap_err("cannot run bootc")?;
