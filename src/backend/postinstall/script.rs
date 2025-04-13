@@ -79,7 +79,7 @@ fn handle_process(
         return Err(color_eyre::Report::msg("fail to run script(s)")
             .note(format!("Running: {f}"))
             .section(format!("Stdout:\n{}", String::from_utf8_lossy(&out.stdout)))
-            .section(format!("Stderr:\n{}", String::from_utf8_lossy(&out.stdout))));
+            .section(format!("Stderr:\n{}", String::from_utf8_lossy(&out.stderr))));
     }
 
     Ok(())
