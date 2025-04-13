@@ -234,7 +234,7 @@ impl InstallationState {
             .devpath;
 
         tracing::info!("Layering repart templates");
-        let cfgdir = Self::layer_configdir(&inst_type.cfgdir())?;
+        let cfgdir = Self::layer_configdir(&inst_type.cfgdir(self.bootc_imgref.is_some()))?;
 
         // Let's write the encryption key to the keyfile
         let keyfile = std::path::Path::new(consts::LUKS_KEYFILE_PATH);
@@ -242,7 +242,6 @@ impl InstallationState {
             std::fs::write(keyfile, key)?;
         }
 
-        self.disable_copy(&cfgdir)?;
         self.enable_encryption(&cfgdir)?;
         let repart_out = stage!(mkpart {
             // todo: not freeze on error, show error message as err handler?
@@ -297,7 +296,7 @@ impl InstallationState {
         let targetroot = targetroot.path();
         let mut decrypted_partitions: std::collections::HashMap<String, PathBuf> =
             std::collections::HashMap::new();
-        let mut boot_mount_spec = Default::default();
+        let mut boot_mount_spec = PathBuf::default();
         let mounts = output
             .mountpoints()
             .map(|(mntpoint, node)| {
@@ -357,20 +356,28 @@ impl InstallationState {
         if boot_mount_spec == PathBuf::default() {
             return Err(eyre!("partition with mountpoint `/boot/efi` not found"));
         }
+        tracing::debug!(?boot_mount_spec);
         let mut boot_mount_spec = lsblk::BlockDevice::from_abs_path_unpopulated(boot_mount_spec);
+
+        // HACK: the kernel fails to update /dev immediately, so we need to put this in a loop
+        let mut retries = 0;
+
+        let esp_uuid = loop {
+            if let Some(r) = boot_mount_spec.populate_uuid()? {
+                break r;
+            }
+            assert!(
+                retries != 100,
+                "cannot obtain uuid of esp (retried 100 times)"
+            );
+            retries += 1;
+            std::thread::sleep(std::time::Duration::from_millis(200));
+        };
 
         let cmd = Command::new("bootc")
             .args(["install", "to-filesystem"])
             .args(["--source-imgref", imgref])
-            // .args([
-            //     "--boot-mount-spec",
-            //     &format!(
-            //         "UUID={}",
-            //         boot_mount_spec
-            //             .populate_uuid()?
-            //             .expect("/boot/efi has no uuid")
-            //     ),
-            // ])
+            .args(["--boot-mount-spec", &format!("UUID={esp_uuid}")])
             .arg(targetroot)
             .status()
             .wrap_err("cannot run bootc")?;
@@ -599,12 +606,6 @@ impl InstallationState {
             .insert("Encrypt".to_owned(), serde_systemd_unit::Value::String(v));
         f.to_string()
     }
-    fn set_nocopy_to_file(f: &str) -> String {
-        let mut f = serde_systemd_unit::parse(f).expect("cannot parse templates");
-        (f.sections.get_mut("Partition").unwrap()).remove("CopyBlocks");
-        (f.sections.get_mut("Partition").unwrap()).remove("CopyFiles");
-        f.to_string()
-    }
 
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
@@ -626,26 +627,6 @@ impl InstallationState {
         std::fs::write(&root_file, f)?;
 
         // TODO: somehow actually use this config file
-        Ok(())
-    }
-
-    // WARN: DON'T use this method unless you're using layer_configdir
-    fn disable_copy(&self, cfgdir: &Path) -> Result<()> {
-        if self.bootc_imgref.is_none() {
-            return Ok(());
-        }
-        let root_file = cfgdir.join("20-efi.conf");
-        let f = std::fs::read_to_string(&root_file)?;
-        let f = Self::set_nocopy_to_file(&f);
-        std::fs::write(&root_file, f)?;
-        let root_file = cfgdir.join("45-boot.conf");
-        let f = std::fs::read_to_string(&root_file)?;
-        let f = Self::set_nocopy_to_file(&f);
-        std::fs::write(&root_file, f)?;
-        let root_file = cfgdir.join("50-root.conf");
-        let f = std::fs::read_to_string(&root_file)?;
-        let f = Self::set_nocopy_to_file(&f);
-        std::fs::write(&root_file, f)?;
         Ok(())
     }
 
@@ -724,9 +705,10 @@ impl InstallationState {
 }
 
 impl InstallationType {
-    fn cfgdir(&self) -> PathBuf {
+    fn cfgdir(&self, is_bootc: bool) -> PathBuf {
         match self {
             Self::ChromebookInstall => repart_dir().join("chromebook"),
+            Self::WholeDisk if is_bootc => repart_dir().join("bootcwholedisk"),
             Self::WholeDisk => repart_dir().join("wholedisk"),
             Self::DualBoot(_) => todo!(),
             Self::Custom => unreachable!(),
