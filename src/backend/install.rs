@@ -362,15 +362,15 @@ impl InstallationState {
         let cmd = Command::new("bootc")
             .args(["install", "to-filesystem"])
             .args(["--source-imgref", imgref])
-            .args([
-                "--boot-mount-spec",
-                &format!(
-                    "UUID={}",
-                    boot_mount_spec
-                        .populate_uuid()?
-                        .expect("/boot/efi has no uuid")
-                ),
-            ])
+            // .args([
+            //     "--boot-mount-spec",
+            //     &format!(
+            //         "UUID={}",
+            //         boot_mount_spec
+            //             .populate_uuid()?
+            //             .expect("/boot/efi has no uuid")
+            //     ),
+            // ])
             .arg(targetroot)
             .status()
             .wrap_err("cannot run bootc")?;
