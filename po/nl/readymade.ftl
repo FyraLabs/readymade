@@ -1,3 +1,4 @@
+# any change made by me, Feike Donia, may be released using any DFSG approved licence.
 prev = Vorige
 next = Volgende
 
