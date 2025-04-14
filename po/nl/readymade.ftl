@@ -1,23 +1,85 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
 prev = Vorige
 next = Volgende
-page-welcome-try = Proberen
+
+parttype-root = Tophiërarchie bestandssysteem (/) ({$path})
+parttype-extendedboot = Extended Bootloader-partitie ({$path})
+parttype-esp = EFI-systeempartitie ({$path})
+parttype-home = Gebruikerspartitie (/home) ({$path})
+parttype-var = Partitie voor variabele gegevens (/var) ({$path})
+parttype-other = Mountpoint aangepaste partitionering 
+
+
+page-welcome = {$distro} heet u welkom!
+page-welcome-desc = U kunt {$distro} eerst uittesten vanaf dit installatieprogramma of de installatie direct starten. U kunt altijd naar dit scherm terugkeren door de "Installer" te openen vanuit het menu.
+page-welcome-try = Eerst uittesten (aanbevolen)
 page-welcome-install = Installeren
-page-failure = Installatietype
+
+page-failure = Installatiefout
 page-failure-close = Sluiten
 page-failure-bug = Een bug rapporteren
+
 page-language = Taal
+page-language-search-lang = Naar taal en regio zoeken...
 page-language-next = Volgende
+
+page-completed = Voltooid
 page-completed-desc = Installatie voltooid. Start de computer nu opnieuw op om van uw vers geïnstalleerde systeem te genieten.
 page-completed-close = Sluiten
 page-completed-reboot = Opnieuw opstarten
-page-destination = Locatie
-page-confirmation = Bevestiging
-page-installation = Installatie
-page-installation-progress = Basissysteem wordt geïnstalleerd...
-page-installationtype = Installatietype
-page-installationtype-chromebook = Chromebook
 
+page-destination = Einddoel
+
+page-installdual = Dual Boot
+page-installdual-otheros = Ander besturingssysteem (OS)
+
+page-confirmation = Bevestiging
+
+page-installation = Installatie
+page-installation-welcome-desc = Maak kennis met uw nieuwe besturingssysteem.
+page-installation-help = Hulp nodig?
+page-installation-help-desc = Stel uw vraag in een van onze chats!
+page-installation-contrib = Draag bij aan Ultramarine
+page-installation-contrib-desc = Leer hoe u kunt bijdragen met tijd, geld of hardware.
+page-installation-progress = Basissysteem wordt geïnstalleerd...
+
+page-installcustom = Installatie aanpassen
+page-installcustom-title = Partities en mountpoints
+page-installcustom-desc = {$num} definition(s)
+page-installcustom-tool = Partitioneertool openen
+page-installcustom-add = Add a new definition/row
+
+page-installationtype = Installatietype
+page-installationtype-entire = Gehele schijf
+page-installationtype-tpm = TPM inschakelen
+page-installationtype-encrypt = Schijfversleuteling inschakelen
+page-installationtype-chromebook = Chromebook
+page-installationtype-dual = Dual Boot
+page-installationtype-custom = Aanpassen
+
+dialog-installtype-encrypt = Schijfversleuteling
+dialog-installtype-encrypt-desc = Stel het wachtwoord voor schijfversleuteling in.
+    Als u het wachtwoord verliest, kunnen uw gegevens niet worden hersteld.
+dialog-installtype-password = Wachtwoord
+dialog-installtype-repeat = Wachtwoord herhalen
+dialog-installtype-cancel = Annuleren
+dialog-installtype-confirm = Bevestigen 
+
+installtype-edit-mp = Mountpoint bewerken
+installtype-rm-mp = Mountpoint verwijderen
+
+dialog-mp-part = Partitie
+dialog-mp-at = Mountpoint
+dialog-mp-opts = Mount-opties
+
+installtype-parttool = Selecteer uw partitioneringstool
+
+stage-extracting = Bestanden uitpakken...
+stage-copying = Bestanden kopiëren...
+stage-mkpart = Partities aanmaken en bestanden kopiëren...
+stage-initramfs = Opnieuw genereren van initramfs...
+stage-grub = System grub standaardinstellingen genereren...
+stage-grub1 = Stage 1 grub.cfg in ESP genereren...
+stage-grub2 = Stage 2 grub.cfg in /boot/grub2/grub.cfg genereren...
+stage-biosgrub = BIOS Grub2 installeren...
+stage-kernel = Kernels opnieuw installeren...
+stage-selinux = SELinux-labels installeren...
