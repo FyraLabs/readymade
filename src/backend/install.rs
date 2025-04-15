@@ -8,7 +8,6 @@ use ipc_channel::ipc::IpcError;
 use ipc_channel::ipc::IpcOneShotServer;
 use ipc_channel::ipc::IpcSender;
 use itertools::Itertools;
-use lsblk::Populate;
 use serde::{Deserialize, Serialize};
 use std::io::BufRead;
 use std::io::BufReader;
@@ -20,7 +19,6 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use sys_mount::Unmount as _;
 use tee_readwrite::TeeReader;
 
 use crate::consts;
@@ -296,88 +294,80 @@ impl InstallationState {
         let targetroot = targetroot.path();
         let mut decrypted_partitions: std::collections::HashMap<String, PathBuf> =
             std::collections::HashMap::new();
-        let mounts = output
-            .mountpoints()
-            .map(|(mntpoint, node)| {
-                let node = if crate::backend::repart_output::is_luks(&node) {
-                    if let Some(mapper) = decrypted_partitions.get(&node) {
-                        mapper.clone()
-                    } else {
-                        let pass =
-                            passphrase.ok_or_eyre("Passphrase is empty when is_luks() is true")?;
-                        // We need to sanitize the label for the mapper device name, as it can't contain slashes
-                        //
-                        // I forgot to account for this when I refactored it -Cappy
-                        //
-                        let label =
-                            crate::backend::repart_output::generate_unique_mapper_label(mntpoint);
-                        // XXX: This introduces some weird ordering issues with generate_fstab when decrypting from here
-                        // Because generate_fstab() assumes that the partitions are decrypted already.
-                        //
-                        // todo: add some global cache for decrypted partitions
-                        let mapper =
-                            crate::backend::repart_output::luks_decrypt(&node, pass, &label)?;
-                        decrypted_partitions.insert(node.clone(), mapper.clone());
-                        mapper
-                    }
-                } else {
-                    PathBuf::from(node)
-                };
-                Result::<_, color_eyre::eyre::Error>::Ok((node, PathBuf::from(mntpoint)))
-            })
-            .try_collect::<_, Vec<_>, _>()?
-            .into_iter()
-            .sorted_by(|(_, a), (_, b)| {
-                match (a.components().count(), b.components().count()) {
-                    (1, _) if a.components().next() == Some(std::path::Component::RootDir) => {
-                        std::cmp::Ordering::Less
-                    } // root dir
-                    (_, 1) if b.components().next() == Some(std::path::Component::RootDir) => {
-                        std::cmp::Ordering::Greater
-                    } // root dir
-                    (x, y) if x == y => a.cmp(b),
-                    (x, y) => x.cmp(&y),
-                }
-            })
-            .collect::<Vec<(PathBuf, PathBuf)>>();
-
-        // Manually mount using shell, bootc complains when we use system::mount
-        for (source, mntpoint) in &mounts {
+        let mps = output.mountpoints().map(|(mntpoint, node)| {
+            let mp = PathBuf::from(mntpoint);
+            if !crate::backend::repart_output::is_luks(&node) {
+                return Result::<_, color_eyre::eyre::Error>::Ok((PathBuf::from(node), mp));
+            }
+            let node = if let Some(mapper) = decrypted_partitions.get(&node) {
+                mapper.clone()
+            } else {
+                let pass = passphrase.ok_or_eyre("Passphrase is empty when is_luks() is true")?;
+                // We need to sanitize the label for the mapper device name, as it can't contain slashes
+                //
+                // I forgot to account for this when I refactored it -Cappy
+                //
+                let label = crate::backend::repart_output::generate_unique_mapper_label(mntpoint);
+                // XXX: This introduces some weird ordering issues with generate_fstab when decrypting from here
+                // Because generate_fstab() assumes that the partitions are decrypted already.
+                //
+                // todo: add some global cache for decrypted partitions
+                let mapper = crate::backend::repart_output::luks_decrypt(&node, pass, &label)?;
+                decrypted_partitions.insert(node.clone(), mapper.clone());
+                mapper
+            };
+            Result::<_, color_eyre::eyre::Error>::Ok((node, mp))
+        });
+        let mps = mps.try_collect::<_, Vec<_>, _>()?.into_iter();
+        let mut mps = mps.sorted_by(|(_, a), (_, b)| {
+            match (a.components().count(), b.components().count()) {
+                (1, _) if a.components().next() == Some(std::path::Component::RootDir) => {
+                    std::cmp::Ordering::Less
+                } // root dir
+                (_, 1) if b.components().next() == Some(std::path::Component::RootDir) => {
+                    std::cmp::Ordering::Greater
+                } // root dir
+                (x, y) if x == y => a.cmp(b),
+                (x, y) => x.cmp(&y),
+            }
+        });
+        mps.try_for_each(|(source, mntpoint)| {
             let target = targetroot.join(mntpoint.strip_prefix("/").expect("cannot strip /"));
             tracing::debug!(?source, ?target, "mounting");
-            if !target.exists() {
-                std::fs::create_dir_all(&target)?;
-            }
-            let cmd = Command::new("mount")
-                .args([source, &target])
+            std::fs::create_dir_all(&target)?;
+            // use shell to mount manually since sys_mount is buggy
+            if !Command::new("mount")
+                .args([&source, &target])
                 .status()
-                .wrap_err("cannot run mount")?;
-
-            if !cmd.success() {
-                return Err(eyre!("`mount {:?} {:?}` failed", source, target));
+                .wrap_err("cannot run mount")?
+                .success()
+            {
+                return Err(eyre!("`mount {source:?} → {target:?}` failed"));
             }
-        }
+            Ok(())
+        })?;
 
-        let cmd = Command::new("bootc")
+        if !Command::new("bootc")
             .args(["install", "to-filesystem"])
             .args(["--source-imgref", imgref])
             .arg(targetroot)
             .status()
-            .wrap_err("cannot run bootc")?;
-
-        if !cmd.success() {
+            .wrap_err("cannot run bootc")?
+            .success()
+        {
             return Err(eyre!("`bootc install to-filesystem` failed"));
         }
 
-        let umount_cmd = Command::new("umount")
+        if !Command::new("umount")
             .arg("-R")
             .arg(targetroot)
             .status()
-            .wrap_err("failed to run umount")?;
-
-        if !umount_cmd.success() {
-            return Err(eyre!("`umount -R {:?}` failed", targetroot));
+            .wrap_err("failed to run umount")?
+            .success()
+        {
+            return Err(eyre!("`umount -R {targetroot:?}` failed"));
         }
+
         Ok(())
     }
 
