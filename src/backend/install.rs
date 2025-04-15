@@ -296,7 +296,6 @@ impl InstallationState {
         let targetroot = targetroot.path();
         let mut decrypted_partitions: std::collections::HashMap<String, PathBuf> =
             std::collections::HashMap::new();
-        let mut boot_mount_spec = PathBuf::default();
         let mounts = output
             .mountpoints()
             .map(|(mntpoint, node)| {
@@ -324,9 +323,6 @@ impl InstallationState {
                 } else {
                     PathBuf::from(node)
                 };
-                if mntpoint == "/boot/efi" {
-                    node.clone_into(&mut boot_mount_spec);
-                }
                 Result::<_, color_eyre::eyre::Error>::Ok((node, PathBuf::from(mntpoint)))
             })
             .try_collect::<_, Vec<_>, _>()?
@@ -343,52 +339,44 @@ impl InstallationState {
                     (x, y) => x.cmp(&y),
                 }
             })
-            .map(|(source, mntpoint)| {
-                let target = targetroot.join(mntpoint.strip_prefix("/").expect("cannot strip /"));
-                tracing::debug!(?source, ?target, "mounting");
-                if !target.exists() {
-                    std::fs::create_dir_all(&target)?;
-                }
-                Ok(sys_mount::Mount::new(source, target)?)
-            })
-            .collect::<Result<Vec<_>, color_eyre::Report>>()?;
+            .collect::<Vec<(PathBuf, PathBuf)>>();
 
-        if boot_mount_spec == PathBuf::default() {
-            return Err(eyre!("partition with mountpoint `/boot/efi` not found"));
-        }
-        tracing::debug!(?boot_mount_spec);
-        let mut boot_mount_spec = lsblk::BlockDevice::from_abs_path_unpopulated(boot_mount_spec);
-
-        // HACK: the kernel fails to update /dev immediately, so we need to put this in a loop
-        let mut retries = 0;
-
-        let esp_uuid = loop {
-            if let Some(r) = boot_mount_spec.populate_uuid()? {
-                break r;
+        // Manually mount using shell, bootc complains when we use system::mount
+        for (source, mntpoint) in &mounts {
+            let target = targetroot.join(mntpoint.strip_prefix("/").expect("cannot strip /"));
+            tracing::debug!(?source, ?target, "mounting");
+            if !target.exists() {
+                std::fs::create_dir_all(&target)?;
             }
-            assert!(
-                retries != 100,
-                "cannot obtain uuid of esp (retried 100 times)"
-            );
-            retries += 1;
-            std::thread::sleep(std::time::Duration::from_millis(200));
-        };
+            let cmd = Command::new("mount")
+                .args([source, &target])
+                .status()
+                .wrap_err("cannot run mount")?;
+
+            if !cmd.success() {
+                return Err(eyre!("`mount {:?} {:?}` failed", source, target));
+            }
+        }
 
         let cmd = Command::new("bootc")
             .args(["install", "to-filesystem"])
             .args(["--source-imgref", imgref])
-            .args(["--boot-mount-spec", &format!("UUID={esp_uuid}")])
             .arg(targetroot)
             .status()
             .wrap_err("cannot run bootc")?;
 
-        mounts
-            .iter()
-            .rev()
-            .try_for_each(|m| m.unmount(sys_mount::UnmountFlags::empty()))?;
-
         if !cmd.success() {
             return Err(eyre!("`bootc install to-filesystem` failed"));
+        }
+
+        let umount_cmd = Command::new("umount")
+            .arg("-R")
+            .arg(targetroot)
+            .status()
+            .wrap_err("failed to run umount")?;
+
+        if !umount_cmd.success() {
+            return Err(eyre!("`umount -R {:?}` failed", targetroot));
         }
         Ok(())
     }
