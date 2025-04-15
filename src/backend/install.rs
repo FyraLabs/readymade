@@ -425,6 +425,7 @@ impl InstallationState {
         };
 
         tracing::info!("Writing /etc/fstab...");
+        std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc/")?;
         std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
 
         // Write the state dump to the chroot
