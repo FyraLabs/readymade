@@ -25,3 +25,23 @@ Please refer to [HACKING.md](HACKING.md) for more information on how to contribu
 As the convention of making up codenames for system components after J-Pop references, we have decided to name the installer after Ado's single, [Readymade](https://youtu.be/jg09lNupc1s), which happens to have a cool meaning to it as this installer essentially installs ready-made squashfs images.
 
 The lyrics themselves could be seen as an insult to people overcomplicating things for themselves (e.g. Arch installation).
+
+## License
+
+`GPL-3.0-or-later`
+
+    Copyright © 2024~2025  Fyra Labs & Ultramarine Linux Contributors
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
