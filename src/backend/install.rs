@@ -256,7 +256,11 @@ impl InstallationState {
                 &repart_out,
                 self.encryption_key.as_deref(),
             )?;
-            self.bootc_copy(bootc_rootfs_mountpoint, self.encryption_key.as_deref())?;
+            self.bootc_copy(
+                bootc_rootfs_mountpoint,
+                &repart_out,
+                self.encryption_key.as_deref(),
+            )?;
             Command::new("sync").status().ok();
             Command::new("umount")
                 .arg("-R")
@@ -406,7 +410,12 @@ impl InstallationState {
     }
 
     #[allow(clippy::unwrap_in_result)]
-    fn bootc_copy(&self, target_root: &Path, passphrase: Option<&str>) -> Result<()> {
+    fn bootc_copy(
+        &self,
+        target_root: &Path,
+        output: &RepartOutput,
+        passphrase: Option<&str>,
+    ) -> Result<()> {
         let Some(imgref) = &self.bootc_imgref else {
             return Err(eyre!(
                 "Bootc copy mode called without having imgref defined"
@@ -415,10 +424,19 @@ impl InstallationState {
 
         tracing::info!(?imgref, "running bootc install to-filesystem");
 
+        let crypt_data = output.generate_cryptdata()?;
+        let mut args = vec!["install", "to-filesystem", "--source-imgref", imgref];
+        if let Some(ref data) = crypt_data {
+            for opt in &data.cmdline_opts {
+                args.push("--karg");
+                args.push(opt);
+            }
+        }
+        args.extend(vec!["--karg=rgbh", "--karg=quiet"]);
+        args.push(target_root.to_str().unwrap());
+
         if !Command::new("bootc")
-            .args(["install", "to-filesystem"])
-            .args(["--source-imgref", imgref])
-            .arg(target_root)
+            .args(args)
             .status()
             .wrap_err("cannot run bootc")?
             .success()
