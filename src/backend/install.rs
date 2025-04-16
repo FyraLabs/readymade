@@ -424,9 +424,11 @@ impl InstallationState {
             distro_name: self.distro_name.clone(),
         };
 
-        tracing::info!("Writing /etc/fstab...");
-        std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc/")?;
-        std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
+        if state_dump.state.bootc_imgref.is_none() {
+            tracing::info!("Writing /etc/fstab...");
+            std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc/")?;
+            std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
+        }
 
         // Write the state dump to the chroot
         let state_dump_path = Path::new(crate::consts::READYMADE_STATE_PATH);
@@ -443,7 +445,7 @@ impl InstallationState {
         )
         .wrap_err("Failed to write state dump file")?;
 
-        if let Some(data) = crypt_data {
+        if let Some(data) = crypt_data.filter(|_| state_dump.state.bootc_imgref.is_none()) {
             tracing::info!("Writing /etc/crypttab...");
             std::fs::write("/etc/crypttab", data.crypttab)
                 .wrap_err("cannot write to /etc/crypttab")?;
