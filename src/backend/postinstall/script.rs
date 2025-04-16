@@ -8,12 +8,14 @@ use super::{Context, PostInstallModule};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Script;
 
+const REPART_COOL_ROOTFS_ENV_VARIABLE: &str = "REPART_MOUNTED_ROOTFS";
+
 impl PostInstallModule for Script {
     #[allow(clippy::unwrap_in_result)]
     fn run(&self, context: &Context) -> Result<()> {
         if std::fs::exists("/etc/readymade/postinstall.sh").is_ok_and(|x| x) {
-            let cmd = std::process::Command::new("sh")
-                .arg("/etc/readymade/postinstall.sh")
+            let cmd = std::process::Command::new("/etc/readymade/postinstall.sh")
+                .env(REPART_COOL_ROOTFS_ENV_VARIABLE, context.target_root.clone())
                 .stdin(std::process::Stdio::piped())
                 .stdout(std::process::Stdio::piped())
                 .stderr(std::process::Stdio::piped())
@@ -23,8 +25,8 @@ impl PostInstallModule for Script {
         }
 
         if std::fs::exists("/usr/share/readymade/postinstall.sh").is_ok_and(|x| x) {
-            let cmd = std::process::Command::new("sh")
-                .arg("/usr/share/readymade/postinstall.sh")
+            let cmd = std::process::Command::new("/usr/share/readymade/postinstall.sh")
+                .env(REPART_COOL_ROOTFS_ENV_VARIABLE, context.target_root.clone())
                 .stdin(std::process::Stdio::piped())
                 .stdout(std::process::Stdio::piped())
                 .stderr(std::process::Stdio::piped())
@@ -37,8 +39,8 @@ impl PostInstallModule for Script {
             for f in std::fs::read_dir("/etc/readymade/postinstall.d/")? {
                 let f = f?;
                 if f.metadata()?.is_file() && f.metadata()?.permissions().mode() & 0o111 != 0 {
-                    let cmd = std::process::Command::new("sh")
-                        .arg(f.path())
+                    let cmd = std::process::Command::new(f.path())
+                        .env(REPART_COOL_ROOTFS_ENV_VARIABLE, context.target_root.clone())
                         .stdin(std::process::Stdio::piped())
                         .stdout(std::process::Stdio::piped())
                         .stderr(std::process::Stdio::piped())
@@ -52,8 +54,8 @@ impl PostInstallModule for Script {
             for f in std::fs::read_dir("/usr/share/readymade/postinstall.d/")? {
                 let f = f?;
                 if f.metadata()?.is_file() && f.metadata()?.permissions().mode() & 0o111 != 0 {
-                    let cmd = std::process::Command::new("sh")
-                        .arg(f.path())
+                    let cmd = std::process::Command::new(f.path())
+                        .env(REPART_COOL_ROOTFS_ENV_VARIABLE, context.target_root.clone())
                         .stdin(std::process::Stdio::piped())
                         .stdout(std::process::Stdio::piped())
                         .stderr(std::process::Stdio::piped())
