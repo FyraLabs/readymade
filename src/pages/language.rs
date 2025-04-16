@@ -121,9 +121,6 @@ page!(Language {
     btnfactory: BtnFactory,
     search: libhelium::TextField,
 }:
-    // preinit {
-    //     let btnfactory = model.btnfactory.0.widget();
-    // }
     init[search btnfactory { model.btnfactory.0.widget().clone() }](root, sender, model, widgets) {
         let btnfactory2 = btnfactory.clone();
         search.internal_entry().connect_changed(move |en| {
@@ -148,25 +145,7 @@ page!(Language {
             if let Some(row) = self.btnfactory.selected_row() {
                 #[allow(clippy::cast_sign_loss)]
                 let lang = self.btnfactory.0.get(row.index() as usize).unwrap();
-                tracing::info!(lang.locale, "Using selected locale");
-                if let Ok(locale) =
-                    lang.locale.split_once('.').map(|(left, _)| left.clone())
-                        .unwrap_or(&*lang.locale).to_string()
-                        .parse::<i18n_embed::unic_langid::LanguageIdentifier>()
-                        .inspect_err(|e| tracing::error!(?e, "Cannot apply language"))
-                {
-                    let mut locales = crate::process_locale(&crate::LL.read().as_ref().unwrap().available_languages(&crate::Localizations).unwrap())(locale);
-                    // let loader = i18n_embed::fluent::FluentLanguageLoader::new("readymade", locales.first().map_or_else(|| "en-US".parse().unwrap(), Clone::clone));
-                    let loader = i18n_embed::fluent::FluentLanguageLoader::new("readymade", "en-US".parse().unwrap());
-                    if locales.len() == 0 {
-                        locales.push("en-US".parse().unwrap());
-                    }
-                    loader.load_languages(&crate::Localizations, &locales).expect("fail to load languages");
-                    // let loader = crate::LL.read().as_ref().unwrap().select_languages(&locales);
-                    tracing::debug!(lang=?loader.current_languages(), welcome=loader.get_args_concrete("page-welcome", std::collections::HashMap::from_iter(std::iter::once(("distro", "Ultramarine Linux".into())))), "new loader");
-                    *crate::LL.write() = Some(loader);
-                    crate::INSTALLATION_STATE.write().langlocale = Some(lang.locale.to_string());
-                }
+                set_lang(lang);
             }
         }
     } => {}
@@ -212,3 +191,34 @@ page!(Language {
         }
     }
 );
+
+fn set_lang(lang: &LanguageRow) {
+    tracing::info!(lang.locale, "Using selected locale");
+    if let Ok(locale) = lang
+        .locale
+        .split_once('.')
+        .map_or(&*lang.locale, |(left, _)| left)
+        .to_owned()
+        .parse::<i18n_embed::unic_langid::LanguageIdentifier>()
+        .inspect_err(|e| tracing::error!(?e, "Cannot apply language"))
+    {
+        let available_langs = &crate::LL
+            .read()
+            .as_ref()
+            .unwrap()
+            .available_languages(&crate::Localizations)
+            .unwrap();
+        let mut locales = crate::process_locale(available_langs)(locale);
+        let loader =
+            i18n_embed::fluent::FluentLanguageLoader::new("readymade", "en-US".parse().unwrap());
+        if locales.is_empty() {
+            locales.push("en-US".parse().unwrap());
+        }
+        loader
+            .load_languages(&crate::Localizations, &locales)
+            .expect("fail to load languages");
+        tracing::debug!(lang=?loader.current_languages(), welcome=loader.get_args_concrete("page-welcome", std::iter::once(("distro", "Ultramarine Linux".into())).collect()), "new loader");
+        *crate::LL.write() = Some(loader);
+        crate::INSTALLATION_STATE.write().langlocale = Some(lang.locale.clone());
+    }
+}

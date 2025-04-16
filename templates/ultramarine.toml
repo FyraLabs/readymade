@@ -30,3 +30,6 @@ module = "InitialSetup"
 
 [[postinstall]]
 module = "Language"
+
+[[postinstall]]
+module = "Script"

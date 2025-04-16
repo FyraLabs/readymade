@@ -2,10 +2,12 @@ use color_eyre::eyre::bail;
 use color_eyre::eyre::eyre;
 use color_eyre::eyre::Context;
 use color_eyre::eyre::ContextCompat;
+use color_eyre::eyre::OptionExt as _;
 use color_eyre::{Result, Section};
 use ipc_channel::ipc::IpcError;
 use ipc_channel::ipc::IpcOneShotServer;
 use ipc_channel::ipc::IpcSender;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::io::BufRead;
 use std::io::BufReader;
@@ -43,7 +45,7 @@ pub enum InstallationType {
     Custom,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone)]
 pub struct InstallationState {
     pub langlocale: Option<String>,
     pub destination_disk: Option<DiskInit>,
@@ -53,11 +55,12 @@ pub struct InstallationState {
     pub encrypt: bool,
     pub tpm: bool,
     pub encryption_key: Option<String>,
+    pub distro_name: String,
+    pub bootc_imgref: Option<String>,
 }
 
-// TODO: remove this after have support for anything other than chromebook
-impl Default for InstallationState {
-    fn default() -> Self {
+impl From<&crate::cfg::ReadymadeConfig> for InstallationState {
+    fn from(value: &crate::cfg::ReadymadeConfig) -> Self {
         Self {
             tpm: false,
             langlocale: Option::default(),
@@ -69,9 +72,16 @@ impl Default for InstallationState {
                 None
             },
             mounttags: Option::default(),
-            postinstall: crate::CONFIG.read().postinstall.clone(),
+            postinstall: value.postinstall.clone(),
             encrypt: false,
             encryption_key: Option::default(),
+            distro_name: value.distro.name.clone(),
+            bootc_imgref: value
+                .install
+                .bootc_imgref
+                .clone()
+                .filter(|_| value.install.copy_mode == crate::cfg::CopyMode::Bootc)
+                .or_else(|| std::env::var("COPY_SOURCE").ok()),
         }
     }
 }
@@ -222,7 +232,7 @@ impl InstallationState {
             .devpath;
 
         tracing::info!("Layering repart templates");
-        let cfgdir = Self::layer_configdir(&inst_type.cfgdir())?;
+        let cfgdir = Self::layer_configdir(&inst_type.cfgdir(self.bootc_imgref.is_some()))?;
 
         // Let's write the encryption key to the keyfile
         let keyfile = std::path::Path::new(consts::LUKS_KEYFILE_PATH);
@@ -230,14 +240,15 @@ impl InstallationState {
             std::fs::write(keyfile, key)?;
         }
 
-        // TODO: encryption
         self.enable_encryption(&cfgdir)?;
         let repart_out = stage!(mkpart {
             // todo: not freeze on error, show error message as err handler?
-            Self::systemd_repart(blockdev, &cfgdir, self.encrypt && self.encryption_key.is_some())?
+            Self::systemd_repart(blockdev, &cfgdir, self.encrypt && self.encryption_key.is_some(), self.bootc_imgref.is_some())?
         });
 
         let repartcfg_export = super::export::SystemdRepartData::get_configs(&cfgdir)?;
+
+        self.bootc_copy(&repart_out, self.encryption_key.as_deref())?;
 
         tracing::info!("Copying files done, Setting up system...");
         self.setup_system(
@@ -268,6 +279,95 @@ impl InstallationState {
         }
 
         tracing::info!("install() finished");
+        Ok(())
+    }
+
+    #[allow(clippy::unwrap_in_result)]
+    fn bootc_copy(&self, output: &RepartOutput, passphrase: Option<&str>) -> Result<()> {
+        let Some(imgref) = &self.bootc_imgref else {
+            return Ok(());
+        };
+
+        tracing::info!(?imgref, "running bootc install to-filesystem");
+
+        let targetroot = tempfile::tempdir()?;
+        let targetroot = targetroot.path();
+        let mut decrypted_partitions: std::collections::HashMap<String, PathBuf> =
+            std::collections::HashMap::new();
+        let mps = output.mountpoints().map(|(mntpoint, node)| {
+            let mp = PathBuf::from(mntpoint);
+            if !crate::backend::repart_output::is_luks(&node) {
+                return Result::<_, color_eyre::eyre::Error>::Ok((PathBuf::from(node), mp));
+            }
+            let node = if let Some(mapper) = decrypted_partitions.get(&node) {
+                mapper.clone()
+            } else {
+                let pass = passphrase.ok_or_eyre("Passphrase is empty when is_luks() is true")?;
+                // We need to sanitize the label for the mapper device name, as it can't contain slashes
+                //
+                // I forgot to account for this when I refactored it -Cappy
+                //
+                let label = crate::backend::repart_output::generate_unique_mapper_label(mntpoint);
+                // XXX: This introduces some weird ordering issues with generate_fstab when decrypting from here
+                // Because generate_fstab() assumes that the partitions are decrypted already.
+                //
+                // todo: add some global cache for decrypted partitions
+                let mapper = crate::backend::repart_output::luks_decrypt(&node, pass, &label)?;
+                decrypted_partitions.insert(node.clone(), mapper.clone());
+                mapper
+            };
+            Result::<_, color_eyre::eyre::Error>::Ok((node, mp))
+        });
+        let mps = mps.try_collect::<_, Vec<_>, _>()?.into_iter();
+        let mut mps = mps.sorted_by(|(_, a), (_, b)| {
+            match (a.components().count(), b.components().count()) {
+                (1, _) if a.components().next() == Some(std::path::Component::RootDir) => {
+                    std::cmp::Ordering::Less
+                } // root dir
+                (_, 1) if b.components().next() == Some(std::path::Component::RootDir) => {
+                    std::cmp::Ordering::Greater
+                } // root dir
+                (x, y) if x == y => a.cmp(b),
+                (x, y) => x.cmp(&y),
+            }
+        });
+        mps.try_for_each(|(source, mntpoint)| {
+            let target = targetroot.join(mntpoint.strip_prefix("/").expect("cannot strip /"));
+            tracing::debug!(?source, ?target, "mounting");
+            std::fs::create_dir_all(&target)?;
+            // use shell to mount manually since sys_mount is buggy
+            if !Command::new("mount")
+                .args([&source, &target])
+                .status()
+                .wrap_err("cannot run mount")?
+                .success()
+            {
+                return Err(eyre!("`mount {source:?} → {target:?}` failed"));
+            }
+            Ok(())
+        })?;
+
+        if !Command::new("bootc")
+            .args(["install", "to-filesystem"])
+            .args(["--source-imgref", imgref])
+            .arg(targetroot)
+            .status()
+            .wrap_err("cannot run bootc")?
+            .success()
+        {
+            return Err(eyre!("`bootc install to-filesystem` failed"));
+        }
+
+        if !Command::new("umount")
+            .arg("-R")
+            .arg(targetroot)
+            .status()
+            .wrap_err("failed to run umount")?
+            .success()
+        {
+            return Err(eyre!("`umount -R {targetroot:?}` failed"));
+        }
+
         Ok(())
     }
 
@@ -321,9 +421,11 @@ impl InstallationState {
             xbootldr_partition: xbootldr_node.to_owned(),
             lang: self.langlocale.clone().unwrap_or_else(|| "C.UTF-8".into()),
             crypt_data: crypt_data.clone(),
+            distro_name: self.distro_name.clone(),
         };
 
         tracing::info!("Writing /etc/fstab...");
+        std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc/")?;
         std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
 
         // Write the state dump to the chroot
@@ -513,6 +615,7 @@ impl InstallationState {
         blockdev: &Path,
         cfgdir: &Path,
         use_keyfile: bool,
+        is_bootc: bool,
     ) -> Result<crate::backend::repart_output::RepartOutput> {
         let copy_source = Self::determine_copy_source();
 
@@ -529,11 +632,13 @@ impl InstallationState {
             "force",
             "--offline",
             "false",
-            "--copy-source",
-            &copy_source,
             "--json",
             "pretty",
         ];
+
+        if !is_bootc {
+            args.extend_from_slice(&["--copy-source", &copy_source]);
+        }
 
         if use_keyfile {
             let keyfile_path = consts::LUKS_KEYFILE_PATH;
@@ -579,9 +684,10 @@ impl InstallationState {
 }
 
 impl InstallationType {
-    fn cfgdir(&self) -> PathBuf {
+    fn cfgdir(&self, is_bootc: bool) -> PathBuf {
         match self {
             Self::ChromebookInstall => repart_dir().join("chromebook"),
+            Self::WholeDisk if is_bootc => repart_dir().join("bootcwholedisk"),
             Self::WholeDisk => repart_dir().join("wholedisk"),
             Self::DualBoot(_) => todo!(),
             Self::Custom => unreachable!(),

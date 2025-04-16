@@ -295,11 +295,22 @@ impl RepartOutput {
             container.add_mount(mnt_target, PathBuf::from("/sys/firmware/efi/efivars"));
         }
 
+        // expose host rootfs
+        container.add_mount(
+            MountTarget {
+                target: PathBuf::from("/run/host"),
+                fstype: None,
+                flags: MountFlags::BIND,
+                data: None,
+            },
+            PathBuf::from("/"),
+        );
+
         Ok(container)
     }
 }
 
-fn is_luks(node: &str) -> bool {
+pub fn is_luks(node: &str) -> bool {
     let cmd = std::process::Command::new("cryptsetup")
         .arg("isLuks")
         .arg(node)
@@ -312,7 +323,7 @@ fn is_luks(node: &str) -> bool {
 pub static MAPPER_CACHE: std::sync::LazyLock<std::sync::RwLock<Arc<MapperCache>>> =
     std::sync::LazyLock::new(|| std::sync::RwLock::new(Arc::new(MapperCache::new())));
 
-fn luks_decrypt(
+pub fn luks_decrypt(
     node: &str,
     passphrase: &str,
     label: &str,
