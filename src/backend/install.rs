@@ -257,24 +257,26 @@ impl InstallationState {
             Some(repartcfg_export),
         )?;
 
-        // Cleanup mount files from bootc thing
-        let tmproot = tempfile::tempdir()?;
-        let tmproot = tmproot.path();
-        InstallationState::bootc_mount(tmproot, &repart_out, self.encryption_key.as_deref())?;
+        if self.bootc_imgref.is_some() {
+            // Cleanup mount files from bootc thing
+            let tmproot = tempfile::tempdir()?;
+            let tmproot = tmproot.path();
+            Self::bootc_mount(tmproot, &repart_out, self.encryption_key.as_deref())?;
 
-        for f in std::fs::read_dir(tmproot)? {
-            let f = f?;
-            if let Some(filename) = f.file_name().into_string().ok() {
-                match filename.as_str() {
-                    "boot" => (),
-                    "ostree" => (),
-                    ".bootc-aleph.json" => (),
-                    _ => {
-                        if f.file_type()?.is_dir() {
-                            Command::new("umount").arg("-R").arg(f.path()).spawn().ok();
-                            std::fs::remove_dir_all(f.path())?;
-                        } else {
-                            std::fs::remove_file(f.path()).ok();
+            for f in std::fs::read_dir(tmproot)? {
+                let f = f?;
+                if let Some(filename) = f.file_name().into_string().ok() {
+                    match filename.as_str() {
+                        "boot" => (),
+                        "ostree" => (),
+                        ".bootc-aleph.json" => (),
+                        _ => {
+                            if f.file_type()?.is_dir() {
+                                Command::new("umount").arg("-R").arg(f.path()).spawn().ok();
+                                std::fs::remove_dir_all(f.path())?;
+                            } else {
+                                std::fs::remove_file(f.path()).ok();
+                            }
                         }
                     }
                 }
