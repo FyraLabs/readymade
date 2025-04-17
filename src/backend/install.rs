@@ -280,6 +280,15 @@ impl InstallationState {
                         }
                     }
                 }
+                if !Command::new("umount")
+                    .arg("-R")
+                    .arg(tmproot)
+                    .status()
+                    .wrap_err("failed to run umount")?
+                    .success()
+                {
+                    return Err(eyre!("`umount -R {tmproot:?}` failed"));
+                }
             }
         }
 
