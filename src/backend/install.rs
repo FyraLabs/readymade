@@ -265,11 +265,9 @@ impl InstallationState {
 
             for f in std::fs::read_dir(tmproot)? {
                 let f = f?;
-                if let Some(filename) = f.file_name().into_string().ok() {
+                if let Ok(filename) = f.file_name().into_string() {
                     match filename.as_str() {
-                        "boot" => (),
-                        "ostree" => (),
-                        ".bootc-aleph.json" => (),
+                        "boot" | "ostree" | "efi" | ".bootc-aleph.json" => (),
                         _ => {
                             if f.file_type()?.is_dir() {
                                 Command::new("umount").arg("-R").arg(f.path()).spawn().ok();
@@ -282,6 +280,7 @@ impl InstallationState {
                 }
                 if !Command::new("umount")
                     .arg("-R")
+                    .arg("-l")
                     .arg(tmproot)
                     .status()
                     .wrap_err("failed to run umount")?
@@ -403,6 +402,7 @@ impl InstallationState {
 
         if !Command::new("umount")
             .arg("-R")
+            .arg("-l")
             .arg(targetroot)
             .status()
             .wrap_err("failed to run umount")?
