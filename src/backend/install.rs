@@ -270,7 +270,7 @@ impl InstallationState {
                         "boot" | "ostree" | "efi" | ".bootc-aleph.json" => (),
                         _ => {
                             if f.file_type()?.is_dir() {
-                                std::fs::remove_dir_all(f.path())?;
+                                std::fs::remove_dir_all(f.path()).ok();
                             } else {
                                 std::fs::remove_file(f.path()).ok();
                             }
