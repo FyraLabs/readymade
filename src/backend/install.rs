@@ -278,16 +278,12 @@ impl InstallationState {
                         }
                     }
                 }
-                if !Command::new("umount")
+                Command::new("umount")
                     .arg("-R")
                     .arg("-l")
                     .arg(tmproot)
-                    .status()
-                    .wrap_err("failed to run umount")?
-                    .success()
-                {
-                    return Err(eyre!("`umount -R {tmproot:?}` failed"));
-                }
+                    .spawn()
+                    .ok();
             }
         }
 
@@ -403,16 +399,12 @@ impl InstallationState {
 
         Command::new("sync").arg("-f").arg(targetroot).spawn().ok();
 
-        if !Command::new("umount")
+        Command::new("umount")
             .arg("-R")
             .arg("-l")
             .arg(targetroot)
-            .status()
-            .wrap_err("failed to run umount")?
-            .success()
-        {
-            return Err(eyre!("`umount -R {targetroot:?}` failed"));
-        }
+            .spawn()
+            .ok();
 
         Ok(())
     }
