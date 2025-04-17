@@ -262,28 +262,13 @@ impl InstallationState {
             let tmproot = tempfile::tempdir()?;
             let tmproot = tmproot.path();
             Self::bootc_mount(tmproot, &repart_out, self.encryption_key.as_deref())?;
-
-            for f in std::fs::read_dir(tmproot)? {
-                let f = f?;
-                if let Ok(filename) = f.file_name().into_string() {
-                    match filename.as_str() {
-                        "boot" | "ostree" | "efi" | ".bootc-aleph.json" => (),
-                        _ => {
-                            if f.file_type()?.is_dir() {
-                                std::fs::remove_dir_all(f.path()).ok();
-                            } else {
-                                std::fs::remove_file(f.path()).ok();
-                            }
-                        }
-                    }
-                }
-                Command::new("umount")
-                    .arg("-R")
-                    .arg("-l")
-                    .arg(tmproot)
-                    .spawn()
-                    .ok();
-            }
+            Self::bootc_cleanup(tmproot)?;
+            Command::new("umount")
+                .arg("-R")
+                .arg("-l")
+                .arg(tmproot)
+                .spawn()
+                .ok();
         }
 
         if let InstallationType::ChromebookInstall = inst_type {
@@ -311,6 +296,34 @@ impl InstallationState {
         Ok(())
     }
 
+    // This cleans up any folder that is not on the bootc whitelist from a bootc-installed filesystem
+    fn bootc_cleanup(mountpoint: &Path) -> Result<()> {
+        std::fs::read_dir(mountpoint)?.for_each(|f| {
+            let Ok(file) = f else {
+                return;
+            };
+            let Ok(file_name) = file.file_name().into_string() else {
+                return;
+            };
+            let Ok(file_type) = file.file_type() else {
+                return;
+            };
+
+            match file_name.as_str() {
+                "boot" | "ostree" | "efi" | ".bootc-aleph.json" => {}
+                _ => {
+                    if file_type.is_dir() {
+                        std::fs::remove_dir_all(file.path()).ok();
+                    } else {
+                        std::fs::remove_file(file.path()).ok();
+                    }
+                }
+            }
+        });
+        Ok(())
+    }
+
+    // Recursively mounts a bootc-formatted filesystem
     #[allow(clippy::unwrap_in_result)]
     fn bootc_mount(
         targetroot: &Path,
