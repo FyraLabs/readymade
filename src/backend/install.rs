@@ -316,6 +316,7 @@ impl InstallationState {
         Ok(())
     }
 
+    #[allow(clippy::unwrap_in_result)]
     fn bootc_mount(
         targetroot: &Path,
         output: &RepartOutput,
@@ -387,7 +388,7 @@ impl InstallationState {
 
         let targetroot = tempfile::tempdir()?;
         let targetroot = targetroot.path();
-        InstallationState::bootc_mount(targetroot, output, passphrase)?;
+        Self::bootc_mount(targetroot, output, passphrase)?;
 
         if !Command::new("bootc")
             .args(["install", "to-filesystem"])
@@ -399,6 +400,8 @@ impl InstallationState {
         {
             return Err(eyre!("`bootc install to-filesystem` failed"));
         }
+
+        Command::new("sync").arg("-f").arg(targetroot).spawn().ok();
 
         if !Command::new("umount")
             .arg("-R")
