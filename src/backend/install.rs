@@ -252,10 +252,24 @@ impl InstallationState {
 
         tracing::info!("Copying files done, Setting up system...");
         self.setup_system(
-            repart_out,
+            &repart_out,
             self.encryption_key.as_deref(),
             Some(repartcfg_export),
         )?;
+
+        if self.bootc_imgref.is_some() {
+            // Cleanup mount files from bootc thing
+            let tmproot = tempfile::tempdir()?;
+            let tmproot = tmproot.path();
+            Self::bootc_mount(tmproot, &repart_out, self.encryption_key.as_deref())?;
+            Self::bootc_cleanup(tmproot)?;
+            Command::new("umount")
+                .arg("-R")
+                .arg("-l")
+                .arg(tmproot)
+                .spawn()
+                .ok();
+        }
 
         if let InstallationType::ChromebookInstall = inst_type {
             // FIXME: don't dd?
@@ -282,16 +296,40 @@ impl InstallationState {
         Ok(())
     }
 
+    // This cleans up any folder that is not on the bootc whitelist from a bootc-installed filesystem
+    fn bootc_cleanup(mountpoint: &Path) -> Result<()> {
+        std::fs::read_dir(mountpoint)?.for_each(|f| {
+            let Ok(file) = f else {
+                return;
+            };
+            let Ok(file_name) = file.file_name().into_string() else {
+                return;
+            };
+            let Ok(file_type) = file.file_type() else {
+                return;
+            };
+
+            match file_name.as_str() {
+                "boot" | "ostree" | "efi" | ".bootc-aleph.json" => {}
+                _ => {
+                    if file_type.is_dir() {
+                        std::fs::remove_dir_all(file.path()).ok();
+                    } else {
+                        std::fs::remove_file(file.path()).ok();
+                    }
+                }
+            }
+        });
+        Ok(())
+    }
+
+    // Recursively mounts a bootc-formatted filesystem
     #[allow(clippy::unwrap_in_result)]
-    fn bootc_copy(&self, output: &RepartOutput, passphrase: Option<&str>) -> Result<()> {
-        let Some(imgref) = &self.bootc_imgref else {
-            return Ok(());
-        };
-
-        tracing::info!(?imgref, "running bootc install to-filesystem");
-
-        let targetroot = tempfile::tempdir()?;
-        let targetroot = targetroot.path();
+    fn bootc_mount(
+        targetroot: &Path,
+        output: &RepartOutput,
+        passphrase: Option<&str>,
+    ) -> Result<()> {
         let mut decrypted_partitions: std::collections::HashMap<String, PathBuf> =
             std::collections::HashMap::new();
         let mps = output.mountpoints().map(|(mntpoint, node)| {
@@ -345,7 +383,20 @@ impl InstallationState {
                 return Err(eyre!("`mount {source:?} → {target:?}` failed"));
             }
             Ok(())
-        })?;
+        })
+    }
+
+    #[allow(clippy::unwrap_in_result)]
+    fn bootc_copy(&self, output: &RepartOutput, passphrase: Option<&str>) -> Result<()> {
+        let Some(imgref) = &self.bootc_imgref else {
+            return Ok(());
+        };
+
+        tracing::info!(?imgref, "running bootc install to-filesystem");
+
+        let targetroot = tempfile::tempdir()?;
+        let targetroot = targetroot.path();
+        Self::bootc_mount(targetroot, output, passphrase)?;
 
         if !Command::new("bootc")
             .args(["install", "to-filesystem"])
@@ -358,15 +409,14 @@ impl InstallationState {
             return Err(eyre!("`bootc install to-filesystem` failed"));
         }
 
-        if !Command::new("umount")
+        Command::new("sync").arg("-f").arg(targetroot).spawn().ok();
+
+        Command::new("umount")
             .arg("-R")
+            .arg("-l")
             .arg(targetroot)
-            .status()
-            .wrap_err("failed to run umount")?
-            .success()
-        {
-            return Err(eyre!("`umount -R {targetroot:?}` failed"));
-        }
+            .spawn()
+            .ok();
 
         Ok(())
     }
@@ -374,7 +424,7 @@ impl InstallationState {
     #[tracing::instrument]
     fn setup_system(
         &self,
-        output: RepartOutput,
+        output: &RepartOutput,
         passphrase: Option<&str>,
         repart_cfgs: Option<super::export::SystemdRepartData>,
     ) -> Result<()> {
