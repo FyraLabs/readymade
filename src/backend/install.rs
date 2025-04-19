@@ -248,23 +248,26 @@ impl InstallationState {
 
         let repartcfg_export = super::export::SystemdRepartData::get_configs(&cfgdir)?;
 
-
         if self.bootc_imgref.is_some() {
             let tmproot = tempfile::tempdir()?;
             let bootc_rootfs_mountpoint = tmproot.path();
-            println!("MY_DEBUG: mounting bootc");
             Self::bootc_mount(
                 bootc_rootfs_mountpoint,
                 &repart_out,
                 self.encryption_key.as_deref(),
             )?;
-            println!("MY_DEBUG: copying bootc");
-            self.bootc_copy(bootc_rootfs_mountpoint)?;
+            self.bootc_copy(bootc_rootfs_mountpoint, self.encryption_key.as_deref())?;
             Command::new("sync")
                 .arg("-f")
                 .arg(bootc_rootfs_mountpoint)
-                .status().ok();
-            Command::new("umount").arg("-R").arg("-l").arg(bootc_rootfs_mountpoint).status().ok();
+                .status()
+                .ok();
+            Command::new("umount")
+                .arg("-R")
+                .arg("-l")
+                .arg(bootc_rootfs_mountpoint)
+                .status()
+                .ok();
         }
 
         tracing::info!("Copying files done, Setting up system...");
@@ -278,21 +281,22 @@ impl InstallationState {
             // Cleanup mount files from bootc thing
             let tmproot = tempfile::tempdir()?;
             let bootc_rootfs_mountpoint = tmproot.path();
-            println!("MY_DEBUG: mounting bootc");
             Self::bootc_mount(
                 bootc_rootfs_mountpoint,
                 &repart_out,
                 self.encryption_key.as_deref(),
             )?;
-            println!("MY_DEBUG: cleaning bootc");
             Self::bootc_cleanup(bootc_rootfs_mountpoint)?;
-            println!("MY_DEBUG: syncing bootc");
             Command::new("sync")
                 .arg("-f")
                 .arg(bootc_rootfs_mountpoint)
                 .status()
                 .ok();
-            Command::new("umount").arg("-R").arg(bootc_rootfs_mountpoint).spawn().ok();
+            Command::new("umount")
+                .arg("-R")
+                .arg(bootc_rootfs_mountpoint)
+                .spawn()
+                .ok();
         }
 
         if let InstallationType::ChromebookInstall = inst_type {
@@ -411,7 +415,7 @@ impl InstallationState {
     }
 
     #[allow(clippy::unwrap_in_result)]
-    fn bootc_copy(&self, target_root: &Path) -> Result<()> {
+    fn bootc_copy(&self, target_root: &Path, passphrase: Option<&str>) -> Result<()> {
         let Some(imgref) = &self.bootc_imgref else {
             return Err(eyre!(
                 "Bootc copy mode called without having imgref defined"
