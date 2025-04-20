@@ -202,15 +202,12 @@ fn set_lang(lang: &LanguageRow) {
         .parse::<i18n_embed::unic_langid::LanguageIdentifier>()
         .inspect_err(|e| tracing::error!(?e, "Cannot apply language"))
     {
-        let available_langs = &crate::LL
-            .read()
-            .as_ref()
-            .unwrap()
-            .available_languages(&crate::Localizations)
-            .unwrap();
-        let mut locales = crate::process_locale(available_langs)(locale);
-        let loader =
-            i18n_embed::fluent::FluentLanguageLoader::new("readymade", "en-US".parse().unwrap());
+        let mut locales = crate::LOCALE_SOLVER
+            .solve_locale(locale)
+            .into_iter()
+            .filter(|li| crate::AVAILABLE_LANGS.contains(li))
+            .collect_vec();
+        let loader = i18n_embed::fluent::fluent_language_loader!();
         if locales.is_empty() {
             locales.push("en-US".parse().unwrap());
         }

@@ -7,13 +7,14 @@ mod pages;
 pub mod prelude;
 mod util;
 
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 
 use crate::prelude::*;
 use backend::install::{InstallationState, InstallationType, IPC_CHANNEL};
 use color_eyre::eyre::ContextCompat;
 use color_eyre::Result;
 use gtk::glib::translate::FromGlibPtrNone;
+use i18n_embed::LanguageLoader as _;
 use ipc_channel::ipc::IpcSender;
 use pages::installation::InstallationPageMsg;
 use relm4::{
@@ -32,6 +33,8 @@ pub static LL: SharedState<Option<i18n_embed::fluent::FluentLanguageLoader>> = S
 #[derive(rust_embed::RustEmbed)]
 #[folder = "po/"]
 struct Localizations;
+
+static LOCALE_SOLVER: LazyLock<poly_l10n::LocaleFallbackSolver> = LazyLock::new(Default::default);
 
 const APPID: &str = "com.fyralabs.Readymade";
 
@@ -201,65 +204,17 @@ impl SimpleComponent for AppModel {
     }
 }
 
-fn process_locale(
-    available_langs: &[i18n_embed::unic_langid::LanguageIdentifier],
-) -> impl FnMut(
-    i18n_embed::unic_langid::LanguageIdentifier,
-) -> Vec<i18n_embed::unic_langid::LanguageIdentifier>
-       + use<'_> {
-    |mut li: i18n_embed::unic_langid::LanguageIdentifier| {
-        if li.language == "zh" {
-            if available_langs.iter().contains(&li) {
-            } else if li.script.is_some() {
-                li.clear_variants();
-            } else if li
-                .region
-                .is_some_and(|region| ["HK", "TW", "MO"].contains(&region.as_str()))
-            {
-                li.script =
-                    Some(i18n_embed::unic_langid::subtags::Script::from_bytes(b"Hant").unwrap());
-            } else {
-                li.script =
-                    Some(i18n_embed::unic_langid::subtags::Script::from_bytes(b"Hans").unwrap());
-            }
-            return [
-                li.clone(),
-                {
-                    let mut li = li.clone();
-                    li.region = None;
-                    li
-                },
-                {
-                    let mut li = li.clone();
-                    li.script = None;
-                    li
-                },
-                {
-                    let mut li = li.clone();
-                    li.script = None;
-                    li.region = None;
-                    li
-                },
-            ]
-            .into_iter()
-            .filter(|li| available_langs.contains(li))
-            .collect();
-        }
-        if available_langs.contains(&li) {
-            vec![li]
-        } else {
-            vec![]
-        }
-    }
-}
+static AVAILABLE_LANGS: LazyLock<Vec<i18n_embed::unic_langid::LanguageIdentifier>> =
+    LazyLock::new(|| {
+        i18n_embed::fluent::fluent_language_loader!()
+            .available_languages(&Localizations)
+            .unwrap()
+    });
 
 fn handle_l10n() -> i18n_embed::fluent::FluentLanguageLoader {
-    use i18n_embed::{
-        fluent::fluent_language_loader, unic_langid::LanguageIdentifier, LanguageLoader,
-    };
+    use i18n_embed::{unic_langid::LanguageIdentifier, LanguageLoader};
     use std::str::FromStr;
-    let loader = fluent_language_loader!();
-    let available_langs = loader.available_languages(&Localizations).unwrap();
+    let loader = i18n_embed::fluent::fluent_language_loader!();
     let mut langs = ["LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE", "LANGUAGES"]
         .into_iter()
         .flat_map(|env| {
@@ -270,7 +225,8 @@ fn handle_l10n() -> i18n_embed::fluent::FluentLanguageLoader {
                     .collect_vec()
             })
         })
-        .flat_map(|lang| process_locale(&available_langs)(lang))
+        .flat_map(|li| LOCALE_SOLVER.solve_locale(li))
+        .filter(|li| AVAILABLE_LANGS.contains(li))
         .collect_vec();
     if langs.is_empty() {
         langs = vec![loader.fallback_language().clone()];
@@ -282,8 +238,8 @@ fn handle_l10n() -> i18n_embed::fluent::FluentLanguageLoader {
 #[allow(clippy::missing_errors_doc)]
 #[allow(clippy::missing_panics_doc)]
 fn main() -> Result<()> {
+    let langs_th = std::thread::spawn(|| LazyLock::force(&AVAILABLE_LANGS));
     let _guard = setup_hooks();
-    *LL.write() = Some(handle_l10n());
 
     if let Some((i, _)) = std::env::args().find_position(|arg| arg == "--non-interactive") {
         tracing::info!("Running in non-interactive mode");
@@ -298,8 +254,12 @@ fn main() -> Result<()> {
         IPC_CHANNEL.set(Mutex::new(channel)).unwrap();
         let install_state: InstallationState = serde_json::from_reader(std::io::stdin())?;
 
+        *LL.write() = Some(handle_l10n());
+        langs_th.join().expect("cannot join available_langs_th");
         return install_state.install();
     }
+
+    std::thread::spawn(|| LazyLock::force(&pages::destination::DISKS_DATA));
 
     *CONFIG.write() = cfg::get_cfg()?;
     *INSTALLATION_STATE.write() = InstallationState::from(&*CONFIG.read());
@@ -322,6 +282,8 @@ fn main() -> Result<()> {
         .build();
 
     tracing::debug!("Starting Readymade");
+    *LL.write() = Some(handle_l10n());
+    langs_th.join().expect("cannot join available_langs_th");
     RelmApp::from_app(app).run::<AppModel>(());
     Ok(())
 }

@@ -1,7 +1,13 @@
 use crate::prelude::*;
 use relm4::factory::DynamicIndex;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::LazyLock};
+
+pub static DISKS_DATA: LazyLock<Vec<DiskInit>> = LazyLock::new(|| {
+    let mut v = crate::disks::detect_os();
+    v.sort();
+    v
+});
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DiskInit {
@@ -142,10 +148,7 @@ impl SimpleComponent for DestinationPage {
             .launch(gtk::FlowBox::default())
             .detach();
 
-        let mut disks_data = crate::disks::detect_os();
-        disks_data.sort();
-
-        for disk in disks_data {
+        for disk in DISKS_DATA.clone() {
             disks.guard().push_front(disk);
         }
 
