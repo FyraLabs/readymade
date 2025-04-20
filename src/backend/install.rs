@@ -436,7 +436,10 @@ impl InstallationState {
             args.push(target_imgref);
         }
         if let Some(bootc_kargs) = &self.bootc_kargs {
-            let args_vec: Vec<&str> = bootc_kargs.iter().map(|e| e.as_str()).collect();
+            let args_vec: Vec<&str> = bootc_kargs
+                .iter()
+                .map(|e| format!("--karg={}", e))
+                .collect();
             args.extend(args_vec);
         }
         if self.bootc_enforce_sigpolicy {
