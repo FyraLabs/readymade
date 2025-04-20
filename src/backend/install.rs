@@ -426,7 +426,7 @@ impl InstallationState {
 
         let crypt_data = output.generate_cryptdata()?;
         let mut args = vec!["install", "to-filesystem", "--source-imgref", imgref];
-        if let Some(data) = crypt_data {
+        if let Some(data) = &crypt_data {
             for opt in &data.cmdline_opts {
                 args.push("--karg");
                 args.push(opt);
