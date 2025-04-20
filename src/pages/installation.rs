@@ -167,7 +167,7 @@ impl Component for InstallationPage {
                         },
                         #[template_child]
                         title {
-                            set_label: &t!("page-installation-contrib"),
+                            set_label: &t!("page-installation-contrib", distro = crate::CONFIG.read().distro.name.clone()),
                         },
                         #[template_child]
                         description {

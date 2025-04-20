@@ -38,7 +38,7 @@ page-installation = Installation
 page-installation-welcome-desc = Get to know your new operating system.
 page-installation-help = Need help?
 page-installation-help-desc = Ask in one of our chats!
-page-installation-contrib = Contribute to Ultramarine
+page-installation-contrib = Contribute to {$distro}
 page-installation-contrib-desc = Learn how to contribute your time, money, or hardware.
 page-installation-progress = Installing base system...
 
