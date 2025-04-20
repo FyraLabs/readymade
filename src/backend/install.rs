@@ -57,6 +57,9 @@ pub struct InstallationState {
     pub encryption_key: Option<String>,
     pub distro_name: String,
     pub bootc_imgref: Option<String>,
+    pub bootc_target_imgref: Option<String>,
+    pub bootc_enforce_sigpolicy: bool,
+    pub bootc_kargs: Option<Vec<String>>,
 }
 
 impl From<&crate::cfg::ReadymadeConfig> for InstallationState {
@@ -70,6 +73,14 @@ impl From<&crate::cfg::ReadymadeConfig> for InstallationState {
                 .clone()
                 .filter(|_| value.install.copy_mode == crate::cfg::CopyMode::Bootc)
                 .or_else(|| std::env::var("COPY_SOURCE").ok()),
+            bootc_target_imgref: value
+                .install
+                .bootc_target_imgref
+                .clone()
+                .filter(|_| value.install.copy_mode == crate::cfg::CopyMode::Bootc)
+                .or_else(|| std::env::var("TARGET_COPY_SOURCE").ok()),
+            bootc_enforce_sigpolicy: value.install.bootc_enforce_sigpolicy,
+            bootc_kargs: value.install.bootc_kargs.clone(),
             ..Self::default()
         }
     }
@@ -420,6 +431,17 @@ impl InstallationState {
         }
         args.extend(vec!["--karg=rhgb", "--karg=quiet", "--karg=splash"]);
         args.push(target_root.to_str().unwrap());
+        if let Some(target_imgref) = &self.bootc_target_imgref {
+            args.push("--target-imgref");
+            args.push(target_imgref);
+        }
+        if let Some(bootc_kargs) = &self.bootc_kargs {
+            let args_vec: Vec<&str> = bootc_kargs.iter().map(|e| e.as_str()).collect();
+            args.extend(args_vec);
+        }
+        if self.bootc_enforce_sigpolicy {
+            args.push("--enforce-container-sigpolicy");
+        }
 
         if !Command::new("bootc")
             .args(args)
