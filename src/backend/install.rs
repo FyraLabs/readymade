@@ -248,7 +248,26 @@ impl InstallationState {
 
         let repartcfg_export = super::export::SystemdRepartData::get_configs(&cfgdir)?;
 
-        self.bootc_copy(&repart_out, self.encryption_key.as_deref())?;
+        if self.bootc_imgref.is_some() {
+            let tmproot = tempfile::tempdir()?;
+            let bootc_rootfs_mountpoint = tmproot.path();
+            Self::bootc_mount(
+                bootc_rootfs_mountpoint,
+                &repart_out,
+                self.encryption_key.as_deref(),
+            )?;
+            self.bootc_copy(
+                bootc_rootfs_mountpoint,
+                &repart_out,
+                self.encryption_key.as_deref(),
+            )?;
+            Command::new("sync").status().ok();
+            Command::new("umount")
+                .arg("-R")
+                .arg(bootc_rootfs_mountpoint)
+                .status()
+                .ok();
+        }
 
         tracing::info!("Copying files done, Setting up system...");
         self.setup_system(
@@ -263,6 +282,13 @@ impl InstallationState {
             let tmproot = tmproot.path();
             Self::bootc_mount(tmproot, &repart_out, self.encryption_key.as_deref())?;
             Self::bootc_cleanup(tmproot)?;
+            if !Command::new("sync")
+                .status()
+                .wrap_err("cannot run sync")?
+                .success()
+            {
+                return Err(eyre!("`sync` failed"));
+            }
             if !Command::new("umount")
                 .arg("-Rl")
                 .arg(tmproot)
@@ -390,46 +416,38 @@ impl InstallationState {
     }
 
     #[allow(clippy::unwrap_in_result)]
-    fn bootc_copy(&self, output: &RepartOutput, passphrase: Option<&str>) -> Result<()> {
+    fn bootc_copy(
+        &self,
+        target_root: &Path,
+        output: &RepartOutput,
+        passphrase: Option<&str>,
+    ) -> Result<()> {
         let Some(imgref) = &self.bootc_imgref else {
-            return Ok(());
+            return Err(eyre!(
+                "Bootc copy mode called without having imgref defined"
+            ));
         };
 
         tracing::info!(?imgref, "running bootc install to-filesystem");
 
-        let targetroot = tempfile::tempdir()?;
-        let targetroot = targetroot.path();
-        Self::bootc_mount(targetroot, output, passphrase)?;
+        let crypt_data = output.generate_cryptdata()?;
+        let mut args = vec!["install", "to-filesystem", "--source-imgref", imgref];
+        if let Some(data) = &crypt_data {
+            for opt in &data.cmdline_opts {
+                args.push("--karg");
+                args.push(opt);
+            }
+        }
+        args.extend(vec!["--karg=rhgb", "--karg=quiet", "--karg=splash"]);
+        args.push(target_root.to_str().unwrap());
 
         if !Command::new("bootc")
-            .args(["install", "to-filesystem"])
-            .args(["--source-imgref", imgref])
-            .arg(targetroot)
+            .args(args)
             .status()
             .wrap_err("cannot run bootc")?
             .success()
         {
             return Err(eyre!("`bootc install to-filesystem` failed"));
-        }
-
-        if !Command::new("sync")
-            .arg("-f")
-            .arg(targetroot)
-            .status()
-            .wrap_err("cannot run sync")?
-            .success()
-        {
-            return Err(eyre!("`sync -f {targetroot:?}` failed"));
-        }
-
-        if !Command::new("umount")
-            .arg("-Rl")
-            .arg(targetroot)
-            .status()
-            .wrap_err("cannot run umount")?
-            .success()
-        {
-            return Err(eyre!("`umount -Rl {targetroot:?}` failed"));
         }
 
         Ok(())
