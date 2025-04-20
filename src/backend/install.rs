@@ -258,13 +258,10 @@ impl InstallationState {
             )?;
             self.bootc_copy(bootc_rootfs_mountpoint, self.encryption_key.as_deref())?;
             Command::new("sync")
-                .arg("-f")
-                .arg(bootc_rootfs_mountpoint)
                 .status()
                 .ok();
             Command::new("umount")
                 .arg("-R")
-                .arg("-l")
                 .arg(bootc_rootfs_mountpoint)
                 .status()
                 .ok();
@@ -288,14 +285,12 @@ impl InstallationState {
             )?;
             Self::bootc_cleanup(bootc_rootfs_mountpoint)?;
             Command::new("sync")
-                .arg("-f")
-                .arg(bootc_rootfs_mountpoint)
                 .status()
                 .ok();
             Command::new("umount")
                 .arg("-R")
                 .arg(bootc_rootfs_mountpoint)
-                .spawn()
+                .status()
                 .ok();
         }
 
