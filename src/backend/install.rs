@@ -432,7 +432,7 @@ impl InstallationState {
                 args.push(opt);
             }
         }
-        args.extend(vec!["--karg=rhgb", "--karg=quiet"]);
+        args.extend(vec!["--karg=rhgb", "--karg=quiet", "--karg=splash"]);
         args.push(target_root.to_str().unwrap());
 
         if !Command::new("bootc")
