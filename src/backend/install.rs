@@ -263,12 +263,15 @@ impl InstallationState {
             let tmproot = tmproot.path();
             Self::bootc_mount(tmproot, &repart_out, self.encryption_key.as_deref())?;
             Self::bootc_cleanup(tmproot)?;
-            Command::new("umount")
-                .arg("-R")
-                .arg("-l")
+            if !Command::new("umount")
+                .arg("-Rl")
                 .arg(tmproot)
-                .spawn()
-                .ok();
+                .status()
+                .wrap_err("cannot run umount")?
+                .success()
+            {
+                return Err(eyre!("`umount -Rl {tmproot:?}` failed"));
+            }
         }
 
         if let InstallationType::ChromebookInstall = inst_type {
@@ -409,14 +412,25 @@ impl InstallationState {
             return Err(eyre!("`bootc install to-filesystem` failed"));
         }
 
-        Command::new("sync").arg("-f").arg(targetroot).spawn().ok();
-
-        Command::new("umount")
-            .arg("-R")
-            .arg("-l")
+        if !Command::new("sync")
+            .arg("-f")
             .arg(targetroot)
-            .spawn()
-            .ok();
+            .status()
+            .wrap_err("cannot run sync")?
+            .success()
+        {
+            return Err(eyre!("`sync -f {targetroot:?}` failed"));
+        }
+
+        if !Command::new("umount")
+            .arg("-Rl")
+            .arg(targetroot)
+            .status()
+            .wrap_err("cannot run umount")?
+            .success()
+        {
+            return Err(eyre!("`umount -Rl {targetroot:?}` failed"));
+        }
 
         Ok(())
     }
@@ -437,18 +451,16 @@ impl InstallationState {
         let fstab = output.generate_fstab()?;
 
         // todo: Also handle custom installs? Needs more information
-        let esp_node = check_uefi().then(|| output.get_esp_partition()).flatten();
-        let xbootldr_node = output
+        let esp = check_uefi().then(|| output.get_esp_partition()).flatten();
+        let xbootldr = output
             .get_xbootldr_partition()
             .context("No xbootldr partition found")?;
 
-        let crypt_data = output.generate_cryptdata()?;
+        let cryptdata = output.generate_cryptdata()?;
 
         let rdm_result = super::export::ReadymadeResult::new(self.clone(), repart_cfgs);
 
-        container.run(|| {
-            self._inner_sys_setup(fstab, crypt_data, esp_node, &xbootldr_node, rdm_result)
-        })??;
+        container.run(|| self._inner_sys_setup(fstab, cryptdata, esp, &xbootldr, rdm_result))??;
 
         Ok(())
     }
