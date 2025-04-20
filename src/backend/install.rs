@@ -426,13 +426,13 @@ impl InstallationState {
 
         let crypt_data = output.generate_cryptdata()?;
         let mut args = vec!["install", "to-filesystem", "--source-imgref", imgref];
-        if let Some(ref data) = crypt_data {
+        if let Some(data) = crypt_data {
             for opt in &data.cmdline_opts {
                 args.push("--karg");
                 args.push(opt);
             }
         }
-        args.extend(vec!["--karg=rgbh", "--karg=quiet"]);
+        args.extend(vec!["--karg=rhgb", "--karg=quiet"]);
         args.push(target_root.to_str().unwrap());
 
         if !Command::new("bootc")
