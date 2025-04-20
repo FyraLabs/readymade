@@ -265,9 +265,9 @@ checksum = "1628fb46dfa0b37568d12e5edd512553eccf6a22a78e8bde00bb4aed84d5bdbf"
 
 [[package]]
 name = "bytesize"
-version = "1.3.2"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d2c12f985c78475a6b8d629afd0c360260ef34cfef52efccdcfd31972f81c2e"
+checksum = "a3c8f83209414aacf0eeae3cf730b18d6981697fba62f200fcfb92b9f082acba"
 dependencies = [
  "serde",
 ]
@@ -2632,7 +2632,7 @@ dependencies = [
 
 [[package]]
 name = "readymade"
-version = "0.12.1"
+version = "0.12.2"
 dependencies = [
  "backhand",
  "bytesize",
