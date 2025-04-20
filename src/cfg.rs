@@ -25,6 +25,10 @@ pub struct Install {
     #[serde(default)]
     pub copy_mode: CopyMode,
     pub bootc_imgref: Option<String>,
+    pub bootc_target_imgref: Option<String>,
+    #[serde(default)]
+    pub bootc_enforce_sigpolicy: bool,
+    pub bootc_kargs: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq)]
@@ -109,6 +113,9 @@ mod tests {
                     allowed_installtypes: vec![InstallationType::ChromebookInstall],
                     copy_mode: CopyMode::Bootc,
                     bootc_imgref: None,
+                    bootc_target_imgref: None,
+                    bootc_enforce_sigpolicy: false,
+                    bootc_kargs: None,
                 },
                 postinstall: vec![
                     crate::backend::postinstall::grub2::GRUB2.into(),
