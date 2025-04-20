@@ -248,7 +248,22 @@ impl InstallationState {
 
         let repartcfg_export = super::export::SystemdRepartData::get_configs(&cfgdir)?;
 
-        self.bootc_copy(&repart_out, self.encryption_key.as_deref())?;
+        if self.bootc_imgref.is_some() {
+            let tmproot = tempfile::tempdir()?;
+            let bootc_rootfs_mountpoint = tmproot.path();
+            Self::bootc_mount(
+                bootc_rootfs_mountpoint,
+                &repart_out,
+                self.encryption_key.as_deref(),
+            )?;
+            self.bootc_copy(bootc_rootfs_mountpoint, self.encryption_key.as_deref())?;
+            Command::new("sync").status().ok();
+            Command::new("umount")
+                .arg("-R")
+                .arg(bootc_rootfs_mountpoint)
+                .status()
+                .ok();
+        }
 
         tracing::info!("Copying files done, Setting up system...");
         self.setup_system(
@@ -260,14 +275,18 @@ impl InstallationState {
         if self.bootc_imgref.is_some() {
             // Cleanup mount files from bootc thing
             let tmproot = tempfile::tempdir()?;
-            let tmproot = tmproot.path();
-            Self::bootc_mount(tmproot, &repart_out, self.encryption_key.as_deref())?;
-            Self::bootc_cleanup(tmproot)?;
+            let bootc_rootfs_mountpoint = tmproot.path();
+            Self::bootc_mount(
+                bootc_rootfs_mountpoint,
+                &repart_out,
+                self.encryption_key.as_deref(),
+            )?;
+            Self::bootc_cleanup(bootc_rootfs_mountpoint)?;
+            Command::new("sync").status().ok();
             Command::new("umount")
                 .arg("-R")
-                .arg("-l")
-                .arg(tmproot)
-                .spawn()
+                .arg(bootc_rootfs_mountpoint)
+                .status()
                 .ok();
         }
 
@@ -387,36 +406,25 @@ impl InstallationState {
     }
 
     #[allow(clippy::unwrap_in_result)]
-    fn bootc_copy(&self, output: &RepartOutput, passphrase: Option<&str>) -> Result<()> {
+    fn bootc_copy(&self, target_root: &Path, passphrase: Option<&str>) -> Result<()> {
         let Some(imgref) = &self.bootc_imgref else {
-            return Ok(());
+            return Err(eyre!(
+                "Bootc copy mode called without having imgref defined"
+            ));
         };
 
         tracing::info!(?imgref, "running bootc install to-filesystem");
 
-        let targetroot = tempfile::tempdir()?;
-        let targetroot = targetroot.path();
-        Self::bootc_mount(targetroot, output, passphrase)?;
-
         if !Command::new("bootc")
             .args(["install", "to-filesystem"])
             .args(["--source-imgref", imgref])
-            .arg(targetroot)
+            .arg(target_root)
             .status()
             .wrap_err("cannot run bootc")?
             .success()
         {
             return Err(eyre!("`bootc install to-filesystem` failed"));
         }
-
-        Command::new("sync").arg("-f").arg(targetroot).spawn().ok();
-
-        Command::new("umount")
-            .arg("-R")
-            .arg("-l")
-            .arg(targetroot)
-            .spawn()
-            .ok();
 
         Ok(())
     }
