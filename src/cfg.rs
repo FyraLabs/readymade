@@ -26,6 +26,7 @@ pub struct Install {
     pub copy_mode: CopyMode,
     pub bootc_imgref: Option<String>,
     pub bootc_target_imgref: Option<String>,
+    #[serde(default)]
     pub bootc_enforce_sigpolicy: bool,
     pub bootc_kargs: Option<Vec<String>>,
 }
