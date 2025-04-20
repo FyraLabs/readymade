@@ -62,19 +62,7 @@ pub struct InstallationState {
 impl From<&crate::cfg::ReadymadeConfig> for InstallationState {
     fn from(value: &crate::cfg::ReadymadeConfig) -> Self {
         Self {
-            tpm: false,
-            langlocale: Option::default(),
-            destination_disk: Option::default(),
-            installation_type: if let [one] = &crate::CONFIG.read().install.allowed_installtypes[..]
-            {
-                Some(*one)
-            } else {
-                None
-            },
-            mounttags: Option::default(),
             postinstall: value.postinstall.clone(),
-            encrypt: false,
-            encryption_key: Option::default(),
             distro_name: value.distro.name.clone(),
             bootc_imgref: value
                 .install
@@ -82,6 +70,7 @@ impl From<&crate::cfg::ReadymadeConfig> for InstallationState {
                 .clone()
                 .filter(|_| value.install.copy_mode == crate::cfg::CopyMode::Bootc)
                 .or_else(|| std::env::var("COPY_SOURCE").ok()),
+            ..Self::default()
         }
     }
 }
@@ -256,11 +245,7 @@ impl InstallationState {
                 &repart_out,
                 self.encryption_key.as_deref(),
             )?;
-            self.bootc_copy(
-                bootc_rootfs_mountpoint,
-                &repart_out,
-                self.encryption_key.as_deref(),
-            )?;
+            self.bootc_copy(bootc_rootfs_mountpoint, &repart_out)?;
             Command::new("sync").status().ok();
             Command::new("umount")
                 .arg("-R")
@@ -416,12 +401,7 @@ impl InstallationState {
     }
 
     #[allow(clippy::unwrap_in_result)]
-    fn bootc_copy(
-        &self,
-        target_root: &Path,
-        output: &RepartOutput,
-        passphrase: Option<&str>,
-    ) -> Result<()> {
+    fn bootc_copy(&self, target_root: &Path, output: &RepartOutput) -> Result<()> {
         let Some(imgref) = &self.bootc_imgref else {
             return Err(eyre!(
                 "Bootc copy mode called without having imgref defined"

@@ -112,7 +112,7 @@ impl SimpleComponent for DestinationPage {
                         set_is_textual: true,
                         #[watch]
                         set_label: &t!("prev"),
-                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome))
+                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(Page::Welcome))
                     },
 
                     gtk::Box {
@@ -124,19 +124,7 @@ impl SimpleComponent for DestinationPage {
                         #[watch]
                         set_label: &t!("next"),
                         add_css_class: "large-button",
-                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(
-                            if let [x] = crate::CONFIG.read().install.allowed_installtypes[..] {
-                                #[allow(clippy::enum_glob_use)]
-                                use crate::{backend::install::InstallationType::*, Page::*};
-                                match x {
-                                    ChromebookInstall | WholeDisk => Confirmation,
-                                    DualBoot(_) => InstallDual,
-                                    Custom => InstallCustom,
-                                }
-                            } else {
-                                crate::Page::InstallationType
-                            }
-                        )),
+                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(Page::InstallationType)),
                         #[watch]
                         set_sensitive: INSTALLATION_STATE.read().destination_disk.is_some()
                     }
