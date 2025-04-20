@@ -257,9 +257,7 @@ impl InstallationState {
                 self.encryption_key.as_deref(),
             )?;
             self.bootc_copy(bootc_rootfs_mountpoint, self.encryption_key.as_deref())?;
-            Command::new("sync")
-                .status()
-                .ok();
+            Command::new("sync").status().ok();
             Command::new("umount")
                 .arg("-R")
                 .arg(bootc_rootfs_mountpoint)
@@ -284,9 +282,7 @@ impl InstallationState {
                 self.encryption_key.as_deref(),
             )?;
             Self::bootc_cleanup(bootc_rootfs_mountpoint)?;
-            Command::new("sync")
-                .status()
-                .ok();
+            Command::new("sync").status().ok();
             Command::new("umount")
                 .arg("-R")
                 .arg(bootc_rootfs_mountpoint)
