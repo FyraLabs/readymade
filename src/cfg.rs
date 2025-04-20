@@ -115,7 +115,7 @@ mod tests {
                     bootc_imgref: None,
                     bootc_target_imgref: None,
                     bootc_enforce_sigpolicy: false,
-                    bootc_kargs: Some(vec![]),
+                    bootc_kargs: None,
                 },
                 postinstall: vec![
                     crate::backend::postinstall::grub2::GRUB2.into(),
