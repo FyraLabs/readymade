@@ -28,6 +28,8 @@ page-completed-close = Close
 page-completed-reboot = Reboot
 
 page-destination = Destination
+page-destination-scanning = Scanning Disks
+page-destination-wait = Waiting for os-prober…
 
 page-installdual = Dual Boot
 page-installdual-otheros = Other OS

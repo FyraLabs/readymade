@@ -59,6 +59,7 @@ impl FactoryComponent for DiskInit {
 
 pub struct DestinationPage {
     disks: FactoryVecDeque<DiskInit>,
+    scanning: bool,
 }
 
 #[derive(Debug)]
@@ -75,10 +76,11 @@ pub enum DestinationPageOutput {
 }
 
 #[relm4::component(pub)]
-impl SimpleComponent for DestinationPage {
+impl Component for DestinationPage {
     type Init = ();
     type Input = DestinationPageMsg;
     type Output = DestinationPageOutput;
+    type CommandOutput = Vec<DiskInit>;
 
     view! {
         libhelium::ViewMono {
@@ -94,7 +96,14 @@ impl SimpleComponent for DestinationPage {
             append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 6,
-                gtk::ScrolledWindow {
+
+                if model.scanning {
+                    libhelium::EmptyPage {
+                        set_title: &t!("page-destination-scanning"),
+                        set_description: &t!("page-destination-wait"),
+                    }
+                } else {
+                    gtk::ScrolledWindow {
                         #[local_ref]
                         disk_list -> gtk::FlowBox {
                             set_selection_mode: gtk::SelectionMode::Single,
@@ -109,6 +118,7 @@ impl SimpleComponent for DestinationPage {
                             add_css_class: "content-flowbox",
                             connect_selected_children_changed => DestinationPageMsg::SelectionChanged,
                         },
+                    }
                 },
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
@@ -134,7 +144,7 @@ impl SimpleComponent for DestinationPage {
                         #[watch]
                         set_sensitive: INSTALLATION_STATE.read().destination_disk.is_some()
                     }
-                }
+                },
             }
         }
     }
@@ -144,15 +154,16 @@ impl SimpleComponent for DestinationPage {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let mut disks = FactoryVecDeque::builder()
+        let disks = FactoryVecDeque::builder()
             .launch(gtk::FlowBox::default())
             .detach();
 
-        for disk in DISKS_DATA.clone() {
-            disks.guard().push_front(disk);
-        }
+        sender.spawn_command(|sender| sender.send(DISKS_DATA.clone()).expect("cannot send disks"));
 
-        let model = Self { disks };
+        let model = Self {
+            disks,
+            scanning: true,
+        };
 
         let disk_list: &gtk::FlowBox = model.disks.widget();
         let widgets = view_output!();
@@ -162,7 +173,7 @@ impl SimpleComponent for DestinationPage {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, _: &Self::Root) {
         match message {
             DestinationPageMsg::Navigate(action) => sender
                 .output(DestinationPageOutput::Navigate(action))
@@ -179,5 +190,18 @@ impl SimpleComponent for DestinationPage {
             }
             DestinationPageMsg::Update => {}
         }
+    }
+
+    fn update_cmd(
+        &mut self,
+        message: Self::CommandOutput,
+        _: ComponentSender<Self>,
+        _: &Self::Root,
+    ) {
+        let mut guard = self.disks.guard();
+        for disk in message {
+            guard.push_front(disk);
+        }
+        self.scanning = false;
     }
 }
