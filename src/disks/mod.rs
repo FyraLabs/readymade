@@ -10,8 +10,6 @@ use osprobe::OSProbe;
 
 use crate::pages::destination::DiskInit;
 
-const OSNAME_PLACEHOLDER: &str = "Unknown OS";
-
 /// Try and scan the system for disks and their installed OS
 // Honestly, this is a mess and I have no idea how to get os_detect to work.
 // I cannot test this function because my system only has one OS installed.
@@ -64,7 +62,7 @@ pub fn detect_os() -> Vec<DiskInit> {
                         path.starts_with(disk.fullname.to_str().unwrap())
                             .then_some(osname)
                     })
-                    .map_or(OSNAME_PLACEHOLDER.to_owned(), ToOwned::to_owned),
+                    .map_or(crate::t!("unknown-os"), ToOwned::to_owned),
                 size: bytesize::ByteSize::kib(disk.capacity().unwrap().unwrap() >> 1),
                 devpath: disk.fullname,
             };

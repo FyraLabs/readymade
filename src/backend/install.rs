@@ -414,44 +414,30 @@ impl InstallationState {
     #[allow(clippy::unwrap_in_result)]
     fn bootc_copy(&self, target_root: &Path, output: &RepartOutput) -> Result<()> {
         let Some(imgref) = &self.bootc_imgref else {
-            return Err(eyre!(
-                "Bootc copy mode called without having imgref defined"
-            ));
+            bail!("Bootc copy mode called without having imgref defined");
         };
 
         tracing::info!(?imgref, "running bootc install to-filesystem");
 
-        let crypt_data = output.generate_cryptdata()?;
-        let mut args = vec!["install", "to-filesystem", "--source-imgref", imgref];
-        if let Some(data) = &crypt_data {
-            for opt in &data.cmdline_opts {
-                args.push("--karg");
-                args.push(opt);
-            }
-        }
-        args.extend(vec!["--karg=rhgb", "--karg=quiet", "--karg=splash"]);
-        args.push(target_root.to_str().unwrap());
-        if let Some(target_imgref) = &self.bootc_target_imgref {
-            args.push("--target-imgref");
-            args.push(target_imgref);
-        }
-        if let Some(bootc_kargs) = &self.bootc_kargs {
-            bootc_kargs.iter().for_each(|e| {
-                args.push("--karg");
-                args.push(e);
-            });
-        }
-        if self.bootc_enforce_sigpolicy {
-            args.push("--enforce-container-sigpolicy");
-        }
-
         if !Command::new("bootc")
-            .args(args)
+            .args(["install", "to-filesystem", "--source-imgref", imgref])
+            .args(
+                (output.generate_cryptdata()?.iter())
+                    .flat_map(|data| data.cmdline_opts.iter().flat_map(|opt| ["--karg", opt])),
+            )
+            .args(["--karg=rhgb", "--karg=quiet", "--karg=splash"])
+            .arg(target_root)
+            .args((self.bootc_target_imgref.iter()).flat_map(|a| ["--target-imgref", a]))
+            .args((self.bootc_kargs.iter().flatten()).flat_map(|e| ["--karg", e]))
+            .args(
+                self.bootc_enforce_sigpolicy
+                    .then_some("--enforce-container-sigpolicy"),
+            )
             .status()
             .wrap_err("cannot run bootc")?
             .success()
         {
-            return Err(eyre!("`bootc install to-filesystem` failed"));
+            bail!("`bootc install to-filesystem` failed");
         }
 
         Ok(())

@@ -1,6 +1,8 @@
 prev = Previous
 next = Next
 
+unknown-os = Unknown OS
+
 parttype-root = Filesystem root ({$path})
 parttype-extendedboot = Extended Boot Loader Partition ({$path})
 parttype-esp = EFI System Partition ({$path})
