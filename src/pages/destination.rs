@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use lsblk::Populate as _;
 use relm4::factory::DynamicIndex;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::LazyLock};
@@ -219,17 +218,8 @@ impl Component for DestinationPage {
         _: &Self::Root,
     ) {
         let mut guard = self.disks.guard();
-        let rootdev = lsblk::Mount::list()
-            .expect("cannot list mounts")
-            .find(|m| m.mountpoint == std::path::Path::new("/"))
-            .expect("nothing mounted on /");
-        let mut rootdev = lsblk::BlockDevice::from_abs_path_unpopulated(rootdev.device.into());
-        rootdev.populate_partuuid().expect("can't get partuuid");
-        let rootdev = rootdev.disk_name().expect("can't get disk name of /");
         for disk in message {
-            if lsblk::BlockDevice::from_abs_path_unpopulated(disk.devpath.clone()).name != rootdev {
-                guard.push_front(disk);
-            }
+            guard.push_front(disk);
         }
         self.scanning = false;
     }
