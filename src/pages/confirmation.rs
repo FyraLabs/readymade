@@ -90,11 +90,7 @@ page!(Confirmation:
             set_label: &t!("prev"),
             add_css_class: "large-button",
             connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(
-                if crate::CONFIG.read().install.allowed_installtypes.len() == 1 {
-                    crate::Page::Destination
-                } else {
                     crate::Page::InstallationType
-                }
             )),
         },
 
