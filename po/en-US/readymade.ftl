@@ -30,6 +30,8 @@ page-completed-reboot = Reboot
 page-destination = Destination
 page-destination-scanning = Scanning Disks
 page-destination-wait = Waiting for os-prober…
+page-destination-no-disk = No Disks Found
+page-destination-no-disk-desc = There are no disks suitable for installation.
 
 page-installdual = Dual Boot
 page-installdual-otheros = Other OS

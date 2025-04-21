@@ -28,5 +28,13 @@
             preprocess="xml-stripblanks"
             alias="errornext.svg"
         >icons/errornext.svg</file>
+        <file
+            preprocess="xml-stripblanks"
+            alias="content-loading-symbolic.svg"
+        >icons/content-loading-symbolic.svg</file>
+        <file
+            preprocess="xml-stripblanks"
+            alias="list-remove-all-symbolic.svg"
+        >icons/list-remove-all-symbolic.svg</file>
     </gresource>
 </gresources>

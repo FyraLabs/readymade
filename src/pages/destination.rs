@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use lsblk::Populate as _;
 use relm4::factory::DynamicIndex;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::LazyLock};
@@ -60,6 +61,7 @@ impl FactoryComponent for DiskInit {
 pub struct DestinationPage {
     disks: FactoryVecDeque<DiskInit>,
     scanning: bool,
+    nodisk: libhelium::EmptyPage,
 }
 
 #[derive(Debug)]
@@ -99,8 +101,16 @@ impl Component for DestinationPage {
 
                 if model.scanning {
                     libhelium::EmptyPage {
+                        set_icon: "content-loading-symbolic",
                         set_title: &t!("page-destination-scanning"),
                         set_description: &t!("page-destination-wait"),
+                    }
+                } else if model.disks.is_empty() {
+                    #[local_ref] nodisk ->
+                    libhelium::EmptyPage {
+                        set_icon: "list-remove-all-symbolic",
+                        set_title: &t!("page-destination-no-disk"),
+                        set_description: &t!("page-destination-no-disk-desc"),
                     }
                 } else {
                     gtk::ScrolledWindow {
@@ -160,13 +170,23 @@ impl Component for DestinationPage {
 
         sender.spawn_command(|sender| sender.send(DISKS_DATA.clone()).expect("cannot send disks"));
 
-        let model = Self {
+        let mut model = Self {
             disks,
             scanning: true,
+            nodisk: libhelium::EmptyPage::default(),
         };
+
+        let nodisk = model.nodisk;
 
         let disk_list: &gtk::FlowBox = model.disks.widget();
         let widgets = view_output!();
+
+        model.nodisk = nodisk;
+
+        // FIXME: lea please make the button more accessible, also why is it shown by default
+        let btn = model.nodisk.last_child().unwrap();
+        btn.last_child().unwrap().set_visible(false);
+        // TODO: we probably should also disable the button for the loading page
 
         INSTALLATION_STATE.subscribe(sender.input_sender(), |_| DestinationPageMsg::Update);
 
@@ -199,8 +219,17 @@ impl Component for DestinationPage {
         _: &Self::Root,
     ) {
         let mut guard = self.disks.guard();
+        let rootdev = lsblk::Mount::list()
+            .expect("cannot list mounts")
+            .find(|m| m.mountpoint == std::path::Path::new("/"))
+            .expect("nothing mounted on /");
+        let mut rootdev = lsblk::BlockDevice::from_abs_path_unpopulated(rootdev.device.into());
+        rootdev.populate_partuuid().expect("can't get partuuid");
+        let rootdev = rootdev.disk_name().expect("can't get disk name of /");
         for disk in message {
-            guard.push_front(disk);
+            if lsblk::BlockDevice::from_abs_path_unpopulated(disk.devpath.clone()).name != rootdev {
+                guard.push_front(disk);
+            }
         }
         self.scanning = false;
     }
