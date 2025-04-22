@@ -812,7 +812,7 @@ dependencies = [
 name = "filesystem-table"
 version = "0.1.2"
 dependencies = [
- "lsblk",
+ "lsblk 0.5.0",
  "thiserror 2.0.12",
 ]
 
@@ -2021,6 +2021,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "lsblk"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04a60c4d6ad3a17071b9d5a6fb932ff4b672aade80ab6600c5e9f1a8cd77dc67"
+dependencies = [
+ "paste",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "lz4_flex"
 version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2654,7 +2664,7 @@ dependencies = [
  "jwalk",
  "kurage",
  "libhelium",
- "lsblk",
+ "lsblk 0.6.0",
  "nix 0.29.0",
  "no_color",
  "os_pipe",
