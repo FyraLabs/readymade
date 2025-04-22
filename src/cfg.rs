@@ -47,6 +47,17 @@ pub struct ReadymadeConfig {
     pub distro: Distro,
     pub install: Install,
     pub postinstall: Vec<Module>,
+    #[serde(rename = "bento")]
+    pub bentos: [Bento; 3],
+}
+
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+pub struct Bento {
+    pub title: String,
+    pub desc: String,
+    pub link: String,
+    pub icon: String,
+    pub bg: String,
 }
 
 /// # Errors
@@ -83,6 +94,9 @@ mod tests {
                 [install]
                 allowed_installtypes = ["chromebookinstall"]
                 copy_mode = "bootc"
+
+                [[bento]]
+                title = "Welcome to {$distro}"
 
                 [[postinstall]]
                 module = "GRUB2"

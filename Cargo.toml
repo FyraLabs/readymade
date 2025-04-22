@@ -61,10 +61,7 @@ uu_cp = { version = "0.0.30", features = [
     "feat_selinux",
     "selinux",
 ], optional = true }
-i18n-embed = { version = "0.15.3", features = [
-    "desktop-requester",
-    "fluent-system",
-] }
+i18n-embed = { version = "0.15.3", features = ["desktop-requester", "filesystem-assets", "fluent-system"] }
 i18n-embed-fl = "0.9.3"
 rust-embed = "8.5.0"
 with_builtin_macros = "0.1.0"

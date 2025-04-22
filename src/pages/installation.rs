@@ -5,6 +5,52 @@ use color_eyre::Result;
 use relm4::{Component, ComponentParts, ComponentSender};
 use std::time::Duration;
 
+mod l10n {
+    use i18n_embed::LanguageLoader as _;
+    use itertools::Itertools;
+    use std::sync::LazyLock;
+
+    const BENTO_ASSETS_PATH: &str = "/usr/share/taidan/bento/";
+
+    static BENTO_ASSETS: LazyLock<i18n_embed::FileSystemAssets> = LazyLock::new(|| {
+        i18n_embed::FileSystemAssets::try_new(BENTO_ASSETS_PATH).expect(const_format::concatcp!(
+            "Cannot load assets in ",
+            BENTO_ASSETS_PATH
+        ))
+    });
+
+    static BENTO_AVAILABLE_LANGS: LazyLock<Vec<i18n_embed::unic_langid::LanguageIdentifier>> =
+        LazyLock::new(|| {
+            i18n_embed::fluent::fluent_language_loader!()
+                .available_languages(&*BENTO_ASSETS)
+                .unwrap()
+        });
+
+    static BENTO_LOADER: LazyLock<i18n_embed::fluent::FluentLanguageLoader> = LazyLock::new(|| {
+        use i18n_embed::{unic_langid::LanguageIdentifier, LanguageLoader};
+        use std::str::FromStr;
+        let loader = i18n_embed::fluent::fluent_language_loader!();
+        let mut langs = ["LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE", "LANGUAGES"]
+            .into_iter()
+            .flat_map(|env| {
+                std::env::var(env).ok().into_iter().flat_map(|locales| {
+                    locales
+                        .split(':')
+                        .filter_map(|locale| LanguageIdentifier::from_str(locale).ok())
+                        .collect_vec()
+                })
+            })
+            .flat_map(|li| crate::LOCALE_SOLVER.solve_locale(li))
+            .filter(|li| BENTO_AVAILABLE_LANGS.contains(li))
+            .collect_vec();
+        if langs.is_empty() {
+            langs = vec![loader.fallback_language().clone()];
+        }
+        loader.load_languages(&*BENTO_ASSETS, &langs).unwrap();
+        loader
+    });
+}
+
 #[relm4::widget_template(pub)]
 impl WidgetTemplate for BentoCard {
     view! {
