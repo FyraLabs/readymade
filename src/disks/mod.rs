@@ -24,6 +24,7 @@ pub fn detect_os() -> Vec<DiskInit> {
         .unwrap()
         .find(|mount| {
             [Path::new("/run/initramfs/live"), Path::new("/")].contains(&&*mount.mountpoint)
+                && mount.device.starts_with("/dev/")
         })
         .map(|mount| PathBuf::from(mount.device))
         .map(|dev| {
