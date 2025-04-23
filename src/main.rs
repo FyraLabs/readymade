@@ -259,8 +259,6 @@ fn main() -> Result<()> {
         return install_state.install();
     }
 
-    std::thread::spawn(|| LazyLock::force(&pages::destination::DISKS_DATA));
-
     *CONFIG.write() = cfg::get_cfg()?;
     *INSTALLATION_STATE.write() = InstallationState::from(&*CONFIG.read());
 
