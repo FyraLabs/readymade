@@ -10,7 +10,7 @@ mod l10n {
     use itertools::Itertools;
     use std::sync::LazyLock;
 
-    const BENTO_ASSETS_PATH: &str = "/usr/share/taidan/bento/";
+    const BENTO_ASSETS_PATH: &str = "/usr/share/readymade/bento/";
 
     static BENTO_ASSETS: LazyLock<i18n_embed::FileSystemAssets> = LazyLock::new(|| {
         i18n_embed::FileSystemAssets::try_new(BENTO_ASSETS_PATH).expect(const_format::concatcp!(
