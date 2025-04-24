@@ -57,7 +57,6 @@ pub struct Bento {
     pub desc: String,
     pub link: String,
     pub icon: String,
-    pub bg: String,
 }
 
 /// # Errors
@@ -96,7 +95,22 @@ mod tests {
                 copy_mode = "bootc"
 
                 [[bento]]
-                title = "Welcome to {$distro}"
+                title = "bento1"
+                desc = "bento1-desc"
+                link = "https://wiki.ultramarine-linux.org/en/welcome/"
+                icon = "explore-symbolic"
+
+                [[bento]]
+                title = "bento2"
+                desc = "bento2-desc"
+                link = "https://wiki.ultramarine-linux.org/en/community/community/"
+                icon = "chat-symbolic"
+
+                [[bento]]
+                title = "bento3"
+                desc = "bento3-desc"
+                link = "https://wiki.ultramarine-linux.org/en/contributing/contributorguide/"
+                icon = "applications-development-symbolic"
 
                 [[postinstall]]
                 module = "GRUB2"
@@ -138,6 +152,29 @@ mod tests {
                     crate::backend::postinstall::dracut::Dracut.into(),
                     crate::backend::postinstall::prepare_fedora::PrepareFedora.into(),
                     crate::backend::postinstall::selinux::SELinux.into(),
+                ],
+                bentos: [
+                    Bento {
+                        title: "bento1".into(),
+                        desc: "bento1-desc".into(),
+                        link: "https://wiki.ultramarine-linux.org/en/welcome/".to_owned(),
+                        icon: "explore-symbolic".into()
+                    },
+                    Bento {
+                        title: "bento2".into(),
+                        desc: "bento2-desc".into(),
+                        link: "https://wiki.ultramarine-linux.org/en/community/community/"
+                            .to_owned(),
+                        icon: "chat-symbolic".into()
+                    },
+                    Bento {
+                        title: "bento3".into(),
+                        desc: "bento3-desc".into(),
+                        link:
+                            "https://wiki.ultramarine-linux.org/en/contributing/contributorguide/"
+                                .to_owned(),
+                        icon: "applications-development-symbolic".into(),
+                    },
                 ]
             },
         );
