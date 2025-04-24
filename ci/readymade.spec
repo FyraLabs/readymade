@@ -27,6 +27,9 @@ Summary:        Readymade Configuration for Ultramarine Linux
 Requires:       readymade
 Provides:       readymade-config
 
+%description config-ultramarine
+This package contains the configuration files for Readymade to install Ultramarine Linux.
+
 %prep
 %autosetup -n %{name}-%{gitcommit}
 %cargo_prep_online
