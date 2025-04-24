@@ -8,7 +8,11 @@ use serde_valid::Validate;
 use crate::backend::install::InstallationType;
 use crate::backend::postinstall::Module;
 
+#[cfg(not(debug_assertions))]
 const DEFAULT_CFG_PATH: &str = "/etc/readymade.toml";
+
+#[cfg(debug_assertions)]
+const DEFAULT_CFG_PATH: &str = "templates/ultramarine.toml";
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
