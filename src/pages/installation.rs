@@ -14,7 +14,7 @@ mod l10n {
     use std::{str::FromStr, sync::LazyLock};
 
     #[cfg(not(debug_assertions))]
-    const BENTO_ASSETS_PATH: &str = "/usr/share/taidan/bento/";
+    const BENTO_ASSETS_PATH: &str = "/usr/share/readymade/bento/";
 
     #[cfg(debug_assertions)]
     const BENTO_ASSETS_PATH: &str = "po/";
