@@ -20,18 +20,18 @@
 }
 
 .installation-bento-card.welcome-card {
-    background-image: url("file:///usr/share/readymade/bento1");
+    background-image: url("file:///usr/share/readymade/bento/1");
 }
 
 .installation-bento-card.help-card {
-    background-image: url("file:///usr/share/readymade/bento2");
+    background-image: url("file:///usr/share/readymade/bento/2");
 }
 
 .installation-bento-card.contribute-card {
     background-position: bottom;
-    background-image: url("file:///usr/share/readymade/bento3");
+    background-image: url("file:///usr/share/readymade/bento/3");
 }
 
 .installation-bento-card.sponsor-card {
-    background-image: url("file:///usr/share/readymade/bento4");
+    background-image: url("file:///usr/share/readymade/bento/4");
 }

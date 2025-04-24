@@ -13,14 +13,15 @@ mod l10n {
     use itertools::Itertools;
     use std::{str::FromStr, sync::LazyLock};
 
+    /// NOTE: This is sed-ed by the install.sh script!
     #[cfg(not(debug_assertions))]
     const BENTO_ASSETS_PATH: &str = "/usr/share/readymade/bento/";
 
     #[cfg(debug_assertions)]
-    const BENTO_ASSETS_PATH: &str = "po/";
+    const BENTO_ASSETS_PATH: &str = "";
 
     static BENTO_ASSETS: LazyLock<FileSystemAssets> = LazyLock::new(|| {
-        FileSystemAssets::try_new(BENTO_ASSETS_PATH)
+        FileSystemAssets::try_new(formatcp!("{BENTO_ASSETS_PATH}po/"))
             .expect(formatcp!("Cannot load assets in {BENTO_ASSETS_PATH}"))
     });
 

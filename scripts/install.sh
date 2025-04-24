@@ -5,10 +5,22 @@ set -x
 # taking the root directory as an optional argument.
 
 root=`realpath ${1-/}`
-for langfile in po/*.po; do
-    install -Dd $root/usr/share/locale/$(basename $langfile .po)/LC_MESSAGES
-    msgfmt $langfile -o $root/usr/share/locale/$(basename $langfile .po)/LC_MESSAGES/com.fyralabs.Readymade.mo
+#for langfile in po/*.po; do
+#    install -Dd $root/usr/share/locale/$(basename $langfile .po)/LC_MESSAGES
+#    msgfmt $langfile -o $root/usr/share/locale/$(basename $langfile .po)/LC_MESSAGES/com.fyralabs.Readymade.mo
+#done
+
+BENTO=`sed -nE 's@^\s+const BENTO_ASSETS_PATH: &str = "(.+)";$@\1@p' src/pages/installation.rs | head -n1`
+
+for f in po/*; do
+    install -Dm644 {,$root/$BENTO/}$f/readymade.ftl
 done
+
+pushd data
+for f in *.webp; do
+    install -Dm644 {,$root/$BENTO/}$f
+done
+popd
 
 pushd templates
 for dir in `ls -d */`; do
