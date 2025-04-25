@@ -245,6 +245,7 @@ impl Component for InstallationPage {
 
                 sender.spawn_oneshot_command(move || {
                     let state = INSTALLATION_STATE.read();
+                    let state = crate::backend::install::FinalInstallationState::from(&*state);
                     tracing::debug!(?state, "Starting installation...");
 
                     InstallationPageCommandMsg::FinishInstallation(

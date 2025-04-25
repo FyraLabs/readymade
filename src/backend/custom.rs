@@ -106,7 +106,7 @@ pub fn install_custom(
             }
         };
 
-        let copy_source = PathBuf::from(InstallationState::determine_copy_source());
+        let copy_source = PathBuf::from(FinalInstallationState::determine_copy_source());
         tracing::trace!(?copy_source, ?destroot);
         if copy_source.is_file() {
             crate::stage!(extracting {
@@ -169,7 +169,7 @@ pub fn install_custom(
         .ok_or_else(|| color_eyre::eyre::eyre!("cannot find xbootldr partition"))?;
 
     // TODO: encryption support for custom
-    let rdm_result = ReadymadeResult::new(state.clone(), None);
+    let rdm_result = ReadymadeResult::new(&state.clone(), None);
     container.run(|| state._inner_sys_setup(fstab, None, efi, &xbootldr, rdm_result))??;
 
     Ok(())

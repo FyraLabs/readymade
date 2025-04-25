@@ -256,7 +256,7 @@ fn main() -> Result<()> {
 
         *LL.write() = Some(handle_l10n());
         langs_th.join().expect("cannot join available_langs_th");
-        return install_state.install();
+        return backend::install::FinalInstallationState::from(&install_state).install();
     }
 
     *CONFIG.write() = cfg::get_cfg()?;
