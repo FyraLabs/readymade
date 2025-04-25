@@ -435,7 +435,7 @@ impl InstallationState {
                 self.bootc_enforce_sigpolicy
                     .then_some("--enforce-container-sigpolicy"),
             )
-            .args((self.bootc_args.iter().flatten()).flat_map(|e| [e]))
+            .args(self.bootc_args.iter().flatten())
             .status()
             .wrap_err("cannot run bootc")?
             .success()
