@@ -14,35 +14,35 @@ color-eyre = "0.6.3"
 gtk = { version = "0.9", package = "gtk4", features = ["v4_10"] }
 relm4 = { version = "0.9", features = ["macros"] }
 libhelium = { version = "0.10.0", features = ["gtk_v4_10", "v1_6"] }
-tracing = { version = "0.1.40", features = ["log"] }
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tracing = { version = "0.1.41", features = ["log"] }
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 tracing-appender = "0.2"
 itertools = "0.14.0"
-thiserror = "2.0.11"
+thiserror = "2.0.12"
 gnome-desktop = "0.4.2"
 paste = "1.0.15"
-tempfile = "3.10.1"
-lsblk = "0.6.0"
-const_format = "0.2.32"
+tempfile = "3.19.1"
+lsblk = "0.6.1"
+const_format = "0.2.34"
 sys-mount = "3.0.1"
-serde = { version = "1.0.204", features = ["derive"] }
-serde_json = "1.0.120"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
 bytesize = { version = "2.0.1", features = ["serde"] }
-serde_with = "3.9.0"
-uuid = { version = "1.10.0", features = ["serde"] }
+serde_with = "3.12.0"
+uuid = { version = "1.16.0", features = ["serde"] }
 tiffin = { version = "0.3.2" }
-tracing-journald = "0.3.0"
+tracing-journald = "0.3.1"
 rayon = "1.10.0"
 process_alive = "0.1.1"
-crossbeam-queue = "0.3.11"
-strip-ansi-escapes = "0.2.0"
-toml = "0.8.19"
+crossbeam-queue = "0.3.12"
+strip-ansi-escapes = "0.2.1"
+toml = "0.8.20"
 serde_valid = { version = "1.0.5", features = ["toml"] }
 os_pipe = "1.2.1"
 tee_readwrite = "0.2.0"
 nix = { version = "0.29.0", features = ["fs", "mount", "user"] }
 backhand = "0.21.0"
-glob = "0.3.1"
+glob = "0.3.2"
 enum_dispatch = "0.3.13"
 scopeguard = "1.2.0"
 tracing-test = "0.2.5"
@@ -50,9 +50,9 @@ serde-systemd-unit = { path = "./serde-systemd-unit" }
 format-bytes = "0.3.0"
 ipc-channel = { version = "0.19.0", features = ["async"] }
 # FIXME: we should remove this crate (somehow this pulls in gettext… not so great)
-freedesktop-desktop-entry = "0.7.7"
+freedesktop-desktop-entry = "0.7.10"
 jwalk = "0.8.1"
-xattr = "1.4.0"
+xattr = "1.5.0"
 filesystem-table = { version = "0.1.2", path = "./filesystem-table" }
 kurage = "0.1.4"
 uu_cp = { version = "0.0.30", features = [
@@ -61,12 +61,12 @@ uu_cp = { version = "0.0.30", features = [
     "feat_selinux",
     "selinux",
 ], optional = true }
-i18n-embed = { version = "0.15.3", features = [
+i18n-embed = { version = "0.15.4", features = [
     "desktop-requester",
     "fluent-system",
 ] }
-i18n-embed-fl = "0.9.3"
-rust-embed = "8.5.0"
+i18n-embed-fl = "0.9.4"
+rust-embed = "8.7.0"
 with_builtin_macros = "0.1.0"
 no_color = "0.2.0"
 poly_l10n = "0.0.4"

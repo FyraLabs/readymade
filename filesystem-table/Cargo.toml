@@ -3,7 +3,10 @@ name = "filesystem-table"
 version = "0.1.2"
 edition = "2021"
 
-authors = ["Cappy Ishihara <cappy@fyralabs.com>", "madonuko <mado@fyralabs.com>"]
+authors = [
+    "Cappy Ishihara <cappy@fyralabs.com>",
+    "madonuko <mado@fyralabs.com>",
+]
 license = "MIT"
 categories = ["filesystem", "encoding"]
 keywords = ["fstab", "mtab", "filesystem"]
@@ -15,5 +18,6 @@ description = "A library for reading and writing filesystem tables."
 path = "./lib.rs"
 
 [dependencies]
-thiserror = "2.0.11"
-lsblk = "0.5"
+thiserror = "2.0.12"
+lsblk = "0.6"
+
