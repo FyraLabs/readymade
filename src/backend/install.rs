@@ -1,4 +1,3 @@
-use crate::prelude::*;
 use ipc_channel::ipc::{IpcError, IpcOneShotServer, IpcSender};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -9,18 +8,17 @@ use std::{
 };
 use tee_readwrite::TeeReader;
 
-use crate::consts;
-use crate::consts::repart_dir;
-use crate::util::sys::check_uefi;
 use crate::{
-    backend::postinstall::PostInstallModule,
-    backend::repart_output::RepartOutput,
-    consts::{LIVE_BASE, ROOTFS_BASE},
+    backend::{
+        postinstall::PostInstallModule,
+        repart_output::{CryptData, RepartOutput},
+    },
+    consts::{self, repart_dir, LIVE_BASE, ROOTFS_BASE},
     pages::destination::DiskInit,
-    stage, util,
+    prelude::*,
+    stage,
+    util::{self, sys::check_uefi},
 };
-
-use super::repart_output::CryptData;
 
 pub static IPC_CHANNEL: OnceLock<Mutex<IpcSender<InstallationMessage>>> = OnceLock::new();
 
@@ -244,13 +242,6 @@ impl From<&InstallationState> for FinalInstallationState {
     }
 }
 
-impl From<&FinalInstallationState> for InstallationState {
-    fn from(value: &FinalInstallationState) -> Self {
-        // TODO: must finish this before PR!!!
-        todo!()
-    }
-}
-
 /// IPC installation message for non-interactive mode
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum InstallationMessage {
@@ -395,10 +386,7 @@ impl FinalInstallationState {
             Self::bootc_mount(
                 bootc_rootfs_mountpoint,
                 &repart_out,
-                self.encrypts
-                    .as_ref()
-                    .map(|e| &*e.encryption_key)
-                    .as_deref(),
+                self.encrypts.as_ref().map(|e| &*e.encryption_key),
             )?;
             self.bootc_copy(bootc_rootfs_mountpoint, &repart_out)?;
             Command::new("sync").status().ok();
@@ -621,7 +609,7 @@ impl FinalInstallationState {
 
         let cryptdata = output.generate_cryptdata()?;
 
-        let rdm_result = super::export::ReadymadeResult::new(self, repart_cfgs);
+        let rdm_result = super::export::ReadymadeResult::new(self.clone(), repart_cfgs);
 
         container.run(|| self._inner_sys_setup(fstab, cryptdata, esp, &xbootldr, rdm_result))??;
 
@@ -649,7 +637,7 @@ impl FinalInstallationState {
             distro_name: self.config.distro.name.clone(),
         };
 
-        if state_dump.state.bootc_imgref.is_none() {
+        if !state_dump.state.copy_mode.is_bootc() {
             tracing::info!("Writing /etc/fstab...");
             std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc/")?;
             std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
@@ -670,7 +658,7 @@ impl FinalInstallationState {
         )
         .wrap_err("Failed to write state dump file")?;
 
-        if let Some(data) = crypt_data.filter(|_| state_dump.state.bootc_imgref.is_none()) {
+        if let Some(data) = crypt_data.filter(|_| !state_dump.state.copy_mode.is_bootc()) {
             tracing::info!("Writing /etc/crypttab...");
             std::fs::write("/etc/crypttab", data.crypttab)
                 .wrap_err("cannot write to /etc/crypttab")?;
