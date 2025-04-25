@@ -60,6 +60,7 @@ pub struct InstallationState {
     pub bootc_target_imgref: Option<String>,
     pub bootc_enforce_sigpolicy: bool,
     pub bootc_kargs: Option<Vec<String>>,
+    pub bootc_args: Option<Vec<String>>,
 }
 
 impl From<&crate::cfg::ReadymadeConfig> for InstallationState {
@@ -81,6 +82,7 @@ impl From<&crate::cfg::ReadymadeConfig> for InstallationState {
                 .or_else(|| std::env::var("TARGET_COPY_SOURCE").ok()),
             bootc_enforce_sigpolicy: value.install.bootc_enforce_sigpolicy,
             bootc_kargs: value.install.bootc_kargs.clone(),
+            bootc_args: value.install.bootc_args.clone(),
             ..Self::default()
         }
     }
@@ -433,6 +435,7 @@ impl InstallationState {
                 self.bootc_enforce_sigpolicy
                     .then_some("--enforce-container-sigpolicy"),
             )
+            .args((self.bootc_args.iter().flatten()).flat_map(|e| [e]))
             .status()
             .wrap_err("cannot run bootc")?
             .success()
