@@ -193,7 +193,7 @@ impl Component for InstallationPage {
                         },
                         #[template_child]
                         title {
-                            set_label: &L.get(&crate::CONFIG.read().bentos[1].title),
+                            set_label: &L.get_args(&crate::CONFIG.read().bentos[1].title, [("distro", &crate::CONFIG.read().distro.name)].into()),
                         },
                         #[template_child]
                         description {
@@ -211,7 +211,7 @@ impl Component for InstallationPage {
                         },
                         #[template_child]
                         title {
-                            set_label: &L.get(&crate::CONFIG.read().bentos[2].title),
+                            set_label: &L.get_args(&crate::CONFIG.read().bentos[2].title, [("distro", &crate::CONFIG.read().distro.name)].into()),
                         },
                         #[template_child]
                         description {
