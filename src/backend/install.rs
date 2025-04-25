@@ -1,23 +1,11 @@
-use color_eyre::eyre::bail;
-use color_eyre::eyre::eyre;
-use color_eyre::eyre::Context;
-use color_eyre::eyre::ContextCompat;
-use color_eyre::eyre::OptionExt as _;
-use color_eyre::{Result, Section};
-use ipc_channel::ipc::IpcError;
-use ipc_channel::ipc::IpcOneShotServer;
-use ipc_channel::ipc::IpcSender;
-use itertools::Itertools;
+use crate::prelude::*;
+use ipc_channel::ipc::{IpcError, IpcOneShotServer, IpcSender};
 use serde::{Deserialize, Serialize};
-use std::io::BufRead;
-use std::io::BufReader;
-use std::process::Command;
-use std::process::Stdio;
-use std::sync::Mutex;
-use std::sync::OnceLock;
 use std::{
-    io::Write,
+    io::{BufRead, BufReader, Write},
     path::{Path, PathBuf},
+    process::{Command, Stdio},
+    sync::{Mutex, OnceLock},
 };
 use tee_readwrite::TeeReader;
 
@@ -62,27 +50,136 @@ pub struct InstallationState {
     pub bootc_kargs: Option<Vec<String>>,
 }
 
+/// The finalized state of [`InstallationState`].
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FinalInstallationState {
+    pub langlocale: String,
+    pub destination_disk: DiskInit,
+    pub installation_type: DetailedInstallationType,
+    pub encrypts: Option<EncryptState>,
+    pub config: crate::cfg::ReadymadeConfig,
+    pub copy_mode: DetailedCopyMode,
+}
+
+#[derive(Default, Debug, Serialize, Deserialize, Clone)]
+pub struct EncryptState {
+    pub tpm: bool,
+    pub encryption_key: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum DetailedInstallationType {
+    WholeDisk,
+    DualBoot(u64),
+    ChromebookInstall,
+    Custom {
+        mounttags: crate::backend::custom::MountTargets,
+    },
+}
+
+impl From<&DetailedInstallationType> for InstallationType {
+    fn from(value: &DetailedInstallationType) -> Self {
+        match value {
+            DetailedInstallationType::WholeDisk => Self::WholeDisk,
+            DetailedInstallationType::DualBoot(i) => Self::DualBoot(*i),
+            DetailedInstallationType::ChromebookInstall => Self::ChromebookInstall,
+            DetailedInstallationType::Custom { .. } => Self::Custom,
+        }
+    }
+}
+
+impl DetailedInstallationType {
+    fn simple(&self) -> InstallationType {
+        self.into()
+    }
+}
+
+#[derive(Default, Debug, Serialize, Deserialize, Clone)]
+pub enum DetailedCopyMode {
+    #[default]
+    Repart,
+    Bootc {
+        bootc_imgref: String,
+        bootc_target_imgref: Option<String>,
+        bootc_enforce_sigpolicy: bool,
+        bootc_kargs: Vec<String>,
+    },
+}
+
+impl DetailedCopyMode {}
+
 impl From<&crate::cfg::ReadymadeConfig> for InstallationState {
     fn from(value: &crate::cfg::ReadymadeConfig) -> Self {
         Self {
             postinstall: value.postinstall.clone(),
             distro_name: value.distro.name.clone(),
-            bootc_imgref: value
-                .install
-                .bootc_imgref
-                .clone()
-                .filter(|_| value.install.copy_mode == crate::cfg::CopyMode::Bootc)
-                .or_else(|| std::env::var("COPY_SOURCE").ok()),
-            bootc_target_imgref: value
-                .install
-                .bootc_target_imgref
-                .clone()
-                .filter(|_| value.install.copy_mode == crate::cfg::CopyMode::Bootc)
-                .or_else(|| std::env::var("TARGET_COPY_SOURCE").ok()),
+            bootc_imgref: value.to_bootc_copy_source(),
+            bootc_target_imgref: value.to_bootc_target_copy_source(),
             bootc_enforce_sigpolicy: value.install.bootc_enforce_sigpolicy,
             bootc_kargs: value.install.bootc_kargs.clone(),
             ..Self::default()
         }
+    }
+}
+
+impl InstallationState {
+    fn to_detailed_installation_type(&self) -> DetailedInstallationType {
+        match self
+            .installation_type
+            .as_ref()
+            .expect("A valid installation type should be set before calling install()")
+        {
+            InstallationType::WholeDisk => DetailedInstallationType::WholeDisk,
+            InstallationType::DualBoot(i) => DetailedInstallationType::DualBoot(*i),
+            InstallationType::ChromebookInstall => DetailedInstallationType::ChromebookInstall,
+            InstallationType::Custom => DetailedInstallationType::Custom {
+                mounttags: self
+                    .mounttags
+                    .clone()
+                    .expect("no mounttags needed for installation_type: custom"),
+            },
+        }
+    }
+    #[allow(clippy::unwrap_in_result)]
+    fn to_encrypt_state(&self) -> Option<EncryptState> {
+        self.encrypt.then(|| EncryptState {
+            tpm: self.tpm,
+            encryption_key: self
+                .encryption_key
+                .clone()
+                .expect("no encryption_key but encrypt = true"),
+        })
+    }
+    // FIX: this is terrible why is copy_mode not passed
+    fn to_detailed_copy_mode(&self) -> DetailedCopyMode {
+        (self.bootc_imgref.as_ref()).map_or(DetailedCopyMode::Repart, |bootc_imgref| {
+            DetailedCopyMode::Bootc {
+                bootc_imgref: bootc_imgref.clone(),
+                bootc_target_imgref: self.bootc_target_imgref.clone(),
+                bootc_enforce_sigpolicy: self.bootc_enforce_sigpolicy,
+                bootc_kargs: self.bootc_kargs.clone().unwrap_or_default(),
+            }
+        })
+    }
+}
+
+impl From<&InstallationState> for FinalInstallationState {
+    fn from(value: &InstallationState) -> Self {
+        Self {
+            langlocale: value.langlocale.clone().expect("no langlocale"),
+            destination_disk: value.destination_disk.clone().expect("no destination_disk"),
+            installation_type: value.to_detailed_installation_type(),
+            encrypts: value.to_encrypt_state(),
+            config: crate::CONFIG.read().clone(),
+            copy_mode: value.to_detailed_copy_mode(),
+        }
+    }
+}
+
+impl From<&FinalInstallationState> for InstallationState {
+    fn from(value: &FinalInstallationState) -> Self {
+        // TODO: must finish this before PR!!!
+        todo!()
     }
 }
 
@@ -92,7 +189,7 @@ pub enum InstallationMessage {
     Status(String),
 }
 
-impl InstallationState {
+impl FinalInstallationState {
     // todo: move methods from installationstate to here!
     #[allow(clippy::unwrap_in_result)]
     pub fn install_using_subprocess(
@@ -102,35 +199,11 @@ impl InstallationState {
         if cfg!(debug_assertions) {
             let installation_state_dump_path =
                 std::env::temp_dir().join("readymade-installation-state.json");
-            tracing::debug!(
-                "Dumping installation state to {}",
-                installation_state_dump_path.display()
-            );
+            tracing::debug!("Dumping installation state to {installation_state_dump_path:?}");
             std::fs::write(installation_state_dump_path, serde_json::to_string(self)?)?;
         }
 
-        let mut command = Command::new("pkexec");
-        command.arg(std::env::current_exe()?);
-        command.arg("--non-interactive");
-
         let (server, channel_id) = IpcOneShotServer::new()?;
-        command.arg(channel_id);
-
-        // list envars
-        let envars = std::env::vars().collect::<Vec<_>>();
-
-        for (key, value) in envars {
-            if key.starts_with("REPART_") || key.starts_with("READYMADE_") {
-                command.arg(format!("{key}={value}"));
-            }
-        }
-
-        command.arg("NO_COLOR=1");
-
-        command.arg(format!(
-            "READYMADE_LOG={}",
-            std::env::var("READYMADE_LOG").as_deref().unwrap_or("info")
-        ));
 
         let mut stdout_logs: Vec<u8> = Vec::new();
         let mut stderr_logs: Vec<u8> = Vec::new();
@@ -141,12 +214,23 @@ impl InstallationState {
         let tee_stdout = TeeReader::new(stdout_reader, &mut stdout_logs, false);
         let tee_stderr = TeeReader::new(stderr_reader, &mut stderr_logs, false);
 
-        command
+        let mut res = Command::new("pkexec")
+            .arg(std::env::current_exe()?)
+            .args(["--non-interactive", &channel_id])
+            .args(
+                std::env::vars()
+                    .filter(|(key, _)| key.starts_with("REPART_") || key.starts_with("READYMADE_"))
+                    .map(|(key, value)| format!("{key}={value}")),
+            )
+            .arg("NO_COLOR=1")
+            .arg(format!(
+                "READYMADE_LOG={}",
+                std::env::var("READYMADE_LOG").as_deref().unwrap_or("info")
+            ))
             .stdin(std::process::Stdio::piped())
             .stdout(stdout_writer)
-            .stderr(stderr_writer);
-
-        let mut res = command.spawn()?;
+            .stderr(stderr_writer)
+            .spawn()?;
 
         {
             let mut child_stdin = res.stdin.take().expect("can't take stdin");
@@ -179,9 +263,7 @@ impl InstallationState {
                 Ok(())
             });
 
-            let result = res.wait_with_output();
-            drop(command);
-            result
+            res.wait_with_output()
         });
         println!("└─ END OF Readymade subprocess logs");
 
@@ -208,31 +290,23 @@ impl InstallationState {
     /// Copies the current config into a temporary directory, allowing them to be modified without
     /// affecting the original templates :D
     fn layer_configdir(cfg_dir: &Path) -> Result<PathBuf> {
-        // /run/readymade-install
-        let new_path = PathBuf::from("/run").join("readymade-install");
-        std::fs::create_dir_all(&new_path)?;
-        // Copy the contents of the cfg_dir to the new path
+        std::fs::create_dir_all("/run/readymade-install")?;
         util::fs::copy_dir(cfg_dir, "/run/readymade-install")?;
-
-        Ok(new_path)
+        Ok("/run/readymade-install".into())
     }
 
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     pub fn install(&self) -> Result<()> {
-        let inst_type = (self.installation_type.as_ref())
-            .expect("A valid installation type should be set before calling install()");
+        let inst_type = &self.installation_type;
 
-        if let InstallationType::Custom = inst_type {
-            let mut mounttags = self.mounttags.clone().unwrap();
+        if let DetailedInstallationType::Custom { mounttags } = inst_type {
             return crate::backend::custom::install_custom(self, &mut mounttags);
         }
-        let blockdev = &(self.destination_disk.as_ref())
-            .expect("A valid destination device should be set before calling install()")
-            .devpath;
+        let blockdev = &self.destination_disk.devpath;
 
         tracing::info!("Layering repart templates");
-        let cfgdir = Self::layer_configdir(&inst_type.cfgdir(self.bootc_imgref.is_some()))?;
+        let cfgdir = Self::layer_configdir(&inst_type.simple().cfgdir(self.copy_mode))?;
 
         // Let's write the encryption key to the keyfile
         let keyfile = std::path::Path::new(consts::LUKS_KEYFILE_PATH);
@@ -243,7 +317,7 @@ impl InstallationState {
         self.enable_encryption(&cfgdir)?;
         let repart_out = stage!(mkpart {
             // todo: not freeze on error, show error message as err handler?
-            Self::systemd_repart(blockdev, &cfgdir, self.encrypt && self.encryption_key.is_some(), self.bootc_imgref.is_some())?
+            Self::systemd_repart(blockdev, &cfgdir, self.encrypts.is_some() && self.encryption_key.is_some(), self.bootc_imgref.is_some())?
         });
 
         let repartcfg_export = super::export::SystemdRepartData::get_configs(&cfgdir)?;

@@ -3,7 +3,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use super::export::ReadymadeResult;
-use super::install::InstallationState;
+use super::install::FinalInstallationState;
 use color_eyre::eyre::Context;
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -81,7 +81,7 @@ impl MountTargets {
 // 3. funny setup_system()
 #[allow(clippy::cognitive_complexity, clippy::module_name_repetitions)]
 pub fn install_custom(
-    state: &InstallationState,
+    state: &FinalInstallationState,
     mounttags: &mut MountTargets,
 ) -> color_eyre::Result<()> {
     let destroot = Path::new("/mnt/custom");

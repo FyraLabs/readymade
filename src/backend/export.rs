@@ -28,12 +28,15 @@ impl ReadymadeResult {
         Ok(serde_json::to_string_pretty(&self)?)
     }
 
-    pub fn new(state: InstallationState, systemd_repart_data: Option<SystemdRepartData>) -> Self {
+    pub fn new<S: Into<InstallationState>>(
+        state: S,
+        systemd_repart_data: Option<SystemdRepartData>,
+    ) -> Self {
         Self {
             version: RESULT_DUMP_FORMAT_VERSION,
             readymade_version: env!("CARGO_PKG_VERSION"),
             is_debug_build: cfg!(debug_assertions),
-            state: prep_state_for_export(state).unwrap(),
+            state: prep_state_for_export(state.into()).unwrap(),
             systemd_repart_data,
         }
     }
