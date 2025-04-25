@@ -41,7 +41,7 @@ page-installdual-otheros = Другая ОС
 page-confirmation = Подтверждение
 
 page-installation = Установка
-page-installation-welcome-desc = Get to know your new operating system.
+page-installation-welcome-desc = Познакомьтесь с новой операционной системой.
 page-installation-help = Нужна помощь?
 page-installation-help-desc = Задайте вопрос в одном из наших чатов!
 page-installation-contrib = Внести вклад в {$distro}
@@ -55,7 +55,7 @@ page-installcustom-tool = Открыть дисковую утилиту
 page-installcustom-add = Добавить новое правило
 
 page-installationtype = Тип установки
-page-installationtype-entire = Вест диск
+page-installationtype-entire = Весь диск
 page-installationtype-tpm = Включить TPM
 page-installationtype-encrypt = Включить шифрование диска
 page-installationtype-chromebook = Chromebook
