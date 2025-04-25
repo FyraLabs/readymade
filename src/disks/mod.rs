@@ -1,12 +1,14 @@
 mod osprobe;
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
+use lsblk::Populate;
 use osprobe::OSProbe;
 
 use crate::pages::destination::DiskInit;
-
-const OSNAME_PLACEHOLDER: &str = "Unknown OS";
 
 /// Try and scan the system for disks and their installed OS
 // Honestly, this is a mess and I have no idea how to get os_detect to work.
@@ -20,8 +22,16 @@ pub fn detect_os() -> Vec<DiskInit> {
     // This way, we can avoid showing the live system as a valid target
     let live_device = lsblk::Mount::list()
         .unwrap()
-        .find(|mount| mount.mountpoint == PathBuf::from("/run/initramfs/live"))
-        .map(|mount| PathBuf::from(mount.device));
+        .find(|mount| {
+            [Path::new("/run/initramfs/live"), Path::new("/")].contains(&&*mount.mountpoint)
+                && mount.device.starts_with("/dev/")
+        })
+        .map(|mount| PathBuf::from(mount.device))
+        .map(|dev| {
+            let mut dev = lsblk::BlockDevice::from_abs_path_unpopulated(dev);
+            _ = dev.populate_partuuid();
+            dev.disk_name().unwrap_or(dev.name)
+        });
 
     tracing::debug!(?disks, "Found disks");
 
@@ -33,7 +43,7 @@ pub fn detect_os() -> Vec<DiskInit> {
         .into_iter()
         .filter(|disk| {
             disk.is_disk()
-                && live_device.as_ref() != Some(&disk.fullname)
+                && live_device.as_ref() != Some(&disk.name)
                 && (cfg!(debug_assertions) || disk.is_physical())
         })
         .map(|mut disk| {
@@ -53,7 +63,7 @@ pub fn detect_os() -> Vec<DiskInit> {
                         path.starts_with(disk.fullname.to_str().unwrap())
                             .then_some(osname)
                     })
-                    .map_or(OSNAME_PLACEHOLDER.to_owned(), ToOwned::to_owned),
+                    .map_or(crate::t!("unknown-os"), ToOwned::to_owned),
                 size: bytesize::ByteSize::kib(disk.capacity().unwrap().unwrap() >> 1),
                 devpath: disk.fullname,
             };

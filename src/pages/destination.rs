@@ -1,7 +1,13 @@
 use crate::prelude::*;
 use relm4::factory::DynamicIndex;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::LazyLock};
+
+pub static DISKS_DATA: LazyLock<Vec<DiskInit>> = LazyLock::new(|| {
+    let mut v = crate::disks::detect_os();
+    v.sort();
+    v
+});
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DiskInit {
@@ -53,6 +59,8 @@ impl FactoryComponent for DiskInit {
 
 pub struct DestinationPage {
     disks: FactoryVecDeque<DiskInit>,
+    scanning: bool,
+    nodisk: libhelium::EmptyPage,
 }
 
 #[derive(Debug)]
@@ -69,10 +77,11 @@ pub enum DestinationPageOutput {
 }
 
 #[relm4::component(pub)]
-impl SimpleComponent for DestinationPage {
+impl Component for DestinationPage {
     type Init = ();
     type Input = DestinationPageMsg;
     type Output = DestinationPageOutput;
+    type CommandOutput = Vec<DiskInit>;
 
     view! {
         libhelium::ViewMono {
@@ -88,7 +97,22 @@ impl SimpleComponent for DestinationPage {
             append = &gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_spacing: 6,
-                gtk::ScrolledWindow {
+
+                if model.scanning {
+                    libhelium::EmptyPage {
+                        set_icon: "content-loading-symbolic",
+                        set_title: &t!("page-destination-scanning"),
+                        set_description: &t!("page-destination-wait"),
+                    }
+                } else if model.disks.is_empty() {
+                    #[local_ref] nodisk ->
+                    libhelium::EmptyPage {
+                        set_icon: "list-remove-all-symbolic",
+                        set_title: &t!("page-destination-no-disk"),
+                        set_description: &t!("page-destination-no-disk-desc"),
+                    }
+                } else {
+                    gtk::ScrolledWindow {
                         #[local_ref]
                         disk_list -> gtk::FlowBox {
                             set_selection_mode: gtk::SelectionMode::Single,
@@ -103,6 +127,7 @@ impl SimpleComponent for DestinationPage {
                             add_css_class: "content-flowbox",
                             connect_selected_children_changed => DestinationPageMsg::SelectionChanged,
                         },
+                    }
                 },
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
@@ -112,7 +137,7 @@ impl SimpleComponent for DestinationPage {
                         set_is_textual: true,
                         #[watch]
                         set_label: &t!("prev"),
-                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome))
+                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(Page::Welcome))
                     },
 
                     gtk::Box {
@@ -124,23 +149,11 @@ impl SimpleComponent for DestinationPage {
                         #[watch]
                         set_label: &t!("next"),
                         add_css_class: "large-button",
-                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(
-                            if let [x] = crate::CONFIG.read().install.allowed_installtypes[..] {
-                                #[allow(clippy::enum_glob_use)]
-                                use crate::{backend::install::InstallationType::*, Page::*};
-                                match x {
-                                    ChromebookInstall | WholeDisk => Confirmation,
-                                    DualBoot(_) => InstallDual,
-                                    Custom => InstallCustom,
-                                }
-                            } else {
-                                crate::Page::InstallationType
-                            }
-                        )),
+                        connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(Page::InstallationType)),
                         #[watch]
                         set_sensitive: INSTALLATION_STATE.read().destination_disk.is_some()
                     }
-                }
+                },
             }
         }
     }
@@ -150,28 +163,36 @@ impl SimpleComponent for DestinationPage {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let mut disks = FactoryVecDeque::builder()
+        let disks = FactoryVecDeque::builder()
             .launch(gtk::FlowBox::default())
             .detach();
 
-        let mut disks_data = crate::disks::detect_os();
-        disks_data.sort();
+        sender.spawn_command(|sender| sender.send(DISKS_DATA.clone()).expect("cannot send disks"));
 
-        for disk in disks_data {
-            disks.guard().push_front(disk);
-        }
+        let mut model = Self {
+            disks,
+            scanning: true,
+            nodisk: libhelium::EmptyPage::default(),
+        };
 
-        let model = Self { disks };
+        let nodisk = model.nodisk;
 
         let disk_list: &gtk::FlowBox = model.disks.widget();
         let widgets = view_output!();
+
+        model.nodisk = nodisk;
+
+        // FIXME: lea please make the button more accessible, also why is it shown by default
+        let btn = model.nodisk.last_child().unwrap();
+        btn.last_child().unwrap().set_visible(false);
+        // TODO: we probably should also disable the button for the loading page
 
         INSTALLATION_STATE.subscribe(sender.input_sender(), |_| DestinationPageMsg::Update);
 
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, _: &Self::Root) {
         match message {
             DestinationPageMsg::Navigate(action) => sender
                 .output(DestinationPageOutput::Navigate(action))
@@ -188,5 +209,18 @@ impl SimpleComponent for DestinationPage {
             }
             DestinationPageMsg::Update => {}
         }
+    }
+
+    fn update_cmd(
+        &mut self,
+        message: Self::CommandOutput,
+        _: ComponentSender<Self>,
+        _: &Self::Root,
+    ) {
+        let mut guard = self.disks.guard();
+        for disk in message {
+            guard.push_front(disk);
+        }
+        self.scanning = false;
     }
 }

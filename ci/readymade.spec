@@ -4,7 +4,7 @@ Name:           readymade
 Version:        git~%{shortcommit}
 Release:        1%?dist
 Summary:        Install ready-made distribution images
-License:        MIT
+License:        GPL-3.0-or-later
 URL:            https://github.com/FyraLabs/readymade
 Source0:        %{url}/archive/%{gitcommit}.tar.gz
 BuildRequires:	anda-srpm-macros rust-packaging

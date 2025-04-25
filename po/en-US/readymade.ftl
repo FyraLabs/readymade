@@ -1,6 +1,8 @@
 prev = Previous
 next = Next
 
+unknown-os = Unknown OS
+
 parttype-root = Filesystem root ({$path})
 parttype-extendedboot = Extended Boot Loader Partition ({$path})
 parttype-esp = EFI System Partition ({$path})
@@ -28,6 +30,10 @@ page-completed-close = Close
 page-completed-reboot = Reboot
 
 page-destination = Destination
+page-destination-scanning = Scanning Disks
+page-destination-wait = Waiting for os-prober…
+page-destination-no-disk = No Disks Found
+page-destination-no-disk-desc = There are no disks suitable for installation.
 
 page-installdual = Dual Boot
 page-installdual-otheros = Other OS
@@ -38,7 +44,7 @@ page-installation = Installation
 page-installation-welcome-desc = Get to know your new operating system.
 page-installation-help = Need help?
 page-installation-help-desc = Ask in one of our chats!
-page-installation-contrib = Contribute to Ultramarine
+page-installation-contrib = Contribute to {$distro}
 page-installation-contrib-desc = Learn how to contribute your time, money, or hardware.
 page-installation-progress = Installing base system...
 

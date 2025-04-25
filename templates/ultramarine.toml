@@ -1,5 +1,5 @@
 [install]
-allowed_installtypes = ["wholedisk", "custom"]
+allowed_installtypes = ["wholedisk"]
 
 [distro]
 name = "Ultramarine Linux"
@@ -30,3 +30,6 @@ module = "InitialSetup"
 
 [[postinstall]]
 module = "Language"
+
+[[postinstall]]
+module = "Script"

@@ -49,16 +49,30 @@ page!(InstallationType {
                 ))
                 .unwrap();
         },
-        Next => sender.input(InstallationTypePageMsg::Navigate(NavigationAction::GoTo({
-            let value = INSTALLATION_STATE.read().installation_type;
-            match value.unwrap() {
-                InstallationType::DualBoot(_) => Page::InstallDual,
-                InstallationType::ChromebookInstall | InstallationType::WholeDisk => {
-                    Page::Confirmation
+        Next => {
+            self.act = Some(NavigationAction::GoTo({
+                let value = INSTALLATION_STATE.read().installation_type;
+                match value.unwrap() {
+                    InstallationType::DualBoot(_) => Page::InstallDual,
+                    InstallationType::ChromebookInstall | InstallationType::WholeDisk => {
+                        Page::Confirmation
+                    }
+                    InstallationType::Custom => Page::InstallCustom,
                 }
-                InstallationType::Custom => Page::InstallCustom,
+            }));
+            if INSTALLATION_STATE.read().encrypt {
+                let mut dialogue = EncryptPassDialogue::builder()
+                        .launch(self.root.as_ref().unwrap().toplevel_window().unwrap())
+                        .forward(
+                            sender.input_sender(),
+                            InstallationTypePageMsg::EncryptDialogue,
+                        );
+                    dialogue.widget().present();
+                    dialogue.detach_runtime();
+                    return;
             }
-        })))
+            sender.input(InstallationTypePageMsg::Navigate(self.act.clone().unwrap()));
+        },
     } => {}
 
     gtk::Box {

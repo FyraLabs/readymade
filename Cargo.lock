@@ -265,9 +265,9 @@ checksum = "1628fb46dfa0b37568d12e5edd512553eccf6a22a78e8bde00bb4aed84d5bdbf"
 
 [[package]]
 name = "bytesize"
-version = "1.3.2"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d2c12f985c78475a6b8d629afd0c360260ef34cfef52efccdcfd31972f81c2e"
+checksum = "a3c8f83209414aacf0eeae3cf730b18d6981697fba62f200fcfb92b9f082acba"
 dependencies = [
  "serde",
 ]
@@ -812,7 +812,7 @@ dependencies = [
 name = "filesystem-table"
 version = "0.1.2"
 dependencies = [
- "lsblk",
+ "lsblk 0.5.0",
  "thiserror 2.0.12",
 ]
 
@@ -1779,6 +1779,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
 
 [[package]]
+name = "isolang"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe50d48c77760c55188549098b9a7f6e37ae980c586a24693d6b01c3b2010c3c"
+dependencies = [
+ "phf",
+]
+
+[[package]]
 name = "itertools"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2006,6 +2015,16 @@ name = "lsblk"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f11e58c98520189fd5b3fdc644cf407ffd99d5e5463e480943228ea02ae66aa4"
+dependencies = [
+ "paste",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "lsblk"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04a60c4d6ad3a17071b9d5a6fb932ff4b672aade80ab6600c5e9f1a8cd77dc67"
 dependencies = [
  "paste",
  "thiserror 2.0.12",
@@ -2399,6 +2418,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
+name = "poly_l10n"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bb2239d83a46831976cc8c6fc7dd43413c03f4033386261ddff7b5688445667"
+dependencies = [
+ "isolang",
+ "itertools 0.14.0",
+ "preinterpret",
+ "tracing",
+ "unic-langid",
+]
+
+[[package]]
 name = "portable-atomic"
 version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2417,6 +2449,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9"
 dependencies = [
  "zerocopy 0.8.23",
+]
+
+[[package]]
+name = "preinterpret"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1727fb2b8bcde3f60a0073507de280c5da6494798be79b4ee412b487e91891b4"
+dependencies = [
+ "proc-macro2",
+ "syn 2.0.100",
 ]
 
 [[package]]
@@ -2600,7 +2642,7 @@ dependencies = [
 
 [[package]]
 name = "readymade"
-version = "0.11.2"
+version = "0.12.2"
 dependencies = [
  "backhand",
  "bytesize",
@@ -2622,11 +2664,12 @@ dependencies = [
  "jwalk",
  "kurage",
  "libhelium",
- "lsblk",
+ "lsblk 0.6.0",
  "nix 0.29.0",
  "no_color",
  "os_pipe",
  "paste",
+ "poly_l10n",
  "process_alive",
  "rayon",
  "relm4",
