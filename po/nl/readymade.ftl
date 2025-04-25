@@ -45,9 +45,9 @@ page-installation-progress = Basissysteem wordt geïnstalleerd...
 
 page-installcustom = Installatie aanpassen
 page-installcustom-title = Partities en mountpoints
-page-installcustom-desc = {$num} definition(s)
+page-installcustom-desc = {$num} definitie(s)
 page-installcustom-tool = Partitioneertool openen
-page-installcustom-add = Add a new definition/row
+page-installcustom-add = Nieuwe definitie/regel toevoegen
 
 page-installationtype = Installatietype
 page-installationtype-entire = Gehele schijf
