@@ -8,7 +8,7 @@ use relm4::RelmWidgetExt;
 static TPM_SUPPORT: LazyLock<bool> = LazyLock::new(|| {
     std::fs::read_to_string("/sys/class/tpm/tpm0/tpm_version_major")
         .ok()
-        .and_then(|s: String| s.parse::<usize>().ok())
+        .and_then(|s: String| s.trim().parse::<usize>().ok())
         .is_some_and(|ver| ver >= 2)
 });
 
