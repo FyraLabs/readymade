@@ -459,27 +459,19 @@ impl FinalInstallationState {
 
     // This cleans up any folder that is not on the bootc whitelist from a bootc-installed filesystem
     fn bootc_cleanup(mountpoint: &Path) -> Result<()> {
-        std::fs::read_dir(mountpoint)?.for_each(|f| {
-            let Ok(file) = f else {
-                return;
-            };
-            let Ok(file_name) = file.file_name().into_string() else {
-                return;
-            };
-            let Ok(file_type) = file.file_type() else {
-                return;
-            };
-
-            match file_name.as_str() {
-                "boot" | "ostree" | "efi" | ".bootc-aleph.json" => {}
+        _ = std::fs::read_dir(mountpoint)?.try_for_each(|f| {
+            let f = f?;
+            match f.file_name().as_encoded_bytes() {
+                b"boot" | b"ostree" | b"efi" | b".bootc-aleph.json" => {}
                 _ => {
-                    if file_type.is_dir() {
-                        std::fs::remove_dir_all(file.path()).ok();
+                    _ = if f.file_type()?.is_dir() {
+                        std::fs::remove_dir_all(f.path())
                     } else {
-                        std::fs::remove_file(file.path()).ok();
+                        std::fs::remove_file(f.path())
                     }
                 }
             }
+            std::io::Result::Ok(())
         });
         Ok(())
     }
@@ -569,11 +561,7 @@ impl FinalInstallationState {
             )
             .args(["--karg=rhgb", "--karg=quiet", "--karg=splash"])
             .arg(target_root)
-            .args(
-                bootc_target_imgref
-                    .iter()
-                    .flat_map(|a| ["--target-imgref", a]),
-            )
+            .args((bootc_target_imgref.iter()).flat_map(|a| ["--target-imgref", a]))
             .args(bootc_kargs.iter().flat_map(|e| ["--karg", e]))
             .args(bootc_enforce_sigpolicy.then_some("--enforce-container-sigpolicy"))
             .status()
@@ -645,9 +633,8 @@ impl FinalInstallationState {
 
         // Write the state dump to the chroot
         let state_dump_path = Path::new(crate::consts::READYMADE_STATE_PATH);
-        let parent = state_dump_path
-            .parent()
-            .ok_or_else(|| eyre!("Invalid state dump path - no parent directory"))?;
+        let parent =
+            (state_dump_path.parent()).context("Invalid state dump path - no parent directory")?;
         std::fs::create_dir_all(parent)
             .wrap_err("Failed to create parent directories for state dump")?;
         std::fs::write(
@@ -759,8 +746,7 @@ impl FinalInstallationState {
             .unwrap_or(false)
         {
             tracing::info!(
-                "Using {} as copy source, as it exists presumably due to raw rootfs in dracut",
-                ROOTFS_BASE
+                "Using {ROOTFS_BASE} as copy source, as it exists presumably due to raw rootfs in dracut"
             );
             ROOTFS_BASE.to_owned()
         }
@@ -833,45 +819,25 @@ impl FinalInstallationState {
         is_bootc: bool,
     ) -> Result<crate::backend::repart_output::RepartOutput> {
         let copy_source = Self::determine_copy_source();
-
         let dry_run =
             std::env::var("READYMADE_DRY_RUN").map_or(cfg!(debug_assertions), |v| v == "1");
-        let dry_run = if dry_run { "yes" } else { "no" };
-
-        let mut args = vec![
-            "--dry-run",
-            dry_run,
-            "--definitions",
-            cfgdir.to_str().unwrap(),
-            "--empty",
-            "force",
-            "--offline",
-            "false",
-            "--json",
-            "pretty",
-        ];
-
-        if !is_bootc {
-            args.extend_from_slice(&["--copy-source", &copy_source]);
-        }
-
-        if use_keyfile {
+        tracing::debug!(?dry_run, "Running systemd-repart");
+        let arg_keyfile = use_keyfile.then(|| {
             let keyfile_path = consts::LUKS_KEYFILE_PATH;
             tracing::debug!("Using keyfile for systemd-repart: {keyfile_path}");
-            args.push("--key-file");
-            args.push(keyfile_path);
-        }
-
-        args.extend(&[blockdev.to_str().unwrap()]);
-
-        tracing::debug!(?dry_run, ?args, "Running systemd-repart");
+            ["--key-file", keyfile_path]
+        });
 
         let repart_cmd = Command::new("systemd-repart")
-            .args(args)
+            .args(["--dry-run", if dry_run { "yes" } else { "no" }])
+            .args(["--definitions", cfgdir.to_str().unwrap()])
+            .args(["--empty", "force", "--offline", "false", "--json", "pretty"])
+            .args(["--copy-source", &copy_source].iter().filter(|_| is_bootc))
+            .args(arg_keyfile.iter().flatten())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .output()
-            .map_err(|e| eyre!("systemd-repart failed").wrap_err(e))?;
+            .context("systemd-repart failed")?;
 
         if !repart_cmd.status.success() {
             bail!(
@@ -885,10 +851,7 @@ impl FinalInstallationState {
         // Dump systemd-repart output to a file if in debug mode
         if cfg!(debug_assertions) {
             let repart_out_path = std::env::temp_dir().join("readymade-repart-output.json");
-            tracing::debug!(
-                "Dumping systemd-repart output to {}",
-                repart_out_path.display()
-            );
+            tracing::debug!("Dumping systemd-repart output to {repart_out_path:?}");
             std::fs::write(repart_out_path, out)?;
         }
 
@@ -911,9 +874,7 @@ impl InstallationType {
 
     fn set_cgpt_flags(blockdev: &Path) -> Result<()> {
         tracing::debug!("Setting cgpt flags");
-        let blockdev_str = blockdev
-            .to_str()
-            .ok_or_else(|| eyre!("Invalid block device path"))?;
+        let blockdev_str = blockdev.to_str().context("Invalid block device path")?;
         let args = [
             ["add", "-i", "2", "-t"],
             ["kernel", "-P", "15", "-T"],
