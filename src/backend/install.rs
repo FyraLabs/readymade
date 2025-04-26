@@ -46,6 +46,7 @@ pub struct InstallationState {
     pub bootc_target_imgref: Option<String>,
     pub bootc_enforce_sigpolicy: bool,
     pub bootc_kargs: Option<Vec<String>>,
+    pub bootc_args: Option<Vec<String>>,
 }
 
 /// The finalized state of [`InstallationState`].
@@ -149,6 +150,7 @@ pub enum DetailedCopyMode {
         bootc_target_imgref: Option<String>,
         bootc_enforce_sigpolicy: bool,
         bootc_kargs: Vec<String>,
+        bootc_args: Vec<String>,
     },
 }
 
@@ -179,6 +181,7 @@ impl From<&crate::cfg::ReadymadeConfig> for InstallationState {
             bootc_target_imgref: value.to_bootc_target_copy_source(),
             bootc_enforce_sigpolicy: value.install.bootc_enforce_sigpolicy,
             bootc_kargs: value.install.bootc_kargs.clone(),
+            bootc_args: value.install.bootc_args.clone(),
             ..Self::default()
         }
     }
@@ -220,6 +223,7 @@ impl InstallationState {
                 bootc_target_imgref: self.bootc_target_imgref.clone(),
                 bootc_enforce_sigpolicy: self.bootc_enforce_sigpolicy,
                 bootc_kargs: self.bootc_kargs.clone().unwrap_or_default(),
+                bootc_args: self.bootc_args.clone().unwrap_or_default(),
             }
         })
     }
@@ -546,6 +550,7 @@ impl FinalInstallationState {
             bootc_target_imgref,
             bootc_enforce_sigpolicy,
             bootc_kargs,
+            bootc_args,
         } = &self.copy_mode
         else {
             bail!("Bootc copy mode called without having imgref defined");
@@ -564,6 +569,7 @@ impl FinalInstallationState {
             .args((bootc_target_imgref.iter()).flat_map(|a| ["--target-imgref", a]))
             .args(bootc_kargs.iter().flat_map(|e| ["--karg", e]))
             .args(bootc_enforce_sigpolicy.then_some("--enforce-container-sigpolicy"))
+            .args(bootc_args.iter())
             .status()
             .wrap_err("cannot run bootc")?
             .success()

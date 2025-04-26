@@ -13,6 +13,7 @@ use crate::prelude::*;
 use backend::install::{InstallationState, InstallationType, IPC_CHANNEL};
 use color_eyre::eyre::ContextCompat;
 use color_eyre::Result;
+use gtk::gio::ffi::g_dbus_method_invocation_return_error_literal;
 use gtk::glib::translate::FromGlibPtrNone;
 use i18n_embed::LanguageLoader as _;
 use ipc_channel::ipc::IpcSender;
@@ -263,6 +264,21 @@ fn main() -> Result<()> {
     *INSTALLATION_STATE.write() = InstallationState::from(&*CONFIG.read());
 
     gtk::gio::resources_register_include!("resources.gresource")?;
+
+    // Load external gresource files for downstream overrides
+    if let Ok(resources) = std::fs::read_dir("/usr/share/readymade/resources") {
+        resources.for_each(|f| {
+            let Ok(file) = f else {
+                return;
+            };
+            if !file.file_name().to_string_lossy().contains("gresource") {
+                return;
+            }
+            if let Ok(external) = gtk::gio::Resource::load(file.path()) {
+                gtk::gio::resources_register(&external);
+            }
+        });
+    }
 
     let app = libhelium::Application::builder()
         .application_id(APPID)

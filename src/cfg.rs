@@ -27,6 +27,7 @@ pub struct Install {
     #[serde(default)]
     pub bootc_enforce_sigpolicy: bool,
     pub bootc_kargs: Option<Vec<String>>,
+    pub bootc_args: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone, PartialEq, Eq)]
@@ -129,6 +130,7 @@ mod tests {
                     bootc_target_imgref: None,
                     bootc_enforce_sigpolicy: false,
                     bootc_kargs: None,
+                    bootc_args: None,
                 },
                 postinstall: vec![
                     crate::backend::postinstall::grub2::GRUB2.into(),
