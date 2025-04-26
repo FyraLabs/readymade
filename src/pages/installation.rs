@@ -11,7 +11,8 @@ mod l10n {
     use i18n_embed::fluent::{fluent_language_loader, FluentLanguageLoader};
     use i18n_embed::{unic_langid::LanguageIdentifier, FileSystemAssets, LanguageLoader as _};
     use itertools::Itertools;
-    use std::{str::FromStr, sync::LazyLock};
+    use std::str::FromStr;
+    use std::sync::{Arc, LazyLock};
 
     /// NOTE: This is sed-ed by the install.sh script!
     #[cfg(not(debug_assertions))]
@@ -20,14 +21,23 @@ mod l10n {
     #[cfg(debug_assertions)]
     const BENTO_ASSETS_PATH: &str = "";
 
-    static BENTO_ASSETS: LazyLock<FileSystemAssets> = LazyLock::new(|| {
-        FileSystemAssets::try_new(formatcp!("{BENTO_ASSETS_PATH}po/"))
-            .expect(formatcp!("Cannot load assets in {BENTO_ASSETS_PATH}"))
+    type B = Box<dyn i18n_embed::I18nAssets + Send + Sync>;
+
+    static BENTO_ASSETS: LazyLock<Arc<B>> = LazyLock::new(|| {
+        Arc::new(
+            FileSystemAssets::try_new(formatcp!("{BENTO_ASSETS_PATH}po/"))
+                .inspect_err(|e| tracing::error!(?e, "Cannot load assets in {BENTO_ASSETS_PATH}"))
+                .inspect_err(|_| tracing::warn!("Falling back to global compile-time assets"))
+                .map_or_else(
+                    |_| Box::new(crate::Localizations) as B,
+                    |a| Box::new(a) as B,
+                ),
+        )
     });
 
     static BENTO_AVAILABLE_LANGS: LazyLock<Vec<LanguageIdentifier>> = LazyLock::new(|| {
         fluent_language_loader!()
-            .available_languages(&*BENTO_ASSETS)
+            .available_languages(&***BENTO_ASSETS)
             .unwrap()
     });
 
@@ -51,7 +61,7 @@ mod l10n {
         if langs.is_empty() {
             langs = vec![loader.fallback_language().clone()];
         }
-        loader.load_languages(&*BENTO_ASSETS, &langs).unwrap();
+        loader.load_languages(&***BENTO_ASSETS, &langs).unwrap();
         loader
     });
 }
