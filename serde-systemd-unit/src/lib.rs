@@ -115,7 +115,7 @@ impl SystemdIni {
     /// # Errors
     ///
     /// Returns an error if the string cannot be parsed as a valid systemd unit file.
-    pub fn parse(&mut self, s: &str) -> Result<(), Err> {
+    pub fn parse<'a>(&mut self, s: &'a str) -> Result<(), Err<'a>> {
         *self = parse(s)?;
         Ok(())
     }
