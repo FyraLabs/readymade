@@ -4,6 +4,24 @@ allowed_installtypes = ["wholedisk"]
 [distro]
 name = "Ultramarine Linux"
 
+[[bento]]
+title = "page-welcome"
+desc = "page-installation-welcome-desc"
+link = "https://wiki.ultramarine-linux.org/en/welcome/"
+icon = "explore-symbolic"
+
+[[bento]]
+title = "page-installation-help"
+desc = "page-installation-help-desc"
+link = "https://wiki.ultramarine-linux.org/en/community/community/"
+icon = "chat-symbolic"
+
+[[bento]]
+title = "page-installation-contrib"
+desc = "page-installation-contrib-desc"
+link = "https://wiki.ultramarine-linux.org/en/contributing/contributorguide/"
+icon = "applications-development-symbolic"
+
 [[postinstall]]
 module = "CleanupBoot"
 

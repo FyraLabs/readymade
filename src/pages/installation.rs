@@ -2,8 +2,59 @@ use crate::backend::install::InstallationMessage;
 use crate::prelude::*;
 use crate::{NavigationAction, INSTALLATION_STATE};
 use color_eyre::Result;
+use l10n::BENTO_LOADER as L;
 use relm4::{Component, ComponentParts, ComponentSender};
 use std::time::Duration;
+
+mod l10n {
+    use const_format::formatcp;
+    use i18n_embed::fluent::{fluent_language_loader, FluentLanguageLoader};
+    use i18n_embed::{unic_langid::LanguageIdentifier, FileSystemAssets, LanguageLoader as _};
+    use itertools::Itertools;
+    use std::{str::FromStr, sync::LazyLock};
+
+    /// NOTE: This is sed-ed by the install.sh script!
+    #[cfg(not(debug_assertions))]
+    const BENTO_ASSETS_PATH: &str = "/usr/share/readymade/bento/";
+
+    #[cfg(debug_assertions)]
+    const BENTO_ASSETS_PATH: &str = "";
+
+    static BENTO_ASSETS: LazyLock<FileSystemAssets> = LazyLock::new(|| {
+        FileSystemAssets::try_new(formatcp!("{BENTO_ASSETS_PATH}po/"))
+            .expect(formatcp!("Cannot load assets in {BENTO_ASSETS_PATH}"))
+    });
+
+    static BENTO_AVAILABLE_LANGS: LazyLock<Vec<LanguageIdentifier>> = LazyLock::new(|| {
+        fluent_language_loader!()
+            .available_languages(&*BENTO_ASSETS)
+            .unwrap()
+    });
+
+    // WARN: this is written under the assumption that the language is not changed.
+    // This assumption is true as long as Readymade doesn't handle the language selections.
+    pub(super) static BENTO_LOADER: LazyLock<FluentLanguageLoader> = LazyLock::new(|| {
+        let loader = fluent_language_loader!();
+        let mut langs = ["LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE", "LANGUAGES"]
+            .into_iter()
+            .flat_map(|env| {
+                std::env::var(env).ok().into_iter().flat_map(|locales| {
+                    locales
+                        .split(':')
+                        .filter_map(|locale| LanguageIdentifier::from_str(locale).ok())
+                        .collect_vec()
+                })
+            })
+            .flat_map(|li| crate::LOCALE_SOLVER.solve_locale(li))
+            .filter(|li| BENTO_AVAILABLE_LANGS.contains(li))
+            .collect_vec();
+        if langs.is_empty() {
+            langs = vec![loader.fallback_language().clone()];
+        }
+        loader.load_languages(&*BENTO_ASSETS, &langs).unwrap();
+        loader
+    });
+}
 
 #[relm4::widget_template(pub)]
 impl WidgetTemplate for BentoCard {
@@ -48,13 +99,6 @@ impl WidgetTemplate for BentoCard {
                         }
                     }
                 },
-
-                // gtk::Image {
-                //     set_valign: gtk::Align::End,
-                //     set_halign: gtk::Align::End,
-                //     set_icon_name: Some("go-next-symbolic"),
-                //     inline_css: "-gtk-icon-size: 28px",
-                // }
             }
         }
     }
@@ -122,56 +166,56 @@ impl Component for InstallationPage {
 
                     #[template]
                     attach[0, 0, 1, 4] = &BentoCard {
-                        connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/welcome/".to_owned()),
+                        connect_clicked => InstallationPageMsg::Open(crate::CONFIG.read().bentos[0].link.clone()),
                         add_css_class: "welcome-card",
 
                         #[template_child]
                         icon {
-                            set_icon_name: Some("explore-symbolic"),
+                            set_icon_name: Some(&crate::CONFIG.read().bentos[0].icon),
                         },
                         #[template_child]
                         title {
-                            set_label: &t!("page-welcome", distro = crate::CONFIG.read().distro.name.clone()),
+                            set_label: &L.get_args(&crate::CONFIG.read().bentos[0].title, [("distro", &crate::CONFIG.read().distro.name)].into()),
                         },
                         #[template_child]
                         description {
-                            set_label: &t!("page-installation-welcome-desc"),
+                            set_label: &L.get(&crate::CONFIG.read().bentos[0].desc),
                         }
                     },
                     #[template]
                     attach[1, 0, 1, 2] = &BentoCard {
-                        connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/community/community/".to_owned()),
+                        connect_clicked => InstallationPageMsg::Open(crate::CONFIG.read().bentos[1].link.clone()),
                         add_css_class: "help-card",
 
                         #[template_child]
                         icon {
-                            set_icon_name: Some("chat-symbolic"),
+                            set_icon_name: Some(&crate::CONFIG.read().bentos[1].icon),
                         },
                         #[template_child]
                         title {
-                            set_label: &t!("page-installation-help"),
+                            set_label: &L.get_args(&crate::CONFIG.read().bentos[1].title, [("distro", &crate::CONFIG.read().distro.name)].into()),
                         },
                         #[template_child]
                         description {
-                            set_label: &t!("page-installation-help-desc"),
+                            set_label: &L.get(&crate::CONFIG.read().bentos[1].desc),
                         }
                     },
                     #[template]
                     attach[1, 2, 1, 2] = &BentoCard {
-                        connect_clicked => InstallationPageMsg::Open("https://wiki.ultramarine-linux.org/en/contributing/contributorguide/".to_owned()),
+                        connect_clicked => InstallationPageMsg::Open(crate::CONFIG.read().bentos[2].link.clone()),
                         add_css_class: "contribute-card",
 
                         #[template_child]
                         icon {
-                            set_icon_name: Some("applications-development-symbolic"),
+                            set_icon_name: Some(&crate::CONFIG.read().bentos[2].icon),
                         },
                         #[template_child]
                         title {
-                            set_label: &t!("page-installation-contrib", distro = crate::CONFIG.read().distro.name.clone()),
+                            set_label: &L.get_args(&crate::CONFIG.read().bentos[2].title, [("distro", &crate::CONFIG.read().distro.name)].into()),
                         },
                         #[template_child]
                         description {
-                            set_label: &t!("page-installation-contrib-desc"),
+                            set_label: &L.get(&crate::CONFIG.read().bentos[2].desc),
                         }
                     },
                     // #[template]
