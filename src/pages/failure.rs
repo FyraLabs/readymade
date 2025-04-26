@@ -15,7 +15,7 @@ page!(Failure {
             gtk::gio::Cancellable::NONE,
             |_| {},
         ),
-        Err(s: String) => self.buffer.write_str(&s).unwrap(),
+        Err(s: String) => self.buffer.write_str(&strip_ansi_escapes::strip_str(&s)).unwrap(),
     } => {}
 
     gtk::ScrolledWindow {

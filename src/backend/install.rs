@@ -334,18 +334,8 @@ impl FinalInstallationState {
             Ok(output) if output.status.success() => Ok(()),
             Ok(output) => Err(eyre!("Readymade subprocess failed")
                 .with_note(|| output.status.to_string())
-                .with_note(|| {
-                    format!(
-                        "Stdout:\n{}",
-                        String::from_utf8_lossy(&strip_ansi_escapes::strip(&stdout_logs))
-                    )
-                })
-                .with_note(|| {
-                    format!(
-                        "Stderr:\n{}",
-                        String::from_utf8_lossy(&strip_ansi_escapes::strip(&stderr_logs))
-                    )
-                })),
+                .with_note(|| format!("Stdout:\n{}", String::from_utf8_lossy(&stdout_logs)))
+                .with_note(|| format!("Stderr:\n{}", String::from_utf8_lossy(&stderr_logs)))),
             Err(e) => Err(eyre!("Failed to execute readymade non-interactively").wrap_err(e)),
         }
     }
