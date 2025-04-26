@@ -54,7 +54,7 @@ pub struct ReadymadeConfig {
     pub bentos: [Bento; 3],
 }
 
-#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct Bento {
     pub title: String,
     pub desc: String,
