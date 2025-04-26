@@ -20,18 +20,18 @@
 }
 
 .installation-bento-card.welcome-card {
-    background-image: url("file:///usr/share/readymade/bento/1");
+    background-image: url("viewports-light.webp");
 }
 
 .installation-bento-card.help-card {
-    background-image: url("file:///usr/share/readymade/bento/2");
+    background-image: url("umbrella-light.webp");
 }
 
 .installation-bento-card.contribute-card {
     background-position: bottom;
-    background-image: url("file:///usr/share/readymade/bento/3");
+    background-image: url("blueprint.webp");
 }
 
 .installation-bento-card.sponsor-card {
-    background-image: url("file:///usr/share/readymade/bento/4");
+    background-image: url("foresty-skies-light.webp");
 }
