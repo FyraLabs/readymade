@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-chumsky = "0.10.1"
+chumsky = "0.9.3"
 serde = { version = "1.0.219", features = ["derive"] }
 thiserror = "2.0.12"
 itertools = "0.14.0"
