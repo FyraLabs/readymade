@@ -252,13 +252,18 @@ pub enum InstallationMessage {
     Status(String),
 }
 
+type CallSubprocessRes = Result<(Vec<u8>, Vec<u8>, std::io::Result<std::process::Output>)>;
+
 impl FinalInstallationState {
     // todo: move methods from installationstate to here!
-    #[allow(clippy::unwrap_in_result)]
     pub fn install_using_subprocess(
         &self,
         sender: &relm4::Sender<InstallationMessage>,
     ) -> Result<()> {
+        // HACK: #59 necessitates a way to check for this error message to rerun subprocess:
+        const REPART_DEVICE_BUSY: &[u8] =
+            b"Failed to reread partition table: Device or resource busy\n";
+
         if cfg!(debug_assertions) {
             let installation_state_dump_path =
                 std::env::temp_dir().join("readymade-installation-state.json");
@@ -266,17 +271,56 @@ impl FinalInstallationState {
             std::fs::write(installation_state_dump_path, serde_json::to_string(self)?)?;
         }
 
+        let mut retries = 0;
+        loop {
+            let (stdout_logs, stderr_logs, res) = self.call_subprocess(sender)?;
+
+            return match res {
+                Ok(output) if output.status.success() => Ok(()),
+                // PERF: let's only take the last 1024 bytes
+                Ok(output)
+                    if stderr_logs
+                        .last_chunk()
+                        .map_or(&*stderr_logs, |chunk: &[u8; 1024]| chunk)
+                        .windows(REPART_DEVICE_BUSY.len())
+                        .any(|w| w == REPART_DEVICE_BUSY) =>
+                {
+                    retries += 1;
+                    if retries >= 3 {
+                        return Self::subprocess_err(&output, &stdout_logs, &stderr_logs)
+                            .warning("Readymade detected that repart errored due to device/resource busy and retried 3 times already");
+                    }
+                    continue;
+                }
+                Ok(output) => Self::subprocess_err(&output, &stdout_logs, &stderr_logs),
+                Err(e) => Err(eyre!("Failed to execute readymade non-interactively").wrap_err(e)),
+            };
+        }
+    }
+
+    #[allow(clippy::unwrap_in_result)]
+    fn call_subprocess(&self, sender: &relm4::Sender<InstallationMessage>) -> CallSubprocessRes {
         let (server, channel_id) = IpcOneShotServer::new()?;
+        let handle_ipc = || {
+            let (receiver, _) = server.accept()?;
 
-        let mut stdout_logs: Vec<u8> = Vec::new();
-        let mut stderr_logs: Vec<u8> = Vec::new();
+            let mut msg;
+            while {
+                msg = receiver.recv().map(|msg| sender.emit(msg));
+                msg.is_ok()
+            } {}
+            _ = msg.map_err(|e| match e {
+                IpcError::Disconnected => {}
+                e => tracing::error!("Failed to receive message from subprocess: {e:?}"),
+            });
 
+            Result::<()>::Ok(())
+        };
+        let (mut stdout_logs, mut stderr_logs): (Vec<u8>, Vec<u8>) = Default::default();
         let (stdout_reader, stdout_writer) = os_pipe::pipe()?;
         let (stderr_reader, stderr_writer) = os_pipe::pipe()?;
-
         let tee_stdout = TeeReader::new(stdout_reader, &mut stdout_logs, false);
         let tee_stderr = TeeReader::new(stderr_reader, &mut stderr_logs, false);
-
         let mut res = Command::new("pkexec")
             .arg(std::env::current_exe()?)
             .args(["--non-interactive", &channel_id])
@@ -294,12 +338,8 @@ impl FinalInstallationState {
             .stdout(stdout_writer)
             .stderr(stderr_writer)
             .spawn()?;
-
-        {
-            let mut child_stdin = res.stdin.take().expect("can't take stdin");
-            child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
-        };
-
+        let mut child_stdin = res.stdin.take().expect("can't take stdin");
+        child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
         print!("┌─ BEGIN: Readymade subprocess logs\n│ ");
         let res = std::thread::scope(|s| {
             s.spawn(|| {
@@ -310,34 +350,19 @@ impl FinalInstallationState {
                 let reader = BufReader::new(tee_stderr);
                 (reader.lines()).for_each(|line| eprintln!("| {}", line.unwrap()));
             });
-            s.spawn(|| -> Result<()> {
-                let (receiver, _) = server.accept()?;
-
-                let mut msg;
-                while {
-                    msg = receiver.recv().map(|msg| sender.emit(msg));
-                    msg.is_ok()
-                } {}
-                _ = msg.map_err(|e| match e {
-                    IpcError::Disconnected => {}
-                    e => tracing::error!("Failed to receive message from subprocess: {e:?}"),
-                });
-
-                Ok(())
-            });
+            s.spawn(handle_ipc);
 
             res.wait_with_output()
         });
         println!("└─ END OF Readymade subprocess logs");
+        Ok((stdout_logs, stderr_logs, res))
+    }
 
-        match res {
-            Ok(output) if output.status.success() => Ok(()),
-            Ok(output) => Err(eyre!("Readymade subprocess failed")
-                .with_note(|| output.status.to_string())
-                .with_note(|| format!("Stdout:\n{}", String::from_utf8_lossy(&stdout_logs)))
-                .with_note(|| format!("Stderr:\n{}", String::from_utf8_lossy(&stderr_logs)))),
-            Err(e) => Err(eyre!("Failed to execute readymade non-interactively").wrap_err(e)),
-        }
+    fn subprocess_err(output: &std::process::Output, stdout: &[u8], stderr: &[u8]) -> Result<()> {
+        Err(eyre!("Readymade subprocess failed")
+            .with_note(|| output.status.to_string())
+            .with_note(|| format!("Stdout:\n{}", String::from_utf8_lossy(stdout)))
+            .with_note(|| format!("Stderr:\n{}", String::from_utf8_lossy(stderr))))
     }
 
     /// Copies the current config into a temporary directory, allowing them to be modified without
@@ -533,6 +558,9 @@ impl FinalInstallationState {
         })
     }
 
+    /// Call bootc to copy the contents of the container into the target.
+    ///
+    /// The caller must verify that `self.copy_mode.is_bootc()`.
     #[allow(clippy::unwrap_in_result)]
     fn bootc_copy(&self, target_root: &Path, output: &RepartOutput) -> Result<()> {
         let DetailedCopyMode::Bootc {
@@ -543,7 +571,7 @@ impl FinalInstallationState {
             bootc_args,
         } = &self.copy_mode
         else {
-            bail!("Bootc copy mode called without having imgref defined");
+            unreachable!()
         };
 
         tracing::info!(?imgref, "running bootc install to-filesystem");
