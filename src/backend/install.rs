@@ -652,7 +652,7 @@ impl FinalInstallationState {
             distro_name: self.config.distro.name.clone(),
         };
 
-        if !state_dump.state.copy_mode.is_bootc() {
+        if state_dump.state.copy_mode.is_repart() {
             tracing::info!("Writing /etc/fstab...");
             std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc/")?;
             std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
@@ -672,7 +672,7 @@ impl FinalInstallationState {
         )
         .wrap_err("Failed to write state dump file")?;
 
-        if let Some(data) = crypt_data.filter(|_| !state_dump.state.copy_mode.is_bootc()) {
+        if let Some(data) = crypt_data.filter(|_| state_dump.state.copy_mode.is_repart()) {
             tracing::info!("Writing /etc/crypttab...");
             std::fs::write("/etc/crypttab", data.crypttab)
                 .wrap_err("cannot write to /etc/crypttab")?;

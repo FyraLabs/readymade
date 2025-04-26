@@ -11,19 +11,12 @@ use std::sync::{LazyLock, Mutex};
 
 use crate::prelude::*;
 use backend::install::{InstallationState, InstallationType, IPC_CHANNEL};
-use color_eyre::eyre::ContextCompat;
-use color_eyre::Result;
-use gtk::gio::ffi::g_dbus_method_invocation_return_error_literal;
 use gtk::glib::translate::FromGlibPtrNone;
 use i18n_embed::LanguageLoader as _;
 use ipc_channel::ipc::IpcSender;
 use pages::installation::InstallationPageMsg;
-use relm4::{
-    Component, ComponentController, ComponentParts, ComponentSender, RelmApp, SharedState,
-    SimpleComponent,
-};
-use tracing_subscriber::prelude::*;
-use tracing_subscriber::{fmt, EnvFilter};
+use relm4::SharedState;
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 /// State related to the user's installation configuration
 static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
@@ -161,7 +154,8 @@ impl SimpleComponent for AppModel {
         let display = gtk::gdk::Display::default().unwrap();
         let settings = gtk::Settings::for_display(&display);
 
-        initialize_custom_icons(&display);
+        let theme = gtk::IconTheme::for_display(&display);
+        theme.add_resource_path("/com/FyraLabs/Readymade/icons");
         settings.set_gtk_icon_theme_name(Some("Hydrogen"));
 
         let model = Self::_default(sender);
@@ -239,6 +233,7 @@ fn handle_l10n() -> i18n_embed::fluent::FluentLanguageLoader {
 #[allow(clippy::missing_errors_doc)]
 #[allow(clippy::missing_panics_doc)]
 fn main() -> Result<()> {
+    // PERF: this is probably premature optimisation but hey it kinda helps
     let langs_th = std::thread::spawn(|| LazyLock::force(&AVAILABLE_LANGS));
     let _guard = setup_hooks();
 
@@ -266,19 +261,15 @@ fn main() -> Result<()> {
     gtk::gio::resources_register_include!("resources.gresource")?;
 
     // Load external gresource files for downstream overrides
-    if let Ok(resources) = std::fs::read_dir("/usr/share/readymade/resources") {
-        resources.for_each(|f| {
-            let Ok(file) = f else {
-                return;
-            };
-            if !file.file_name().to_string_lossy().contains("gresource") {
-                return;
-            }
-            if let Ok(external) = gtk::gio::Resource::load(file.path()) {
-                gtk::gio::resources_register(&external);
-            }
-        });
-    }
+    // #78
+    let gresources = std::fs::read_dir("/usr/share/readymade/resources");
+    _ = gresources.into_iter().flatten().try_for_each(|f| {
+        let file = f?;
+        if file.file_name().as_encoded_bytes().ends_with(b"gresource") {
+            gtk::gio::resources_register(&gtk::gio::Resource::load(file.path())?);
+        }
+        Result::<()>::Ok(())
+    });
 
     let app = libhelium::Application::builder()
         .application_id(APPID)
@@ -300,11 +291,6 @@ fn main() -> Result<()> {
     langs_th.join().expect("cannot join available_langs_th");
     RelmApp::from_app(app).run::<AppModel>(());
     Ok(())
-}
-
-fn initialize_custom_icons(display: &gtk::gdk::Display) {
-    let theme = gtk::IconTheme::for_display(display);
-    theme.add_resource_path("/com/FyraLabs/Readymade/icons");
 }
 
 /// Returns a logging guard.
