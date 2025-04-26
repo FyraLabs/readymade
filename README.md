@@ -16,8 +16,6 @@ Please refer to [HACKING.md](HACKING.md) for more information on how to contribu
 
 As the convention of making up codenames for system components after J-Pop references, we have decided to name the installer after Ado's single, [Readymade](https://youtu.be/jg09lNupc1s), which happens to have a cool meaning to it as this installer essentially installs ready-made squashfs images.
 
-The lyrics themselves could be seen as an insult to people overcomplicating things for themselves (e.g. Arch installation).
-
 ## License
 
 `GPL-3.0-or-later`
