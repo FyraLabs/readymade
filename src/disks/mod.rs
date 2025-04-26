@@ -45,6 +45,7 @@ pub fn detect_os() -> Vec<DiskInit> {
             disk.is_disk()
                 && live_device.as_ref() != Some(&disk.name)
                 && (cfg!(debug_assertions) || disk.is_physical())
+                && !matches!(disk.capacity(), Err(_) | Ok(Some(0))) // #71
         })
         .map(|mut disk| {
             let model = disk
