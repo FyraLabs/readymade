@@ -2199,16 +2199,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "os_pipe"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ffd2b0a5634335b135d5728d84c5e0fd726954b87111f7506a61c502280d982"
-dependencies = [
- "libc",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2486,16 +2476,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "process_alive"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc1b5e484e0aa9dce62b74ddce9fd0cf94b2caeac8fc53a4433a5e8202fa6c47"
-dependencies = [
- "libc",
- "winapi",
-]
-
-[[package]]
 name = "psm"
 version = "0.1.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2589,13 +2569,11 @@ dependencies = [
  "bytesize",
  "color-eyre",
  "const_format",
- "crossbeam-queue",
  "enum_dispatch",
  "filesystem-table",
  "format-bytes",
  "freedesktop-desktop-entry",
  "glib-build-tools",
- "glob",
  "gnome-desktop",
  "gtk4",
  "i18n-embed",
@@ -2608,10 +2586,8 @@ dependencies = [
  "lsblk",
  "nix 0.29.0",
  "no_color",
- "os_pipe",
  "paste",
  "poly_l10n",
- "process_alive",
  "rayon",
  "relm4",
  "rust-embed",
@@ -2623,7 +2599,6 @@ dependencies = [
  "serde_with",
  "strip-ansi-escapes",
  "sys-mount",
- "tee_readwrite",
  "tempfile",
  "thiserror 2.0.12",
  "tiffin",
@@ -3175,12 +3150,6 @@ name = "target-lexicon"
 version = "0.12.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
-
-[[package]]
-name = "tee_readwrite"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57d3e5629bb07f004134a87a2d3cb6272f0a455942401f35776e3f17ecc8d955"
 
 [[package]]
 name = "temp-dir"

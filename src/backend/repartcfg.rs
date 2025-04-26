@@ -405,10 +405,3 @@ mod tests {
         println!("{res}");
     }*/
 }
-
-impl EncryptOption {
-    #[must_use]
-    pub const fn is_on(self) -> bool {
-        !matches!(self, Self::Off)
-    }
-}

@@ -11,14 +11,6 @@ pub fn repart_dir() -> PathBuf {
     PathBuf::from(std::env::var("READYMADE_REPART_DIR").unwrap_or_else(|_| REPART_DIR.into()))
 }
 
-pub fn open_keyfile() -> std::io::Result<std::fs::File> {
-    std::fs::File::open(LUKS_KEYFILE_PATH)
-}
-
-// pub fn state_dump_path(chroot: &PathBuf) -> PathBuf {
-//     chroot.join("var/lib/readymade/state.json")
-// }
-
 pub const fn shim_path() -> &'static str {
     if cfg!(target_arch = "x86_64") {
         EFI_SHIM_X86_64

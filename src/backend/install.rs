@@ -6,7 +6,6 @@ use std::{
     process::{Command, Stdio},
     sync::{Mutex, OnceLock},
 };
-use tee_readwrite::TeeReader;
 
 use crate::{
     backend::{
@@ -252,7 +251,7 @@ pub enum InstallationMessage {
     Status(String),
 }
 
-type CallSubprocessRes = Result<(Vec<u8>, Vec<u8>, std::io::Result<std::process::Output>)>;
+type CallSubprocessRes = Result<(String, std::io::Result<std::process::Output>)>;
 
 impl FinalInstallationState {
     // todo: move methods from installationstate to here!
@@ -273,26 +272,25 @@ impl FinalInstallationState {
 
         let mut retries = 0;
         loop {
-            let (stdout_logs, stderr_logs, res) = self.call_subprocess(sender)?;
+            let (logs, res) = self.call_subprocess(sender)?;
 
             return match res {
                 Ok(output) if output.status.success() => Ok(()),
                 // PERF: let's only take the last 1024 bytes
                 Ok(output)
-                    if stderr_logs
-                        .last_chunk()
-                        .map_or(&*stderr_logs, |chunk: &[u8; 1024]| chunk)
+                    if (logs.as_bytes().last_chunk())
+                        .map_or(logs.as_bytes(), |chunk: &[u8; 1024]| chunk)
                         .windows(REPART_DEVICE_BUSY.len())
                         .any(|w| w == REPART_DEVICE_BUSY) =>
                 {
                     retries += 1;
                     if retries >= 3 {
-                        return Self::subprocess_err(&output, &stdout_logs, &stderr_logs)
+                        return Self::subprocess_err(&output, &logs)
                             .warning("Readymade detected that repart errored due to device/resource busy and retried 3 times already");
                     }
                     continue;
                 }
-                Ok(output) => Self::subprocess_err(&output, &stdout_logs, &stderr_logs),
+                Ok(output) => Self::subprocess_err(&output, &logs),
                 Err(e) => Err(eyre!("Failed to execute readymade non-interactively").wrap_err(e)),
             };
         }
@@ -300,6 +298,7 @@ impl FinalInstallationState {
 
     #[allow(clippy::unwrap_in_result)]
     fn call_subprocess(&self, sender: &relm4::Sender<InstallationMessage>) -> CallSubprocessRes {
+        use std::sync::{Arc, Mutex};
         let (server, channel_id) = IpcOneShotServer::new()?;
         let handle_ipc = || {
             let (receiver, _) = server.accept()?;
@@ -316,11 +315,7 @@ impl FinalInstallationState {
 
             Result::<()>::Ok(())
         };
-        let (mut stdout_logs, mut stderr_logs): (Vec<u8>, Vec<u8>) = Default::default();
-        let (stdout_reader, stdout_writer) = os_pipe::pipe()?;
-        let (stderr_reader, stderr_writer) = os_pipe::pipe()?;
-        let tee_stdout = TeeReader::new(stdout_reader, &mut stdout_logs, false);
-        let tee_stderr = TeeReader::new(stderr_reader, &mut stderr_logs, false);
+        let logs: Arc<Mutex<String>> = Arc::default();
         let mut res = Command::new("pkexec")
             .arg(std::env::current_exe()?)
             .args(["--non-interactive", &channel_id])
@@ -335,34 +330,42 @@ impl FinalInstallationState {
                 std::env::var("READYMADE_LOG").as_deref().unwrap_or("info")
             ))
             .stdin(std::process::Stdio::piped())
-            .stdout(stdout_writer)
-            .stderr(stderr_writer)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
             .spawn()?;
         let mut child_stdin = res.stdin.take().expect("can't take stdin");
         child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
+        let stdout = res.stdout.take().expect("can't take stdout");
+        let stderr = res.stderr.take().expect("can't take stderr");
         print!("┌─ BEGIN: Readymade subprocess logs\n│ ");
         let res = std::thread::scope(|s| {
             s.spawn(|| {
-                let reader = BufReader::new(tee_stdout);
-                (reader.lines()).for_each(|line| println!("| {}", line.unwrap()));
+                let reader = BufReader::new(stdout);
+                (reader.lines().map(|line| line.unwrap())).for_each(|line| {
+                    *logs.lock().unwrap() += &line;
+                    println!(" │ {line}");
+                });
             });
             s.spawn(|| {
-                let reader = BufReader::new(tee_stderr);
-                (reader.lines()).for_each(|line| eprintln!("| {}", line.unwrap()));
+                let reader = BufReader::new(stderr);
+                (reader.lines().map(|line| line.unwrap())).for_each(|line| {
+                    *logs.lock().unwrap() += &line;
+                    eprintln!("!│ {line}");
+                });
             });
             s.spawn(handle_ipc);
 
             res.wait_with_output()
         });
+        let logs = Arc::into_inner(logs).unwrap().into_inner().unwrap();
         println!("└─ END OF Readymade subprocess logs");
-        Ok((stdout_logs, stderr_logs, res))
+        Ok((logs, res))
     }
 
-    fn subprocess_err(output: &std::process::Output, stdout: &[u8], stderr: &[u8]) -> Result<()> {
+    fn subprocess_err(output: &std::process::Output, logs: &str) -> Result<()> {
         Err(eyre!("Readymade subprocess failed")
             .with_note(|| output.status.to_string())
-            .with_note(|| format!("Stdout:\n{}", String::from_utf8_lossy(stdout)))
-            .with_note(|| format!("Stderr:\n{}", String::from_utf8_lossy(stderr))))
+            .with_note(|| format!("Logs:\n{logs}")))
     }
 
     /// Copies the current config into a temporary directory, allowing them to be modified without
@@ -649,7 +652,7 @@ impl FinalInstallationState {
             distro_name: self.config.distro.name.clone(),
         };
 
-        if !state_dump.state.copy_mode.is_bootc() {
+        if state_dump.state.copy_mode.is_repart() {
             tracing::info!("Writing /etc/fstab...");
             std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc/")?;
             std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
@@ -669,7 +672,7 @@ impl FinalInstallationState {
         )
         .wrap_err("Failed to write state dump file")?;
 
-        if let Some(data) = crypt_data.filter(|_| !state_dump.state.copy_mode.is_bootc()) {
+        if let Some(data) = crypt_data.filter(|_| state_dump.state.copy_mode.is_repart()) {
             tracing::info!("Writing /etc/crypttab...");
             std::fs::write("/etc/crypttab", data.crypttab)
                 .wrap_err("cannot write to /etc/crypttab")?;
