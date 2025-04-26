@@ -1,9 +1,7 @@
 #![allow(clippy::str_to_string)]
-use color_eyre::eyre::eyre;
-use color_eyre::Result;
+use crate::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_valid::toml::FromTomlStr;
-use serde_valid::Validate;
+use serde_valid::{toml::FromTomlStr, Validate};
 
 use crate::backend::install::InstallationType;
 use crate::backend::postinstall::Module;
@@ -18,7 +16,7 @@ pub enum CopyMode {
     Bootc,
 }
 
-#[derive(Deserialize, Validate, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Validate, Default, Debug, Clone, PartialEq, Eq)]
 pub struct Install {
     #[validate(min_items = 1)]
     pub allowed_installtypes: Vec<InstallationType>,
@@ -31,7 +29,7 @@ pub struct Install {
     pub bootc_kargs: Option<Vec<String>>,
 }
 
-#[derive(Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct Distro {
     pub name: String,
     #[serde(default = "_default_icon")]
@@ -42,11 +40,26 @@ fn _default_icon() -> String {
     "fedora-logo-icon".into()
 }
 
-#[derive(Deserialize, Validate, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Validate, Default, Debug, Clone, PartialEq, Eq)]
 pub struct ReadymadeConfig {
     pub distro: Distro,
     pub install: Install,
     pub postinstall: Vec<Module>,
+}
+
+impl ReadymadeConfig {
+    #[must_use]
+    pub fn to_bootc_copy_source(&self) -> Option<String> {
+        let s = self.install.bootc_imgref.clone();
+        s.filter(|_| self.install.copy_mode == crate::cfg::CopyMode::Bootc)
+            .or_else(|| std::env::var("COPY_SOURCE").ok())
+    }
+    #[must_use]
+    pub fn to_bootc_target_copy_source(&self) -> Option<String> {
+        let s = self.install.bootc_target_imgref.clone();
+        s.filter(|_| self.install.copy_mode == crate::cfg::CopyMode::Bootc)
+            .or_else(|| std::env::var("TARGET_COPY_SOURCE").ok())
+    }
 }
 
 /// # Errors

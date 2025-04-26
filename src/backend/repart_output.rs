@@ -307,12 +307,11 @@ impl RepartOutput {
 }
 
 pub fn is_luks(node: &str) -> bool {
-    let cmd = std::process::Command::new("cryptsetup")
-        .arg("isLuks")
-        .arg(node)
-        .output()
-        .unwrap();
-    cmd.status.success()
+    std::process::Command::new("cryptsetup")
+        .args(["isLuks", node])
+        .status()
+        .expect("cannot run cryptsetup")
+        .success()
 }
 
 // global cache, so we can clean up these devices later
@@ -424,7 +423,7 @@ impl RepartPartition {
 
         let config: RepartConfig = serde_systemd_unit::from_str(&file_config)?;
 
-        tracing::trace!("{:#?}", config);
+        tracing::trace!("{config:#?}");
 
         // get fs type
         let fs_fmt = &config.partition.format;
@@ -444,7 +443,7 @@ impl RepartPartition {
         // if we still have no mount options, use the fallback
 
         if mount_opts.is_empty() {
-            mount_opts.push_str(FALLBACK_OPTS);
+            FALLBACK_OPTS.clone_into(&mut mount_opts);
         }
 
         // let's get the UUID
@@ -506,22 +505,13 @@ impl RepartPartition {
 
         let dump = FALLBACK_DUMP; //todo: is there a config option for this?
 
-        let pass = {
-            // We will be checking from filesystem type
-
-            // or the root device it should be 1. For other partitions it should be 2, or 0 to disable checking.
-
-            // If the root file system is btrfs or XFS, the fsck order should be set to 0 instead of 1.
-
-            if let Some(FileSystem::Btrfs) = fs_fmt {
-                0
-            } else if let Some(FileSystem::Xfs) = fs_fmt {
-                0
-            } else if mntpoint == "/" {
-                1
-            } else {
-                FALLBACK_PASS
-            }
+        // We will be checking from filesystem type
+        // or the root device it should be 1. For other partitions it should be 2, or 0 to disable checking.
+        // If the root file system is btrfs or XFS, the fsck order should be set to 0 instead of 1.
+        let pass = match fs_fmt {
+            Some(FileSystem::Btrfs | FileSystem::Xfs) => 0,
+            _ if mntpoint == "/" => 1,
+            _ => FALLBACK_PASS,
         };
 
         // now let's write the fstab entry
@@ -542,18 +532,14 @@ impl RepartPartition {
 
         tracing::trace!(?config, "Reading mountpoint from config file");
 
-        let mut it = config
-            .partition
-            .mount_point_as_tuple()
-            .into_iter()
-            .peekable();
-        if it.peek().is_some() {
-            Ok(it.collect())
+        let mps = config.partition.mount_point_as_tuple();
+        Ok(if !mps.is_empty() {
+            mps
         } else if let Some(mntpoint) = self.ddi_mountpoint() {
-            Ok(vec![(mntpoint.to_owned(), None)])
+            vec![(mntpoint.to_owned(), None)]
         } else {
-            Ok(vec![])
-        }
+            vec![]
+        })
     }
 }
 

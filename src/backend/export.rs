@@ -8,7 +8,7 @@ use std::{collections::BTreeMap, path::Path};
 use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 
-use super::{install::InstallationState, repartcfg::RepartConfig};
+use super::{install::FinalInstallationState, repartcfg::RepartConfig};
 /// The version of the result dump format, for backwards compat reasons
 ///
 /// If there's any changes to the format, this should be bumped up to the next version.
@@ -19,7 +19,7 @@ pub struct ReadymadeResult {
     pub version: &'static str,
     pub readymade_version: &'static str,
     pub is_debug_build: bool,
-    pub state: InstallationState,
+    pub state: FinalInstallationState,
     pub systemd_repart_data: Option<SystemdRepartData>,
 }
 
@@ -28,12 +28,15 @@ impl ReadymadeResult {
         Ok(serde_json::to_string_pretty(&self)?)
     }
 
-    pub fn new(state: InstallationState, systemd_repart_data: Option<SystemdRepartData>) -> Self {
+    pub fn new(
+        state: FinalInstallationState,
+        systemd_repart_data: Option<SystemdRepartData>,
+    ) -> Self {
         Self {
             version: RESULT_DUMP_FORMAT_VERSION,
             readymade_version: env!("CARGO_PKG_VERSION"),
             is_debug_build: cfg!(debug_assertions),
-            state: prep_state_for_export(state).unwrap(),
+            state: prep_state_for_export(state.into()).unwrap(),
             systemd_repart_data,
         }
     }
@@ -73,13 +76,14 @@ impl SystemdRepartData {
     }
 }
 
-pub fn prep_state_for_export(state: InstallationState) -> Result<InstallationState> {
-    let mut new_state = state;
-
+pub fn prep_state_for_export(mut state: FinalInstallationState) -> Result<FinalInstallationState> {
     // Clear out passwords
-    if let Some(ref mut enc_key) = new_state.encryption_key {
-        enc_key.clear();
-        new_state.encryption_key = Some("REDACTED".to_owned());
+    if let Some(super::install::EncryptState {
+        ref mut encryption_key,
+        ..
+    }) = state.encrypts
+    {
+        *encryption_key = "REDACTED".to_owned();
     }
-    Ok(new_state)
+    Ok(state)
 }
