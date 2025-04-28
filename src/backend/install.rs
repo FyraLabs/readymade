@@ -343,6 +343,7 @@ impl FinalInstallationState {
                 let reader = BufReader::new(stdout);
                 (reader.lines().map(|line| line.unwrap())).for_each(|line| {
                     *logs.lock().unwrap() += &line;
+                    *logs.lock().unwrap() += "\n";
                     println!(" │ {line}");
                 });
             });
@@ -350,6 +351,7 @@ impl FinalInstallationState {
                 let reader = BufReader::new(stderr);
                 (reader.lines().map(|line| line.unwrap())).for_each(|line| {
                     *logs.lock().unwrap() += &line;
+                    *logs.lock().unwrap() += "\n";
                     eprintln!("!│ {line}");
                 });
             });
