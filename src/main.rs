@@ -248,11 +248,12 @@ fn main() -> Result<()> {
         )?;
 
         IPC_CHANNEL.set(Mutex::new(channel)).unwrap();
-        let install_state: InstallationState = serde_json::from_reader(std::io::stdin())?;
+        let install_state: backend::install::FinalInstallationState =
+            serde_json::from_reader(std::io::stdin())?;
 
         *LL.write() = Some(handle_l10n());
         langs_th.join().expect("cannot join available_langs_th");
-        return backend::install::FinalInstallationState::from(&install_state).install();
+        return install_state.install();
     }
 
     *CONFIG.write() = cfg::get_cfg()?;
