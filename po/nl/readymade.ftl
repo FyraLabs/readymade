@@ -1,6 +1,7 @@
-# any change made by me, Feike Donia, may be released using any DFSG approved licence.
 prev = Vorige
 next = Volgende
+
+unknown-os = Onbekend besturingssysteem (OS)
 
 parttype-root = Tophiërarchie bestandssysteem (/) ({$path})
 parttype-extendedboot = Extended Bootloader-partitie ({$path})
@@ -29,6 +30,10 @@ page-completed-close = Sluiten
 page-completed-reboot = Opnieuw opstarten
 
 page-destination = Einddoel
+page-destination-scanning = Schijven scannen...
+page-destination-wait = Wachten op os-prober...
+page-destination-no-disk = Geen schijven gevonden
+page-destination-no-disk-desc = Kon geen schijven vinden die geschikt zijn voor installatie.
 
 page-installdual = Dual Boot
 page-installdual-otheros = Ander besturingssysteem (OS)
@@ -41,7 +46,7 @@ page-installation-help = Hulp nodig?
 page-installation-help-desc = Stel uw vraag in een van onze chats!
 page-installation-contrib = Draag bij aan Ultramarine
 page-installation-contrib-desc = Leer hoe u kunt bijdragen met tijd, geld of hardware.
-page-installation-progress = Basissysteem wordt geïnstalleerd...
+page-installation-progress = Basissysteem installeren...
 
 page-installcustom = Installatie aanpassen
 page-installcustom-title = Partities en mountpoints
