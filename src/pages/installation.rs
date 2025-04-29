@@ -327,9 +327,7 @@ impl Component for InstallationPage {
     ) {
         match message {
             InstallationPageCommandMsg::FinishInstallation(res) => {
-                tracing::debug!("Installation complete");
                 if let Err(e) = res {
-                    tracing::error!("Installation failed: {e:?}");
                     sender
                         .output(InstallationPageOutput::SendErr(format!("{e:?}")))
                         .unwrap();

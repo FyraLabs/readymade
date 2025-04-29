@@ -333,11 +333,12 @@ impl FinalInstallationState {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()?;
-        let mut child_stdin = res.stdin.take().expect("can't take stdin");
+        let child_stdin = res.stdin.as_mut().expect("can't take stdin");
         child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
+        child_stdin.flush()?;
         let stdout = res.stdout.take().expect("can't take stdout");
         let stderr = res.stderr.take().expect("can't take stderr");
-        print!("┌─ BEGIN: Readymade subprocess logs\n│ ");
+        println!("┌─ BEGIN: Readymade subprocess logs");
         let res = std::thread::scope(|s| {
             s.spawn(|| {
                 let reader = BufReader::new(stdout);
