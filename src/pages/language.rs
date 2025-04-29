@@ -15,7 +15,7 @@ const POPULAR_LANGS: [&str; 9] = [
     "en_US", "zh_CN", "zh_TW", "hi_IN", "es_ES", "ar_AE", "fr_FR", "pt_BR", "de_DE",
 ];
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct LanguageRow {
     locale: String,
     name: String,
@@ -79,6 +79,7 @@ impl Default for BtnFactory {
             .into_iter()
             .sorted_by(|(_, x), (_, y)| x.cmp(y))
             .for_each(|x| _ = btns.push_back(x));
+        btns.push_back(("en-owo".into(), ("English (owo)".into(), "OWO".into())));
         btns.drop();
 
         // sort the popular languages, put to top
@@ -145,7 +146,16 @@ page!(Language {
             if let Some(row) = self.btnfactory.selected_row() {
                 #[allow(clippy::cast_sign_loss)]
                 let lang = self.btnfactory.0.get(row.index() as usize).unwrap();
-                set_lang(lang);
+                if lang.locale == "en-owo" {
+                    let loader = i18n_embed::fluent::fluent_language_loader!();
+                    loader
+                        .load_languages(&crate::Localizations, &["en-Xowo".parse().unwrap()])
+                        .expect("fail to load languages");
+                    *crate::LL.write() = Some(loader);
+                    crate::INSTALLATION_STATE.write().langlocale = Some("en-US".to_owned());
+                } else {
+                    set_lang(lang);
+                }
             }
         }
     } => {}

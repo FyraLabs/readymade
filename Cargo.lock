@@ -258,6 +258,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bstr"
+version = "1.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "531a9155a481e2ee699d4f98f43c0ca4ff8ee1bfd55c31e9e98fb29d2b176fe0"
+dependencies = [
+ "memchr",
+ "serde",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1325,6 +1335,19 @@ name = "glob"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
+
+[[package]]
+name = "globset"
+version = "0.4.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54a1028dfc5f5df5da8a56a73e6c153c9a9708ec57232470703592a3f18e49f5"
+dependencies = [
+ "aho-corasick",
+ "bstr",
+ "log",
+ "regex-automata 0.4.9",
+ "regex-syntax 0.8.5",
+]
 
 [[package]]
 name = "gnome-desktop"
@@ -2731,6 +2754,7 @@ version = "8.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d55b95147fe01265d06b3955db798bdaed52e60e2211c41137701b3aba8e21"
 dependencies = [
+ "globset",
  "sha2",
  "walkdir",
 ]

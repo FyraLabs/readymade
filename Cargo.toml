@@ -62,7 +62,7 @@ i18n-embed = { version = "0.15.4", features = [
     "fluent-system",
 ] }
 i18n-embed-fl = "0.9.4"
-rust-embed = "8.7.0"
+rust-embed = { version = "8.7.0", features = ["include-exclude"] }
 with_builtin_macros = "0.1.0"
 no_color = "0.2.0"
 poly_l10n = "0.0.4"

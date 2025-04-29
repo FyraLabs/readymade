@@ -26,6 +26,7 @@ pub static LL: SharedState<Option<i18n_embed::fluent::FluentLanguageLoader>> = S
 
 #[derive(rust_embed::RustEmbed)]
 #[folder = "po/"]
+#[exclude = "en-owo/*.ftl"]
 struct Localizations;
 
 static LOCALE_SOLVER: LazyLock<poly_l10n::LocaleFallbackSolver> = LazyLock::new(Default::default);
