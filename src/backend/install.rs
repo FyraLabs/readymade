@@ -871,24 +871,23 @@ impl FinalInstallationState {
             .context("systemd-repart failed")?;
 
         if !repart_cmd.status.success() {
-            bail!(
+            return Err(eyre!(
                 "systemd-repart errored with status code {:?}",
                 repart_cmd.status.code()
-            );
+            )
+            .with_note(|| String::from_utf8_lossy(&repart_cmd.stdout).to_string()));
         }
-
-        let out = std::str::from_utf8(&repart_cmd.stdout)?;
 
         // Dump systemd-repart output to a file if in debug mode
         if cfg!(debug_assertions) {
             let repart_out_path = std::env::temp_dir().join("readymade-repart-output.json");
             tracing::debug!("Dumping systemd-repart output to {repart_out_path:?}");
-            std::fs::write(repart_out_path, out)?;
+            std::fs::write(repart_out_path, &repart_cmd.stdout)?;
         }
 
         // todo: wait for systemd 256 or genfstab magic
-        tracing::debug!(out, "systemd-repart finished");
-        Ok(serde_json::from_str(out)?)
+        tracing::debug!("systemd-repart finished");
+        Ok(serde_json::from_slice(&repart_cmd.stdout)?)
     }
 }
 

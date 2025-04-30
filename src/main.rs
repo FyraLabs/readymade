@@ -208,19 +208,9 @@ static AVAILABLE_LANGS: LazyLock<Vec<i18n_embed::unic_langid::LanguageIdentifier
     });
 
 fn handle_l10n() -> i18n_embed::fluent::FluentLanguageLoader {
-    use i18n_embed::{unic_langid::LanguageIdentifier, LanguageLoader};
-    use std::str::FromStr;
+    use i18n_embed::LanguageLoader;
     let loader = i18n_embed::fluent::fluent_language_loader!();
-    let mut langs = ["LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE", "LANGUAGES"]
-        .into_iter()
-        .flat_map(|env| {
-            std::env::var(env).ok().into_iter().flat_map(|locales| {
-                locales
-                    .split(':')
-                    .filter_map(|locale| LanguageIdentifier::from_str(locale).ok())
-                    .collect_vec()
-            })
-        })
+    let mut langs = poly_l10n::system_want_langids()
         .flat_map(|li| LOCALE_SOLVER.solve_locale(li))
         .filter(|li| AVAILABLE_LANGS.contains(li))
         .collect_vec();

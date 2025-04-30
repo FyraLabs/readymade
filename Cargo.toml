@@ -65,7 +65,7 @@ i18n-embed-fl = "0.9.4"
 rust-embed = { version = "8.7.0", features = ["include-exclude"] }
 with_builtin_macros = "0.1.0"
 no_color = "0.2.0"
-poly_l10n = "0.0.4"
+poly_l10n = "0.0.6"
 
 # [dependencies.os-detect]
 # git = "https://github.com/FyraLabs/distinst"
