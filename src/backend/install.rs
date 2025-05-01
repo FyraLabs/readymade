@@ -389,7 +389,7 @@ impl FinalInstallationState {
                 &repart_out,
                 self.encrypts.as_ref().map(|e| &*e.encryption_key),
             )?;
-            self.bootc_copy(bootc_rootfs_mountpoint, &repart_out)?;
+            self.bootc_copy(bootc_rootfs_mountpoint, repart_out.generate_cryptdata()?)?;
             crate::cmd!("umount" [["-R"], [bootc_rootfs_mountpoint]]
                 => |r| tracing::warn!(rc=?r.code(), ?bootc_rootfs_mountpoint, "cannot umount"));
         }
@@ -519,8 +519,8 @@ impl FinalInstallationState {
     /// Call bootc to copy the contents of the container into the target.
     ///
     /// The caller must verify that `self.copy_mode.is_bootc()`.
-    #[allow(clippy::unwrap_in_result)]
-    fn bootc_copy(&self, target_root: &Path, output: &RepartOutput) -> Result<()> {
+    #[allow(clippy::unwrap_in_result, clippy::needless_pass_by_value)]
+    pub fn bootc_copy(&self, target_root: &Path, cryptdata: Option<CryptData>) -> Result<()> {
         let DetailedCopyMode::Bootc {
             bootc_imgref: imgref,
             bootc_target_imgref,
