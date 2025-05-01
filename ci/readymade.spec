@@ -48,7 +48,6 @@ sed -i 's/^\[profile\.rpm\]/[profile.rpm]\ndebug-assertions = true/' .cargo/conf
 %_datadir/polkit-1/actions/com.fyralabs.pkexec.readymade.policy
 %{_datadir}/applications/com.fyralabs.Readymade.desktop
 %{_datadir}/icons/hicolor/*/apps/com.fyralabs.Readymade.*
-%_datadir/readymade
 
 %files config-ultramarine
 %_sysconfdir/readymade.toml
