@@ -9,3 +9,7 @@
 .installation-bento-card.sponsor-card {
     background-image: url("foresty-skies-dark.webp");
 }
+.installation-bento-card.contribute-card {
+    background-position: bottom;
+    background-image: url("blueprint-dark.webp");
+}
