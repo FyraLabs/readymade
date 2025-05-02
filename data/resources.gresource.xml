@@ -8,6 +8,7 @@
         <file>viewports-light.webp</file>
         <file>viewports-dark.webp</file>
         <file>blueprint.webp</file>
+        <file>blueprint-dark.webp</file>
         <file>foresty-skies-light.webp</file>
         <file>foresty-skies-dark.webp</file>
     </gresource>
