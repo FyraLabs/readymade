@@ -317,6 +317,8 @@ impl FinalInstallationState {
         };
         let logs: Arc<Mutex<String>> = Arc::default();
         let mut res = Command::new("pkexec")
+            // #93
+            .args(["systemd-inhibit", "--who=Readymade", "--why=Installing OS"])
             .arg(std::env::current_exe()?)
             .args(["--non-interactive", &channel_id])
             .args(
