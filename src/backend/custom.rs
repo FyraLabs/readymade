@@ -1,6 +1,7 @@
 use std::path::Component;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
 
 use super::export::ReadymadeResult;
 use super::install::FinalInstallationState;
@@ -79,7 +80,7 @@ impl MountTargets {
 // 1. mount all
 // 2. copy stuff
 // 3. funny setup_system()
-#[allow(clippy::cognitive_complexity, clippy::module_name_repetitions)]
+#[allow(clippy::module_name_repetitions)]
 pub fn install_custom(
     state: &FinalInstallationState,
     mounttags: &mut MountTargets,
@@ -87,6 +88,16 @@ pub fn install_custom(
     let destroot = Path::new("/mnt/custom");
     mounttags.sort_mounts();
     mounttags.mount_all(destroot)?;
+
+    if state.copy_mode.is_bootc() {
+        state
+            .bootc_copy(destroot, None)
+            .context("bootc_copy failed")?;
+        _ = Command::new("sync").status();
+        _ = Command::new("umount").arg("-R").arg(destroot).status();
+    } else {
+        populate_fs(mounttags, destroot)?;
+    }
 
     // Let's declare fstab here
     // add a newline just in case
@@ -97,48 +108,6 @@ pub fn install_custom(
 
     if fstab.is_empty() {
         color_eyre::eyre::bail!("generated fstab is empty!? what happened?");
-    }
-
-    {
-        scopeguard::defer! {
-            if let Err(e) = mounttags.umount_all(destroot) {
-                tracing::error!("Cannot unmount partitions: {e:?}");
-            }
-        };
-
-        let copy_source = PathBuf::from(FinalInstallationState::determine_copy_source());
-        tracing::trace!(?copy_source, ?destroot);
-        if copy_source.is_file() {
-            crate::stage!(extracting {
-                // super::mksys::unsquash_copy(&copy_source, destroot, |_, _| {})?;
-                //
-                // FIXME: I give up idk why this doesn't work
-                // let mt = MountTarget { partition: copy_source, mountpoint: "/mnt/rdmsqsh".into(),
-                //     options: "loop".into(),
-                //     ..Default::default() };
-                // mt.mount("/".as_ref())?;
-                // scopeguard::defer! {
-                //     if let Err(e) = mt.umount("/".as_ref()) {
-                //         tracing::error!("Cannot unmount /mnt/rdmsqsh: {e:?}");
-                //     }
-                // };
-                // and it says
-                // 0: Invalid argument (os error 22)
-                // the error is from the nix mount call I think
-                let rc = std::process::Command::new("mount").arg(copy_source).arg("/mnt/rdmsqsh").status()?.code();
-                if rc.is_none_or(|rc| rc != 0) {
-                    color_eyre::eyre::bail!("mount command returns rc={rc:?}");
-                }
-                scopeguard::defer! {
-                    _ = std::process::Command::new("umount").arg("/mnt/rdmsqsh").status();
-                }
-                crate::util::fs::copy_dir("/mnt/rdmsqsh", destroot)?;
-            });
-        } else {
-            crate::stage!(copying {
-                crate::util::fs::copy_dir(&copy_source, destroot)?;
-            });
-        }
     }
 
     let temp_dir = tempfile::tempdir()?.into_path();
@@ -172,5 +141,48 @@ pub fn install_custom(
     let rdm_result = ReadymadeResult::new(state.clone(), None);
     container.run(|| state._inner_sys_setup(fstab, None, efi, &xbootldr, rdm_result))??;
 
+    Ok(())
+}
+
+#[allow(clippy::cognitive_complexity)]
+fn populate_fs(mounttags: &MountTargets, destroot: &Path) -> color_eyre::Result<()> {
+    scopeguard::defer! {
+        if let Err(e) = mounttags.umount_all(destroot) {
+            tracing::error!("Cannot unmount partitions: {e:?}");
+        }
+    };
+    let copy_source = PathBuf::from(FinalInstallationState::determine_copy_source());
+    tracing::trace!(?copy_source, ?destroot);
+    if copy_source.is_file() {
+        crate::stage!(extracting {
+            // super::mksys::unsquash_copy(&copy_source, destroot, |_, _| {})?;
+            //
+            // FIXME: I give up idk why this doesn't work
+            // let mt = MountTarget { partition: copy_source, mountpoint: "/mnt/rdmsqsh".into(),
+            //     options: "loop".into(),
+            //     ..Default::default() };
+            // mt.mount("/".as_ref())?;
+            // scopeguard::defer! {
+            //     if let Err(e) = mt.umount("/".as_ref()) {
+            //         tracing::error!("Cannot unmount /mnt/rdmsqsh: {e:?}");
+            //     }
+            // };
+            // and it says
+            // 0: Invalid argument (os error 22)
+            // the error is from the nix mount call I think
+            let rc = std::process::Command::new("mount").arg(copy_source).arg("/mnt/rdmsqsh").status()?.code();
+            if rc.is_none_or(|rc| rc != 0) {
+                color_eyre::eyre::bail!("mount command returns rc={rc:?}");
+            }
+            scopeguard::defer! {
+                _ = std::process::Command::new("umount").arg("/mnt/rdmsqsh").status();
+            }
+            crate::util::fs::copy_dir("/mnt/rdmsqsh", destroot)?;
+        });
+    } else {
+        crate::stage!(copying {
+            crate::util::fs::copy_dir(&copy_source, destroot)?;
+        });
+    }
     Ok(())
 }
