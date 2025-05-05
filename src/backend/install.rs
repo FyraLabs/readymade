@@ -411,7 +411,7 @@ impl FinalInstallationState {
             )?;
             Self::bootc_cleanup(tmproot)?;
             crate::cmd!("sync" => |_| bail!("`sync` failed"));
-            crate::cmd!("umount" [["-Rl"], [tmproot]] => |_| bail!("umount -Rl {tmproot:?} failed"));
+            crate::cmd!("umount" [["-R"], [tmproot]] => |_| bail!("umount -Rl {tmproot:?} failed"));
         }
 
         if let DetailedInstallationType::ChromebookInstall = inst_type {
