@@ -59,9 +59,11 @@ pub struct FinalInstallationState {
     pub copy_mode: DetailedCopyMode,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone)]
+#[derive(Default, Serialize, Deserialize, Clone, derivative::Derivative)]
+#[derivative(Debug)]
 pub struct EncryptState {
     pub tpm: bool,
+    #[derivative(Debug = "ignore")]
     pub encryption_key: String,
 }
 
