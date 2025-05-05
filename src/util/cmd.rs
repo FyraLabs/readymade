@@ -1,6 +1,6 @@
 use std::{
     io::{BufRead, BufReader},
-    process::{Child, Output},
+    process::{Child, Command, ExitStatus, Output},
 };
 
 pub fn pipe_cmd<const N: usize, F: FnOnce() + Send>(

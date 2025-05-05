@@ -536,7 +536,7 @@ impl FinalInstallationState {
 
         crate::cmd!("bootc" [
             ["install", "to-filesystem", "--source-imgref", imgref],
-            (output.generate_cryptdata()?.iter())
+            (cryptdata.iter())
                 .flat_map(|data| data.cmdline_opts.iter().flat_map(|opt| ["--karg", opt])),
             ["--karg=rhgb", "--karg=quiet", "--karg=splash"],
             [target_root],
