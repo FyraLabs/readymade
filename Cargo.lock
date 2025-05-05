@@ -2622,6 +2622,7 @@ dependencies = [
  "lsblk",
  "nix 0.29.0",
  "no_color",
+ "parking_lot",
  "paste",
  "poly_l10n",
  "rayon",
