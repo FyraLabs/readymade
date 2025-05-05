@@ -25,7 +25,7 @@ page-language-search-lang = Naar taal en regio zoeken...
 page-language-next = Volgende
 
 page-completed = Voltooid
-page-completed-desc = Installatie voltooid. Start de computer nu opnieuw op om van uw vers geïnstalleerde systeem te genieten.
+page-completed-desc = Installatie voltooid. Start de computer nu opnieuw op om van uw 'vers' geïnstalleerde systeem te genieten.
 page-completed-close = Sluiten
 page-completed-reboot = Opnieuw opstarten
 
@@ -42,7 +42,7 @@ page-confirmation = Bevestiging
 page-confirmation-problem-device-mounted = {$dev} is aangekoppeld op {$mountpoint}. Ontkoppel om door te gaan.
 page-confirmation-problem-devblkopen = Het schijfblok <tt>{$dev}</tt> is nog in gebruik door de volgende processen:
     <tt>{$pids}</tt>
-    Deze processen moeten worden afgesloten, vóór de installatie door kan gaan.    
+    Deze processen moeten eerst worden afgesloten voordat de installatie verder kan gaan.
 
 page-installation = Installatie
 page-installation-welcome-desc = Maak kennis met uw nieuwe besturingssysteem.
