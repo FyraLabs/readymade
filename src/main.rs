@@ -7,7 +7,8 @@ mod pages;
 pub mod prelude;
 mod util;
 
-use std::sync::{LazyLock, Mutex};
+use parking_lot::Mutex;
+use std::sync::LazyLock;
 
 use crate::prelude::*;
 use backend::install::{InstallationState, InstallationType, IPC_CHANNEL};

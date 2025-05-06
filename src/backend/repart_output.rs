@@ -315,8 +315,8 @@ pub fn is_luks(node: &str) -> bool {
 }
 
 // global cache, so we can clean up these devices later
-pub static MAPPER_CACHE: std::sync::LazyLock<std::sync::RwLock<Arc<MapperCache>>> =
-    std::sync::LazyLock::new(|| std::sync::RwLock::new(Arc::new(MapperCache::new())));
+pub static MAPPER_CACHE: std::sync::LazyLock<parking_lot::RwLock<Arc<MapperCache>>> =
+    std::sync::LazyLock::new(|| parking_lot::RwLock::new(Arc::new(MapperCache::new())));
 
 pub fn luks_decrypt(
     node: &str,
@@ -324,7 +324,7 @@ pub fn luks_decrypt(
     label: &str,
 ) -> Result<PathBuf, color_eyre::eyre::Error> {
     // Check cache first
-    if let Some(path) = MAPPER_CACHE.read().unwrap().get(node) {
+    if let Some(path) = MAPPER_CACHE.read().get(node) {
         return Ok(path.clone());
     }
 
@@ -351,7 +351,7 @@ pub fn luks_decrypt(
     let mapper = PathBuf::from(format!("/dev/mapper/{label}"));
 
     // Add to cache
-    Arc::get_mut(&mut *MAPPER_CACHE.write().unwrap())
+    Arc::get_mut(&mut *MAPPER_CACHE.write())
         .unwrap()
         .insert(node.to_owned(), mapper.clone());
 
@@ -461,7 +461,7 @@ impl RepartPartition {
 
             // We're gonna be abusing the mapper cache, which should be populated by the time we get here
 
-            let mapper_cache = MAPPER_CACHE.read().unwrap();
+            let mapper_cache = MAPPER_CACHE.read();
             let mapper_path = mapper_cache.get(&self.node).unwrap();
 
             tracing::trace!(?mapper_path, "Guessed mapper path as this");

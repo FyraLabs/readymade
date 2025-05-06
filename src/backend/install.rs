@@ -1,10 +1,11 @@
 use ipc_channel::ipc::{IpcError, IpcOneShotServer, IpcSender};
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::{Mutex, OnceLock},
+    sync::OnceLock,
 };
 
 use crate::{
@@ -428,7 +429,7 @@ impl FinalInstallationState {
 
             // Close all mapped LUKS devices if exists
 
-            if let Ok(mut cache) = super::repart_output::MAPPER_CACHE.try_write() {
+            if let Some(mut cache) = super::repart_output::MAPPER_CACHE.try_write() {
                 if let Some(cache) = std::sync::Arc::get_mut(&mut cache) {
                     cache.clear();
                 }
