@@ -601,7 +601,6 @@ impl From<&AddDialog> for ChooseMount {
             mountpoint,
             mountopts,
             index,
-            ..
         }: &AddDialog,
     ) -> Self {
         Self {
@@ -627,7 +626,6 @@ impl From<&ChooseMount> for AddDialog {
             partition: partition.display().to_string(),
             mountpoint: mountpoint.display().to_string(),
             mountopts: options.clone(),
-            ..Default::default()
         }
     }
 }
@@ -639,7 +637,6 @@ impl From<AddDialog> for ChooseMount {
             mountpoint,
             mountopts,
             index,
-            ..
         }: AddDialog,
     ) -> Self {
         Self {
@@ -665,7 +662,6 @@ impl From<ChooseMount> for AddDialog {
             partition: partition.display().to_string(),
             mountpoint: mountpoint.display().to_string(),
             mountopts: options,
-            ..Default::default()
         }
     }
 }
@@ -708,7 +704,7 @@ kurage::generate_component!(PartitionToolSelector {
     entry_factory: FactoryPartEntry,
 }:
     init[entries { model.entry_factory.inner.widget() }](root, sender, model, widgets) {}
-    update(self, message, sender) {} => {}
+    update(self, message, _sender) {} => {}
 
     libhelium::ApplicationWindow {
         set_title: Some(&t!("installtype-parttool")),
@@ -813,8 +809,8 @@ impl PartitionToolSelector {
 /// should be a factory to generate from a single [`freedesktop_desktop_entry::DesktopEntry`]
 /// layout:
 /// ```no_run
-/// box {
-///    button {
+/// button {
+///    box {
 ///         image,
 ///         label,
 ///     }
@@ -878,7 +874,7 @@ impl FactoryComponent for PartitionToolEntry {
         }
     }
 
-    fn init_model(init: Self::Init, index: &Self::Index, _sender: FactorySender<Self>) -> Self {
+    fn init_model(init: Self::Init, _: &Self::Index, _: FactorySender<Self>) -> Self {
         Self {
             desktop_entry: init,
         }

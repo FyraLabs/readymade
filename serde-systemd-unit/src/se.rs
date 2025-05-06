@@ -10,17 +10,18 @@ pub struct Serializer {
 /// # Errors
 ///
 /// This function will return an error if the data structure cannot be serialized for any reason.
-pub fn to_string<T: Serialize>(value: &T) -> Result<String, ()> {
+pub fn to_string<T: Serialize>(value: &T) -> Result<String, Err> {
     let mut serializer = Serializer::default();
-    _ = value.serialize(&mut serializer);
+    value.serialize(&mut serializer)?;
     Ok(serializer.output)
 }
 
 #[derive(thiserror::Error, Debug)]
 #[error("error")]
 pub struct Err;
+
 impl serde::ser::Error for Err {
-    fn custom<T>(msg: T) -> Self
+    fn custom<T>(_: T) -> Self
     where
         T: std::fmt::Display,
     {
@@ -92,7 +93,7 @@ impl ser::Serializer for &mut Serializer {
         Ok(())
     }
 
-    fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error> {
+    fn serialize_bytes(self, _: &[u8]) -> Result<Self::Ok, Self::Error> {
         todo!()
     }
 
@@ -110,7 +111,7 @@ impl ser::Serializer for &mut Serializer {
         Ok(())
     }
 
-    fn serialize_unit_struct(self, name: &'static str) -> Result<Self::Ok, Self::Error> {
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
         self.serialize_unit()
     }
 
@@ -153,11 +154,11 @@ impl ser::Serializer for &mut Serializer {
         value.serialize(self)
     }
 
-    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
+    fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
         todo!()
     }
 
-    fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
+    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple, Self::Error> {
         todo!()
     }
 
