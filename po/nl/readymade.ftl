@@ -25,7 +25,7 @@ page-language-search-lang = Naar taal en regio zoeken...
 page-language-next = Volgende
 
 page-completed = Voltooid
-page-completed-desc = Installatie voltooid. Start de computer nu opnieuw op om van uw vers geïnstalleerde systeem te genieten.
+page-completed-desc = Installatie voltooid. Start de computer nu opnieuw op om van uw 'vers' geïnstalleerde systeem te genieten.
 page-completed-close = Sluiten
 page-completed-reboot = Opnieuw opstarten
 
@@ -39,6 +39,10 @@ page-installdual = Dual Boot
 page-installdual-otheros = Ander besturingssysteem (OS)
 
 page-confirmation = Bevestiging
+page-confirmation-problem-device-mounted = {$dev} is aangekoppeld op {$mountpoint}. Ontkoppel om door te gaan.
+page-confirmation-problem-devblkopen = Het schijfblok <tt>{$dev}</tt> is nog in gebruik door de volgende processen:
+    <tt>{$pids}</tt>
+    Deze processen moeten eerst worden afgesloten voordat de installatie verder kan gaan.
 
 page-installation = Installatie
 page-installation-welcome-desc = Maak kennis met uw nieuwe besturingssysteem.
@@ -79,13 +83,13 @@ dialog-mp-opts = Mount-opties
 
 installtype-parttool = Selecteer uw partitioneringstool
 
-stage-extracting = Bestanden uitpakken...
-stage-copying = Bestanden kopiëren...
-stage-mkpart = Partities aanmaken en bestanden kopiëren...
-stage-initramfs = Opnieuw genereren van initramfs...
-stage-grub = System grub standaardinstellingen genereren...
+stage-extracting = Bestanden uitpakken
+stage-copying = Bestanden kopiëren
+stage-mkpart = Partities aanmaken en bestanden kopiëren
+stage-initramfs = Opnieuw genereren van initramfs
+stage-grub = System grub standaardinstellingen genereren
 stage-grub1 = Stage 1 grub.cfg in ESP genereren...
 stage-grub2 = Stage 2 grub.cfg in /boot/grub2/grub.cfg genereren...
-stage-biosgrub = BIOS Grub2 installeren...
-stage-kernel = Kernels opnieuw installeren...
-stage-selinux = SELinux-labels installeren...
+stage-biosgrub = BIOS Grub2 installeren
+stage-kernel = Kernels herinstalleren
+stage-selinux = SELinux-labels installeren
