@@ -7,7 +7,7 @@ mod pages;
 pub mod prelude;
 mod util;
 
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use std::sync::LazyLock;
 
 use crate::prelude::*;
@@ -23,7 +23,8 @@ use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
 static CONFIG: SharedState<cfg::ReadymadeConfig> = SharedState::new();
 
-pub static LL: SharedState<Option<i18n_embed::fluent::FluentLanguageLoader>> = SharedState::new();
+pub static LL: LazyLock<RwLock<i18n_embed::fluent::FluentLanguageLoader>> =
+    LazyLock::new(|| RwLock::new(handle_l10n()));
 
 #[derive(rust_embed::RustEmbed)]
 #[folder = "po/"]
@@ -243,7 +244,7 @@ fn main() -> Result<()> {
         let install_state: backend::install::FinalInstallationState =
             serde_json::from_reader(std::io::stdin())?;
 
-        *LL.write() = Some(handle_l10n());
+        *LL.write() = handle_l10n();
         langs_th.join().expect("cannot join available_langs_th");
         return install_state.install();
     }
@@ -280,7 +281,7 @@ fn main() -> Result<()> {
         .build();
 
     tracing::debug!("Starting Readymade");
-    *LL.write() = Some(handle_l10n());
+    *LL.write() = handle_l10n();
     langs_th.join().expect("cannot join available_langs_th");
     RelmApp::from_app(app).run::<AppModel>(());
     Ok(())
