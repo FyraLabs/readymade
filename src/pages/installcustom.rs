@@ -304,6 +304,7 @@ macro_rules! impl_partition_type {
                 Box::leak(Box::new([$(Self::$entry),*, Self::Other("".to_owned())]))
             }
 
+            #[allow(clippy::missing_const_for_fn)]
             fn as_str(&self) -> &str {
                 match self {
                     $(Self::$entry => $s,)*
@@ -424,7 +425,6 @@ kurage::generate_component!(AddDialog {
     mountpoint: String,
     mountopts: String,
     index: usize,
-    mnpt_type_is_other: bool,
 }:
     preinit {
         let mut init = init;

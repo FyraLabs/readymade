@@ -10,7 +10,7 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-color-eyre = "0.6.3"
+color-eyre = "=0.6.3"
 gtk = { version = "0.9", package = "gtk4", features = ["v4_10"] }
 relm4 = { version = "0.9", features = ["macros"] }
 libhelium = { version = "0.10.0", features = ["gtk_v4_10", "v1_6"] }
@@ -34,10 +34,10 @@ tiffin = { version = "0.3.2" }
 tracing-journald = "0.3.1"
 rayon = "1.10.0"
 strip-ansi-escapes = "0.2.1"
-toml = "0.8.20"
+toml = "0.8.22"
 serde_valid = { version = "1.0.5", features = ["toml"] }
-nix = { version = "0.29.0", features = ["fs", "mount", "user"] }
-backhand = "0.21.0"
+nix = { version = "0.30.1", features = ["fs", "mount", "user"] }
+backhand = "0.22.0"
 enum_dispatch = "0.3.13"
 scopeguard = "1.2.0"
 tracing-test = "0.2.5"
@@ -45,7 +45,7 @@ serde-systemd-unit = { path = "./serde-systemd-unit" }
 format-bytes = "0.3.0"
 ipc-channel = { version = "0.19.0", features = ["async"] }
 # FIXME: we should remove this crate (somehow this pulls in gettext… not so great)
-freedesktop-desktop-entry = "0.7.10"
+freedesktop-desktop-entry = "0.7.11"
 jwalk = "0.8.1"
 xattr = "1.5.0"
 filesystem-table = { version = "0.1.2", path = "./filesystem-table" }
@@ -62,7 +62,7 @@ i18n-embed = { version = "0.15.4", features = [
     "fluent-system",
 ] }
 i18n-embed-fl = "0.9.4"
-rust-embed = { version = "8.7.0", features = ["include-exclude"] }
+rust-embed = { version = "8.7.1", features = ["include-exclude"] }
 with_builtin_macros = "0.1.0"
 no_color = "0.2.0"
 poly_l10n = "0.0.6"
