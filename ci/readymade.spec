@@ -38,9 +38,10 @@ This package contains the configuration files for Readymade to install Ultramari
 sed -i 's/^\[profile\.rpm\]/[profile.rpm]\ndebug-assertions = true/' .cargo/config
 
 %build
+%{cargo_build} --locked
 
 %install
-%cargo_install
+install -Dm755 target/rpm/readymade %buildroot%_bindir/readymade
 ./install.sh %buildroot
 
 %files
