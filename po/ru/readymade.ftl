@@ -1,59 +1,46 @@
 prev = Назад
 next = Далее
-
 unknown-os = Неизвестная ОС
-
-parttype-root = Корневая файловая система ({$path})
-parttype-extendedboot = Расширенный раздел загрузчика ({$path})
-parttype-esp = Системный раздел EFI ({$path})
-parttype-home = Домашняя директория пользователя ({$path})
-parttype-var = Переменные данные ({$path})
+parttype-root = Корневая файловая система ({ $path })
+parttype-extendedboot = Расширенный раздел загрузчика ({ $path })
+parttype-esp = Системный раздел EFI ({ $path })
+parttype-home = Домашняя директория пользователя ({ $path })
+parttype-var = Переменные данные ({ $path })
 parttype-other = Пользовательская точка монтирования раздела
-
-
-page-welcome = Добро пожаловать в {$distro}
-page-welcome-desc = Либо попробуйте {$distro} из этой программы установки, либо начните установку сейчас. Вы всегда можете вернуться к этому экрану, выбрав в меню приложение «Installer».
+page-welcome = Добро пожаловать в { $distro }
+page-welcome-desc = Либо попробуйте { $distro } из этой программы установки, либо начните установку сейчас. Вы всегда можете вернуться к этому экрану, выбрав в меню приложение «Installer».
 page-welcome-try = Попробовать
 page-welcome-install = Установить
-
 page-failure = Сбой установки
 page-failure-close = Закрыть
 page-failure-bug = Сообщить о проблеме
-
 page-language = Язык
 page-language-search-lang = Поиск по языкам/регионам…
 page-language-next = Далее
-
 page-completed = Завершено
 page-completed-desc = Установка завершена. Вы можете перезапустить компьютер и насладиться вашей новой системой.
 page-completed-close = Закрыть
 page-completed-reboot = Перезагрузить
-
 page-destination = Назначение
 page-destination-scanning = Сканирование дисков
 page-destination-wait = Ждём ответа os-prober…
 page-destination-no-disk = Диски не найдены
 page-destination-no-disk-desc = Диски, подходящие для установки, отсутствуют.
-
 page-installdual = Двойная загрузка
 page-installdual-otheros = Другая ОС
-
 page-confirmation = Подтверждение
-
 page-installation = Установка
 page-installation-welcome-desc = Познакомьтесь с новой операционной системой.
 page-installation-help = Нужна помощь?
 page-installation-help-desc = Задайте вопрос в одном из наших чатов!
-page-installation-contrib = Внести вклад в {$distro}
+page-installation-contrib = Внести вклад в { $distro }
 page-installation-contrib-desc = Узнайте, как пожертвовать своим временем, деньгами или оборудованием.
 page-installation-progress = Установка базовой системы...
-
 page-installcustom = Пользовательская установка
 page-installcustom-title = Разделы и точки монтирования
-page-installcustom-desc = {$num} правил(а)
+page-installcustom-desc = { $num } правил(а)
 page-installcustom-tool = Открыть дисковую утилиту
 page-installcustom-add = Добавить новое правило
-
 page-installationtype = Тип установки
 page-installationtype-entire = Весь диск
 page-installationtype-tpm = Включить TPM
@@ -61,24 +48,20 @@ page-installationtype-encrypt = Включить шифрование диска
 page-installationtype-chromebook = Chromebook
 page-installationtype-dual = Двойная загрузка
 page-installationtype-custom = Пользовательское
-
 dialog-installtype-encrypt = Шифрование диска
-dialog-installtype-encrypt-desc = Пожалуйста, введите пароль шифровки диска.
+dialog-installtype-encrypt-desc =
+    Пожалуйста, введите пароль шифровки диска.
     Если вы забудете пароль, ваши данные невозможно будет восстановить.
 dialog-installtype-password = Пароль
 dialog-installtype-repeat = Повторите пароль
 dialog-installtype-cancel = Отмена
 dialog-installtype-confirm = Подтвердить
-
 installtype-edit-mp = Редактировать точку монтирования
 installtype-rm-mp = Удалить точку монтирования
-
 dialog-mp-part = Раздел
 dialog-mp-at = Монтировать на
 dialog-mp-opts = Настройки монтирования
-
 installtype-parttool = Выберите вашу дисковую утилиту
-
 stage-extracting = Распаковка файлов
 stage-copying = Копирование файлов
 stage-mkpart = Создание разделов и копирование файлов
