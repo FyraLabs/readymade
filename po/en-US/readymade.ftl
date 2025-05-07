@@ -12,7 +12,7 @@ parttype-other = Custom partitioning mountpoint
 
 
 page-welcome = Welcome to {$distro}
-page-welcome-desc = Either test {$distro} from this installer or start the installation now. You can always return to this screen by selecting "Installer" in the menu.
+page-welcome-desc = You may try {$distro} or start the installation now.
 page-welcome-try = Try
 page-welcome-install = Install
 
