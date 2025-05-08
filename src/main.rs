@@ -161,7 +161,11 @@ impl SimpleComponent for AppModel {
         theme.add_resource_path("/com/FyraLabs/Readymade/icons");
         settings.set_gtk_icon_theme_name(Some("Hydrogen"));
 
-        let model = Self::_default(sender);
+        let mut model = Self::_default(sender);
+
+        if CONFIG.read().no_langpage {
+            model.page = Page::Welcome;
+        }
 
         let widgets = view_output!();
 
