@@ -76,3 +76,8 @@ dialog-installtype-encrypt-desc =
     Si vous perdez le mot de passe, vos données ne seront pas récupérables.
 stage-grub = Génération des valeurs système par défaut pour grub
 stage-selinux = Définition des étiquettes SELinux
+page-confirmation-problem-device-mounted = { $dev } est monté sur { $mountpoint }. Démontez-le pour continuer.
+page-confirmation-problem-devblkopen =
+    L'unité de bloc <tt>{ $dev }</tt> est utilisée par les processus suivants :
+    <tt>{ $pids }</tt>
+    Ces processus doivent être fermés avant que le programme d'installation puisse être exécuté.
