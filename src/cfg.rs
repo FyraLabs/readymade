@@ -153,6 +153,7 @@ mod tests {
             )
             .unwrap(),
             ReadymadeConfig {
+                no_langpage: false,
                 distro: Distro {
                     name: "Ultramarine Linux".into(),
                     icon: "fedora-logo-icon".into(),
