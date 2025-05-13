@@ -5,7 +5,7 @@ use std::{
     time::SystemTime,
 };
 
-use color_eyre::eyre::{bail, eyre};
+use color_eyre::eyre::{bail, eyre, Context as _};
 
 /// Ignore errors about nonexisting files.
 pub fn exist_then<T: Default>(r: std::io::Result<T>) -> std::io::Result<T> {
@@ -243,6 +243,7 @@ fn copy_attributes_handle_xattr(src_path: &Path, dest_path: &Path) {
     }
 }
 
+#[tracing::instrument]
 fn copy_attributes_handle_timestamps(
     dest_path: &Path,
     metadata: &std::fs::Metadata,
@@ -253,14 +254,13 @@ fn copy_attributes_handle_timestamps(
     let atime_ts = system_time_to_timespec(atime);
     let mtime_ts = system_time_to_timespec(mtime);
     utimensat(
-        None,
+        nix::fcntl::AT_FDCWD,
         dest_path,
         &atime_ts,
         &mtime_ts,
         UtimensatFlags::NoFollowSymlink,
     )
-    .map_err(|e| color_eyre::eyre::eyre!("Failed to set timestamps: {}", e))?;
-    Ok(())
+    .context("Failed to set timestamps")
 }
 
 #[cfg(feature = "uutils")]

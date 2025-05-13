@@ -12,7 +12,7 @@ parttype-other = Custom partitioning mountpoint
 
 
 page-welcome = Welcome to {$distro}
-page-welcome-desc = Either test {$distro} from this installer or start the installation now. You can always return to this screen by selecting "Installer" in the menu.
+page-welcome-desc = You may try {$distro} or start the installation now.
 page-welcome-try = Try
 page-welcome-install = Install
 
@@ -39,6 +39,10 @@ page-installdual = Dual Boot
 page-installdual-otheros = Other OS
 
 page-confirmation = Confirmation
+page-confirmation-problem-device-mounted = {$dev} is mounted on {$mountpoint}. Unmount it to proceed.
+page-confirmation-problem-devblkopen = The block-device <tt>{$dev}</tt> is in use by the following processes:
+    <tt>{$pids}</tt>
+    These processes must be closed before the installer can proceed. 
 
 page-installation = Installation
 page-installation-welcome-desc = Get to know your new operating system.

@@ -1,7 +1,16 @@
+use std::{os::unix::fs::FileTypeExt, path::PathBuf, time::Duration};
+
 use crate::prelude::*;
 
-page!(Confirmation:
-    init(root, sender, model, widgets) {}
+page!(Confirmation {
+    problem: Option<Problem>,
+}:
+    init(root, sender, model, widgets) {
+        gtk::glib::timeout_add(Duration::from_secs(1), move || {
+            sender.input(Self::Input::Check);
+            gtk::glib::ControlFlow::Continue
+        });
+}
     update(self, message, sender) {
         StartInstallation => {
             sender
@@ -14,6 +23,9 @@ page!(Confirmation:
                 )))
                 .unwrap();
         },
+        Check => {
+            self.problem = Problem::detect();
+        }
     } => { StartInstallation }
 
     gtk::CenterBox {
@@ -80,6 +92,14 @@ page!(Confirmation:
         }
     },
 
+    // relm4 doesn't support if lets
+    gtk::Label {
+        #[watch]
+        set_label: &model.problem.as_ref().map(Problem::msg).unwrap_or_default(),
+        set_use_markup: true,
+        add_css_class: "error",
+    },
+
     gtk::Box {
         set_orientation: gtk::Orientation::Horizontal,
         set_spacing: 4,
@@ -99,6 +119,8 @@ page!(Confirmation:
         },
 
         libhelium::Button {
+            #[watch]
+            set_sensitive: model.problem.is_none(),
             set_is_pill: true,
             #[watch]
             set_label: &t!("page-welcome-install"),
@@ -108,3 +130,59 @@ page!(Confirmation:
         },
     }
 );
+
+#[derive(Debug, Clone)]
+enum Problem {
+    DeviceMounted(String, PathBuf),
+    DevBlkOpen(String, Vec<usize>),
+}
+
+impl Problem {
+    fn detect() -> Option<Self> {
+        let Some(disk) = &INSTALLATION_STATE.read().destination_disk else {
+            return None;
+        };
+        let disk = &disk.devpath.to_string_lossy();
+        // assumes partition devpath must starts with disk devpath
+        if let Some(dev) = lsblk::Mount::list()
+            .inspect_err(|e| tracing::error!(?e, "cannot list mounts"))
+            .into_iter()
+            .flatten()
+            .find(|dev| dev.device.starts_with(disk.as_ref()))
+        {
+            return Some(Self::DeviceMounted(dev.device, dev.mountpoint));
+        }
+        None
+    }
+    fn msg(&self) -> String {
+        match self {
+            Self::DeviceMounted(dev, mp) => t!(
+                "page-confirmation-problem-device-mounted",
+                dev = dev,
+                mountpoint = mp.to_string_lossy().to_string(),
+            ),
+            Self::DevBlkOpen(dev, pids) => t!(
+                "page-confirmation-problem-devblkopen",
+                dev = dev,
+                pids = pids.iter().join(", "),
+            ),
+        }
+    }
+}
+
+fn find_open_block_devices(device: &str) -> std::io::Result<Vec<usize>> {
+    use std::fs::read_dir;
+    Ok(read_dir("/proc")?
+        .filter_map(Result::ok)
+        .filter_map(|f| f.file_name().to_string_lossy().parse().ok())
+        .flat_map(|pid: usize| {
+            read_dir(format!("/proc/{pid}/fd"))
+                .into_iter()
+                .flat_map(Iterator::flatten)
+                .filter_map(|fd_entry| fd_entry.path().canonicalize().ok())
+                .filter(|target| target.to_string_lossy().starts_with(device))
+                .filter_map(|target| target.metadata().ok())
+                .filter_map(move |metadata| metadata.file_type().is_block_device().then_some(pid))
+        })
+        .collect())
+}

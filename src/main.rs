@@ -7,7 +7,8 @@ mod pages;
 pub mod prelude;
 mod util;
 
-use std::sync::{LazyLock, Mutex};
+use parking_lot::{Mutex, RwLock};
+use std::sync::LazyLock;
 
 use crate::prelude::*;
 use backend::install::{InstallationState, InstallationType, IPC_CHANNEL};
@@ -22,7 +23,8 @@ use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
 static CONFIG: SharedState<cfg::ReadymadeConfig> = SharedState::new();
 
-pub static LL: SharedState<Option<i18n_embed::fluent::FluentLanguageLoader>> = SharedState::new();
+pub static LL: LazyLock<RwLock<i18n_embed::fluent::FluentLanguageLoader>> =
+    LazyLock::new(|| RwLock::new(handle_l10n()));
 
 #[derive(rust_embed::RustEmbed)]
 #[folder = "po/"]
@@ -159,7 +161,11 @@ impl SimpleComponent for AppModel {
         theme.add_resource_path("/com/FyraLabs/Readymade/icons");
         settings.set_gtk_icon_theme_name(Some("Hydrogen"));
 
-        let model = Self::_default(sender);
+        let mut model = Self::_default(sender);
+
+        if CONFIG.read().no_langpage {
+            model.page = Page::Welcome;
+        }
 
         let widgets = view_output!();
 
@@ -242,7 +248,7 @@ fn main() -> Result<()> {
         let install_state: backend::install::FinalInstallationState =
             serde_json::from_reader(std::io::stdin())?;
 
-        *LL.write() = Some(handle_l10n());
+        *LL.write() = handle_l10n();
         langs_th.join().expect("cannot join available_langs_th");
         return install_state.install();
     }
@@ -279,7 +285,7 @@ fn main() -> Result<()> {
         .build();
 
     tracing::debug!("Starting Readymade");
-    *LL.write() = Some(handle_l10n());
+    *LL.write() = handle_l10n();
     langs_th.join().expect("cannot join available_langs_th");
     RelmApp::from_app(app).run::<AppModel>(());
     Ok(())

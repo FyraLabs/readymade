@@ -47,6 +47,8 @@ fn _default_icon() -> String {
 
 #[derive(Deserialize, Serialize, Validate, Default, Debug, Clone, PartialEq, Eq)]
 pub struct ReadymadeConfig {
+    #[serde(default)]
+    pub no_langpage: bool,
     pub distro: Distro,
     pub install: Install,
     pub postinstall: Vec<Module>,
@@ -151,6 +153,7 @@ mod tests {
             )
             .unwrap(),
             ReadymadeConfig {
+                no_langpage: false,
                 distro: Distro {
                     name: "Ultramarine Linux".into(),
                     icon: "fedora-logo-icon".into(),

@@ -5,17 +5,17 @@
 next = Suivant
 unknown-os = OS inconnu
 parttype-root = Racine du système de fichiers ({ $path })
-parttype-esp = Partition système EFI ({ $path })
-parttype-home = Données de l'utilisateur ({ $path })
+parttype-esp = Partition du système EFI ({ $path })
+parttype-home = Données utilisateur ({ $path })
 parttype-var = Données variables ({ $path })
-page-welcome = Bienvenue sur { $distro }
+page-welcome = Bienvenue à { $distro }
 page-welcome-try = Essayer
 page-welcome-install = Installer
 page-failure = Échec de l'installation
 page-failure-close = Fermer
 page-failure-bug = Signaler un bogue
 page-language = Langue
-page-language-search-lang = Rechercher une langue/localisation…
+page-language-search-lang = Rechercher une langue/un pays…
 page-language-next = Suivant
 page-completed = Complète
 page-completed-desc = L'installation est terminée. Vous pouvez maintenant redémarrer et profiter de votre nouveau système.
@@ -26,7 +26,7 @@ page-destination-scanning = Recherche des disques
 page-destination-wait = En attente de os-prober…
 page-destination-no-disk = Aucun disque n'a été trouvé
 page-installdual = Double démarrage
-page-installdual-otheros = Autres OS
+page-installdual-otheros = Autre système d'exploitation
 page-confirmation = Confirmation
 page-installation = Installation
 page-installation-welcome-desc = Apprenez à connaître votre nouveau système d'exploitation.
@@ -43,7 +43,7 @@ page-installationtype-entire = Disque Entier
 page-installationtype-tpm = Activer le TPM
 page-installationtype-chromebook = Chromebook
 page-installationtype-custom = Sur mesure
-dialog-installtype-encrypt = Chiffrement des disques
+dialog-installtype-encrypt = Chiffrement du disque
 dialog-installtype-password = Mot de passe
 dialog-installtype-repeat = Resaissisez le mot de passe
 dialog-installtype-cancel = Annuler
@@ -61,18 +61,23 @@ stage-grub1 = Génération du fichier grub.cfg de l'étape 1 dans ESP...
 stage-biosgrub = Installation BIOS de Grub2
 stage-kernel = Réinstallation des noyaux
 prev = Précédent
-parttype-extendedboot = Partition du chargeur de démarrage étendu ({ $path })
+parttype-extendedboot = Partition Extended Boot Loader ({ $path })
 page-destination-no-disk-desc = Il n'y a pas de disques adaptés à l'installation.
 stage-mkpart = Création des partitions et copie des fichiers
-page-welcome-desc = Testez { $distro } à partir de ce programme d'installation ou lancez l'installation maintenant. Vous pouvez toujours revenir à cet écran en sélectionnant « Installer » dans le menu.
+page-welcome-desc = Testez { $distro } à partir de ce programme d'installation ou lancez l'installation maintenant. Vous pouvez toujours revenir à cet écran en sélectionnant "Installer" dans le menu.
 page-installation-contrib-desc = Découvrez comment apporter votre contribution en termes de temps, d'argent ou de matériel.
 page-installcustom-add = Ajouter une nouvelle définition/rangée
 parttype-other = Point de montage de partitionnement personnalisé
-page-installationtype-encrypt = Activer le chiffrement des disques
+page-installationtype-encrypt = Activer le chiffrement du disque
 page-installationtype-dual = Double Démarrage
 stage-grub2 = Génération de l'étape 2 de grub.cfg dans /boot/grub2/grub.cfg....
 dialog-installtype-encrypt-desc =
     Veuillez définir le mot de passe de chiffrement du disque.
     Si vous perdez le mot de passe, vos données ne seront pas récupérables.
-stage-grub = Génération des valeurs systèmes par défaut pour grub
+stage-grub = Génération des valeurs système par défaut pour grub
 stage-selinux = Définition des étiquettes SELinux
+page-confirmation-problem-device-mounted = { $dev } est monté sur { $mountpoint }. Démontez-le pour continuer.
+page-confirmation-problem-devblkopen =
+    L'unité de bloc <tt>{ $dev }</tt> est utilisée par les processus suivants :
+    <tt>{ $pids }</tt>
+    Ces processus doivent être fermés avant que le programme d'installation puisse être exécuté.

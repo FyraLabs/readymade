@@ -151,7 +151,7 @@ page!(Language {
                     loader
                         .load_languages(&crate::Localizations, &["en-Xowo".parse().unwrap()])
                         .expect("fail to load languages");
-                    *crate::LL.write() = Some(loader);
+                    *crate::LL.write() = loader;
                     crate::INSTALLATION_STATE.write().langlocale = Some("en-US".to_owned());
                 } else {
                     set_lang(lang);
@@ -225,7 +225,7 @@ fn set_lang(lang: &LanguageRow) {
             .load_languages(&crate::Localizations, &locales)
             .expect("fail to load languages");
         tracing::debug!(lang=?loader.current_languages(), welcome=loader.get_args_concrete("page-welcome", std::iter::once(("distro", "Ultramarine Linux".into())).collect()), "new loader");
-        *crate::LL.write() = Some(loader);
+        *crate::LL.write() = loader;
         crate::INSTALLATION_STATE.write().langlocale = Some(lang.locale.clone());
     }
 }

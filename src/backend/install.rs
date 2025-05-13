@@ -1,10 +1,11 @@
 use ipc_channel::ipc::{IpcError, IpcOneShotServer, IpcSender};
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{
-    io::{BufRead, BufReader, Write},
+    io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::{Mutex, OnceLock},
+    sync::OnceLock,
 };
 
 use crate::{
@@ -59,9 +60,11 @@ pub struct FinalInstallationState {
     pub copy_mode: DetailedCopyMode,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone)]
+#[derive(Default, Serialize, Deserialize, Clone, derivative::Derivative)]
+#[derivative(Debug)]
 pub struct EncryptState {
     pub tpm: bool,
+    #[derivative(Debug = "ignore")]
     pub encryption_key: String,
 }
 
@@ -298,10 +301,9 @@ impl FinalInstallationState {
 
     #[allow(clippy::unwrap_in_result)]
     fn call_subprocess(&self, sender: &relm4::Sender<InstallationMessage>) -> CallSubprocessRes {
-        use std::sync::{Arc, Mutex};
         let (server, channel_id) = IpcOneShotServer::new()?;
         let handle_ipc = || {
-            let (receiver, _) = server.accept()?;
+            let (receiver, _) = server.accept().expect("cannot accept ipc server");
 
             let mut msg;
             while {
@@ -312,10 +314,7 @@ impl FinalInstallationState {
                 IpcError::Disconnected => {}
                 e => tracing::error!("Failed to receive message from subprocess: {e:?}"),
             });
-
-            Result::<()>::Ok(())
         };
-        let logs: Arc<Mutex<String>> = Arc::default();
         let mut res = Command::new("pkexec")
             // #93
             .args(["systemd-inhibit", "--who=Readymade", "--why=Installing OS"])
@@ -338,32 +337,7 @@ impl FinalInstallationState {
         let child_stdin = res.stdin.as_mut().expect("can't take stdin");
         child_stdin.write_all(serde_json::to_string(self)?.as_bytes())?;
         child_stdin.flush()?;
-        let stdout = res.stdout.take().expect("can't take stdout");
-        let stderr = res.stderr.take().expect("can't take stderr");
-        println!("┌─ BEGIN: Readymade subprocess logs");
-        let res = std::thread::scope(|s| {
-            s.spawn(|| {
-                let reader = BufReader::new(stdout);
-                (reader.lines().map(|line| line.unwrap())).for_each(|line| {
-                    *logs.lock().unwrap() += &line;
-                    *logs.lock().unwrap() += "\n";
-                    println!(" │ {line}");
-                });
-            });
-            s.spawn(|| {
-                let reader = BufReader::new(stderr);
-                (reader.lines().map(|line| line.unwrap())).for_each(|line| {
-                    *logs.lock().unwrap() += &line;
-                    *logs.lock().unwrap() += "\n";
-                    eprintln!("!│ {line}");
-                });
-            });
-            s.spawn(handle_ipc);
-
-            res.wait_with_output()
-        });
-        let logs = Arc::into_inner(logs).unwrap().into_inner().unwrap();
-        println!("└─ END OF Readymade subprocess logs");
+        let (res, logs) = util::cmd::pipe_cmd("Readymade subprocess logs", res, [handle_ipc]);
         Ok((logs, res))
     }
 
@@ -416,12 +390,8 @@ impl FinalInstallationState {
                 self.encrypts.as_ref().map(|e| &*e.encryption_key),
             )?;
             self.bootc_copy(bootc_rootfs_mountpoint, repart_out.generate_cryptdata()?)?;
-            Command::new("sync").status().ok();
-            Command::new("umount")
-                .arg("-R")
-                .arg(bootc_rootfs_mountpoint)
-                .status()
-                .ok();
+            crate::cmd!("umount" [["-R"], [bootc_rootfs_mountpoint]]
+                => |r| tracing::warn!(rc=?r.code(), ?bootc_rootfs_mountpoint, "cannot umount"));
         }
 
         tracing::info!("Copying files done, Setting up system...");
@@ -441,22 +411,8 @@ impl FinalInstallationState {
                 self.encrypts.as_ref().map(|e| &*e.encryption_key),
             )?;
             Self::bootc_cleanup(tmproot)?;
-            if !Command::new("sync")
-                .status()
-                .wrap_err("cannot run sync")?
-                .success()
-            {
-                return Err(eyre!("`sync` failed"));
-            }
-            if !Command::new("umount")
-                .arg("-Rl")
-                .arg(tmproot)
-                .status()
-                .wrap_err("cannot run umount")?
-                .success()
-            {
-                return Err(eyre!("`umount -Rl {tmproot:?}` failed"));
-            }
+            crate::cmd!("sync" => |_| bail!("`sync` failed"));
+            crate::cmd!("umount" [["-R"], [tmproot]] => |_| bail!("umount -R {tmproot:?} failed"));
         }
 
         if let DetailedInstallationType::ChromebookInstall = inst_type {
@@ -473,7 +429,7 @@ impl FinalInstallationState {
 
             // Close all mapped LUKS devices if exists
 
-            if let Ok(mut cache) = super::repart_output::MAPPER_CACHE.try_write() {
+            if let Some(mut cache) = super::repart_output::MAPPER_CACHE.try_write() {
                 if let Some(cache) = std::sync::Arc::get_mut(&mut cache) {
                     cache.clear();
                 }
@@ -554,14 +510,8 @@ impl FinalInstallationState {
             tracing::debug!(?source, ?target, "mounting");
             std::fs::create_dir_all(&target)?;
             // use shell to mount manually since sys_mount is buggy
-            if !Command::new("mount")
-                .args([&source, &target])
-                .status()
-                .wrap_err("cannot run mount")?
-                .success()
-            {
-                return Err(eyre!("`mount {source:?} → {target:?}` failed"));
-            }
+            crate::cmd!("mount" [[&source, &target]] =>
+                |cmd| bail!("`mount {source:?} → {target:?}` failed with rc: {:?}", cmd.code()));
             Ok(())
         })
     }
@@ -584,24 +534,17 @@ impl FinalInstallationState {
 
         tracing::info!(?imgref, "running bootc install to-filesystem");
 
-        if !Command::new("bootc")
-            .args(["install", "to-filesystem", "--source-imgref", imgref])
-            .args(
-                (cryptdata.iter())
-                    .flat_map(|data| data.cmdline_opts.iter().flat_map(|opt| ["--karg", opt])),
-            )
-            .args(["--karg=rhgb", "--karg=quiet", "--karg=splash"])
-            .arg(target_root)
-            .args((bootc_target_imgref.iter()).flat_map(|a| ["--target-imgref", a]))
-            .args(bootc_kargs.iter().flat_map(|e| ["--karg", e]))
-            .args(bootc_enforce_sigpolicy.then_some("--enforce-container-sigpolicy"))
-            .args(bootc_args.iter())
-            .status()
-            .wrap_err("cannot run bootc")?
-            .success()
-        {
-            bail!("`bootc install to-filesystem` failed");
-        }
+        crate::cmd!("bootc" [
+            ["install", "to-filesystem", "--source-imgref", imgref],
+            (cryptdata.iter())
+                .flat_map(|data| data.cmdline_opts.iter().flat_map(|opt| ["--karg", opt])),
+            ["--karg=rhgb", "--karg=quiet", "--karg=splash"],
+            [target_root],
+            (bootc_target_imgref.iter()).flat_map(|a| ["--target-imgref", a]),
+            bootc_kargs.iter().flat_map(|e| ["--karg", e]),
+            bootc_enforce_sigpolicy.then_some("--enforce-container-sigpolicy"),
+            bootc_args.iter(),
+        ] => |cmd| bail!("`bootc install to-filesystem` failed: {:?}", cmd.code()));
 
         Ok(())
     }
@@ -870,14 +813,13 @@ impl FinalInstallationState {
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .output()
-            .context("systemd-repart failed")?;
+            .context("can't run systemd-repart")?;
 
         if !repart_cmd.status.success() {
-            return Err(eyre!(
+            bail!(
                 "systemd-repart errored with status code {:?}",
                 repart_cmd.status.code()
-            )
-            .with_note(|| String::from_utf8_lossy(&repart_cmd.stdout).to_string()));
+            );
         }
 
         // Dump systemd-repart output to a file if in debug mode
