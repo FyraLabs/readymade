@@ -1,9 +1,6 @@
 prev = Anterior
 next = Próximo
 
-prev = Previous
-next = Next
-
 unknown-os = S.O. desconhecido
 
 parttype-root = Sistema de arquivos raiz ({$path})
