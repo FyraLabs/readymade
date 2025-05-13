@@ -117,6 +117,8 @@ page!(InstallationType {
                 #[watch]
                 set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
                 #[watch]
+                set_is_tint: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
+                #[watch]
                 set_label: &t!("page-installationtype-entire"),
                 add_css_class: "large-button",
                 connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::WholeDisk)
@@ -127,6 +129,8 @@ page!(InstallationType {
                 set_is_fill: matches!(crate::INSTALLATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
                 #[watch]
                 set_is_outline: !matches!(crate::INSTALLATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
+                #[watch]
+                set_is_tint: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
                 #[watch]
                 set_label: &t!("page-installationtype-dual"),
                 add_css_class: "large-button",
@@ -139,6 +143,8 @@ page!(InstallationType {
                 #[watch]
                 set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::Custom),
                 #[watch]
+                set_is_tint: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
+                #[watch]
                 set_label: &t!("page-installationtype-custom"),
                 add_css_class: "large-button",
                 connect_clicked => InstallationTypePageMsg::InstallationTypeSelected(InstallationType::Custom)
@@ -149,6 +155,8 @@ page!(InstallationType {
                 set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::ChromebookInstall),
                 #[watch]
                 set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::ChromebookInstall),
+                #[watch]
+                set_is_tint: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
                 #[watch]
                 set_label: &t!("page-installationtype-chromebook"),
                 add_css_class: "large-button",

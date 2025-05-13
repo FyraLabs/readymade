@@ -45,14 +45,14 @@ kurage::generate_generator! { page => [<$name Page>]
 // pub(crate) use kurage_generated_macros::kurage_page_pre;
 macro_rules! t {
     ($msgid:literal $($tt:tt)*) => {
-        i18n_embed_fl::fl!($crate::LL.read().as_ref().unwrap(), $msgid $($tt)*)
+        i18n_embed_fl::fl!($crate::LL.read(), $msgid $($tt)*)
     };
 }
 
 macro_rules! t_expr {
     ($msgid:expr$(, $($tt:tt)*)?) => {
         paste::paste! { with_builtin_macros::with_builtin!(let $id = $msgid in {
-            i18n_embed_fl::fl!($crate::LL.read().as_ref().unwrap(), $id$(, $($tt)*)?)
+            i18n_embed_fl::fl!($crate::LL.read(), $id$(, $($tt)*)?)
         })}
     };
 }

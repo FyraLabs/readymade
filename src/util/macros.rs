@@ -5,7 +5,7 @@ macro_rules! stage {
         let s = tracing::info_span!(concat!("stage-", stringify!($s)));
 
         if let Some(m) = $crate::backend::install::IPC_CHANNEL.get() {
-            let sender = m.lock().expect("cannot lock mutex");
+            let sender = m.lock();
             // Then we are in a non-interactive install, which means we export IPC
             // to stdout
             let status_localized = $crate::t_expr!(concat!("stage-", stringify!($s))).to_owned();

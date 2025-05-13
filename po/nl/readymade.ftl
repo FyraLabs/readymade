@@ -1,49 +1,38 @@
 prev = Vorige
 next = Volgende
-
 unknown-os = Onbekend besturingssysteem (OS)
-
-parttype-root = Tophiërarchie bestandssysteem (/) ({$path})
-parttype-extendedboot = Extended Bootloader-partitie ({$path})
-parttype-esp = EFI-systeempartitie ({$path})
-parttype-home = Gebruikerspartitie (/home) ({$path})
-parttype-var = Partitie voor variabele gegevens (/var) ({$path})
-parttype-other = Mountpoint aangepaste partitionering 
-
-
-page-welcome = {$distro} heet u welkom!
-page-welcome-desc = U kunt {$distro} eerst uittesten vanaf dit installatieprogramma of de installatie direct starten. U kunt altijd naar dit scherm terugkeren door de "Installer" te openen vanuit het menu.
+parttype-root = Tophiërarchie bestandssysteem (/) ({ $path })
+parttype-extendedboot = Extended Bootloader-partitie ({ $path })
+parttype-esp = EFI-systeempartitie ({ $path })
+parttype-home = Gebruikerspartitie (/home) ({ $path })
+parttype-var = Partitie voor variabele gegevens (/var) ({ $path })
+parttype-other = Mountpoint aangepaste partitionering
+page-welcome = { $distro } heet u welkom!
+page-welcome-desc = U kunt { $distro } eerst uittesten vanaf dit installatieprogramma of de installatie direct starten. U kunt altijd naar dit scherm terugkeren door de "Installer" te openen vanuit het menu.
 page-welcome-try = Eerst uittesten (aanbevolen)
 page-welcome-install = Installeren
-
 page-failure = Installatiefout
 page-failure-close = Sluiten
 page-failure-bug = Een bug rapporteren
-
 page-language = Taal
 page-language-search-lang = Naar taal en regio zoeken...
 page-language-next = Volgende
-
 page-completed = Voltooid
 page-completed-desc = Installatie voltooid. Start de computer nu opnieuw op om van uw 'vers' geïnstalleerde systeem te genieten.
 page-completed-close = Sluiten
 page-completed-reboot = Opnieuw opstarten
-
 page-destination = Einddoel
 page-destination-scanning = Schijven scannen...
 page-destination-wait = Wachten op os-prober...
 page-destination-no-disk = Geen schijven gevonden
 page-destination-no-disk-desc = Kon geen schijven vinden die geschikt zijn voor installatie.
-
 page-installdual = Dual Boot
 page-installdual-otheros = Ander besturingssysteem (OS)
-
 page-confirmation = Bevestiging
 page-confirmation-problem-device-mounted = {$dev} is aangekoppeld op {$mountpoint}. Ontkoppel om door te gaan.
 page-confirmation-problem-devblkopen = Het schijfblok <tt>{$dev}</tt> is nog in gebruik door de volgende processen:
     <tt>{$pids}</tt>
     Deze processen moeten eerst worden afgesloten voordat de installatie verder kan gaan.
-
 page-installation = Installatie
 page-installation-welcome-desc = Maak kennis met uw nieuwe besturingssysteem.
 page-installation-help = Hulp nodig?
@@ -51,13 +40,11 @@ page-installation-help-desc = Stel uw vraag in een van onze chats!
 page-installation-contrib = Draag bij aan Ultramarine
 page-installation-contrib-desc = Leer hoe u kunt bijdragen met tijd, geld of hardware.
 page-installation-progress = Basissysteem installeren...
-
 page-installcustom = Installatie aanpassen
 page-installcustom-title = Partities en mountpoints
-page-installcustom-desc = {$num} definitie(s)
+page-installcustom-desc = { $num } definitie(s)
 page-installcustom-tool = Partitioneertool openen
 page-installcustom-add = Nieuwe definitie/regel toevoegen
-
 page-installationtype = Installatietype
 page-installationtype-entire = Gehele schijf
 page-installationtype-tpm = TPM inschakelen
@@ -65,24 +52,20 @@ page-installationtype-encrypt = Schijfversleuteling inschakelen
 page-installationtype-chromebook = Chromebook
 page-installationtype-dual = Dual Boot
 page-installationtype-custom = Aanpassen
-
 dialog-installtype-encrypt = Schijfversleuteling
-dialog-installtype-encrypt-desc = Stel het wachtwoord voor schijfversleuteling in.
+dialog-installtype-encrypt-desc =
+    Stel het wachtwoord voor schijfversleuteling in.
     Als u het wachtwoord verliest, kunnen uw gegevens niet worden hersteld.
 dialog-installtype-password = Wachtwoord
 dialog-installtype-repeat = Wachtwoord herhalen
 dialog-installtype-cancel = Annuleren
-dialog-installtype-confirm = Bevestigen 
-
+dialog-installtype-confirm = Bevestigen
 installtype-edit-mp = Mountpoint bewerken
 installtype-rm-mp = Mountpoint verwijderen
-
 dialog-mp-part = Partitie
 dialog-mp-at = Mountpoint
 dialog-mp-opts = Mount-opties
-
 installtype-parttool = Selecteer uw partitioneringstool
-
 stage-extracting = Bestanden uitpakken
 stage-copying = Bestanden kopiëren
 stage-mkpart = Partities aanmaken en bestanden kopiëren

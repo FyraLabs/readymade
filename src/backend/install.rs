@@ -1,10 +1,11 @@
 use ipc_channel::ipc::{IpcError, IpcOneShotServer, IpcSender};
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::{Mutex, OnceLock},
+    sync::OnceLock,
 };
 
 use crate::{
@@ -388,7 +389,7 @@ impl FinalInstallationState {
                 &repart_out,
                 self.encrypts.as_ref().map(|e| &*e.encryption_key),
             )?;
-            self.bootc_copy(bootc_rootfs_mountpoint, &repart_out)?;
+            self.bootc_copy(bootc_rootfs_mountpoint, repart_out.generate_cryptdata()?)?;
             crate::cmd!("umount" [["-R"], [bootc_rootfs_mountpoint]]
                 => |r| tracing::warn!(rc=?r.code(), ?bootc_rootfs_mountpoint, "cannot umount"));
         }
@@ -428,7 +429,7 @@ impl FinalInstallationState {
 
             // Close all mapped LUKS devices if exists
 
-            if let Ok(mut cache) = super::repart_output::MAPPER_CACHE.try_write() {
+            if let Some(mut cache) = super::repart_output::MAPPER_CACHE.try_write() {
                 if let Some(cache) = std::sync::Arc::get_mut(&mut cache) {
                     cache.clear();
                 }
@@ -518,8 +519,8 @@ impl FinalInstallationState {
     /// Call bootc to copy the contents of the container into the target.
     ///
     /// The caller must verify that `self.copy_mode.is_bootc()`.
-    #[allow(clippy::unwrap_in_result)]
-    fn bootc_copy(&self, target_root: &Path, output: &RepartOutput) -> Result<()> {
+    #[allow(clippy::unwrap_in_result, clippy::needless_pass_by_value)]
+    pub fn bootc_copy(&self, target_root: &Path, cryptdata: Option<CryptData>) -> Result<()> {
         let DetailedCopyMode::Bootc {
             bootc_imgref: imgref,
             bootc_target_imgref,
@@ -535,7 +536,7 @@ impl FinalInstallationState {
 
         crate::cmd!("bootc" [
             ["install", "to-filesystem", "--source-imgref", imgref],
-            (output.generate_cryptdata()?.iter())
+            (cryptdata.iter())
                 .flat_map(|data| data.cmdline_opts.iter().flat_map(|opt| ["--karg", opt])),
             ["--karg=rhgb", "--karg=quiet", "--karg=splash"],
             [target_root],
