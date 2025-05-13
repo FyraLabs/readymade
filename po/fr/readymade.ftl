@@ -5,26 +5,26 @@
 next = Suivant
 unknown-os = OS inconnu
 parttype-root = Racine du système de fichiers ({ $path })
-parttype-esp = Partition du système EFI ({ $path })
+parttype-esp = Partition EFI système ({ $path })
 parttype-home = Données utilisateur ({ $path })
 parttype-var = Données variables ({ $path })
-page-welcome = Bienvenue à { $distro }
+page-welcome = Bienvenue dans { $distro }
 page-welcome-try = Essayer
 page-welcome-install = Installer
 page-failure = Échec de l'installation
 page-failure-close = Fermer
-page-failure-bug = Signaler un bogue
+page-failure-bug = Signaler un bug
 page-language = Langue
-page-language-search-lang = Rechercher une langue/un pays…
+page-language-search-lang = Rechercher une langue/locale…
 page-language-next = Suivant
-page-completed = Complète
+page-completed = Terminé
 page-completed-desc = L'installation est terminée. Vous pouvez maintenant redémarrer et profiter de votre nouveau système.
 page-completed-close = Fermer
 page-completed-reboot = Redémarrer
 page-destination = Destination
-page-destination-scanning = Recherche des disques
+page-destination-scanning = Scan des disques
 page-destination-wait = En attente de os-prober…
-page-destination-no-disk = Aucun disque n'a été trouvé
+page-destination-no-disk = Aucun disque trouvé
 page-installdual = Double démarrage
 page-installdual-otheros = Autre système d'exploitation
 page-confirmation = Confirmation
@@ -61,12 +61,12 @@ stage-grub1 = Génération du fichier grub.cfg de l'étape 1 dans ESP...
 stage-biosgrub = Installation BIOS de Grub2
 stage-kernel = Réinstallation des noyaux
 prev = Précédent
-parttype-extendedboot = Partition Extended Boot Loader ({ $path })
-page-destination-no-disk-desc = Il n'y a pas de disques adaptés à l'installation.
+parttype-extendedboot = Partition étendue de bootloader ({ $path })
+page-destination-no-disk-desc = Il n'y a aucun disque adapté à l'installation.
 stage-mkpart = Création des partitions et copie des fichiers
-page-welcome-desc = Testez { $distro } à partir de ce programme d'installation ou lancez l'installation maintenant. Vous pouvez toujours revenir à cet écran en sélectionnant "Installer" dans le menu.
+page-welcome-desc = Vous pouvez essayer { $distro } ou commencer l'installation dès maintenant.
 page-installation-contrib-desc = Découvrez comment apporter votre contribution en termes de temps, d'argent ou de matériel.
-page-installcustom-add = Ajouter une nouvelle définition/rangée
+page-installcustom-add = Ajouter une nouvelle définition/ligne
 parttype-other = Point de montage de partitionnement personnalisé
 page-installationtype-encrypt = Activer le chiffrement du disque
 page-installationtype-dual = Double Démarrage
@@ -78,6 +78,6 @@ stage-grub = Génération des valeurs système par défaut pour grub
 stage-selinux = Définition des étiquettes SELinux
 page-confirmation-problem-device-mounted = { $dev } est monté sur { $mountpoint }. Démontez-le pour continuer.
 page-confirmation-problem-devblkopen =
-    L'unité de bloc <tt>{ $dev }</tt> est utilisée par les processus suivants :
+    Le périphérique de blocs <tt>{ $dev }</tt> est utilisé par les processus suivants :
     <tt>{ $pids }</tt>
-    Ces processus doivent être fermés avant que le programme d'installation puisse être exécuté.
+    Ces processus doivent être fermés avant que le programme d'installation ne puisse continuer.
