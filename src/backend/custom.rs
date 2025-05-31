@@ -129,6 +129,9 @@ pub fn install_custom(
         );
     }
 
+    let lockfile_path = "/var/run/readymade-setup.lock";
+    std::fs::write(lockfile_path, b"")?;
+
     let efi = (mounttags.0.iter())
         .find(|part| part.mountpoint == std::path::Path::new("/boot/efi"))
         .and_then(|part| part.partition.to_str().map(ToOwned::to_owned));
@@ -140,6 +143,9 @@ pub fn install_custom(
     // TODO: encryption support for custom
     let rdm_result = ReadymadeResult::new(state.clone(), None);
     container.run(|| state._inner_sys_setup(fstab, None, efi, &xbootldr, rdm_result))??;
+
+    std::fs::remove_file(lockfile_path)
+        .wrap_err("cannot remove lockfile")?;
 
     Ok(())
 }

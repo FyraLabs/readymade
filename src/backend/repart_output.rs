@@ -229,13 +229,7 @@ impl RepartOutput {
             .map(|part| part.node.clone())
     }
 
-    /// Generates a unique label for a mapper device based on a mount point
-    ///
-    /// This function takes a mount point and generates a unique label for the mapper device by:
-    /// 1. Converting the mount point to a valid label format
-    /// 2. Checking if that label is already in use and appending a counter if needed
-    ///
-    /// Create `tiffin::Container` from the repartitioning output with the mountpoints
+    /// Create [`tiffin::Container`] from the repartitioning output with the mountpoints
     /// from the DDI partition types
     pub fn to_container(&self, passphrase: Option<&str>) -> color_eyre::Result<Container> {
         tracing::info!("Creating container from repartitioning output");
