@@ -556,17 +556,9 @@ impl FinalInstallationState {
         passphrase: Option<&str>,
         repart_cfgs: Option<super::export::SystemdRepartData>,
     ) -> Result<()> {
-        // XXX: This is a bit hacky, but this function should be called before output.generate_fstab() for
-        // the fstab generator to be correct, IF we're using encryption
-        //
-        // todo: Unfuck this
-        let mut container = output.to_container(passphrase)?;
-
         // Let's create a lockfile to prevent running _inner_sys_setup outside the chroot jail
         let lockfile_path = "/var/run/readymade-setup.lock";
         std::fs::write(lockfile_path, b"")?;
-
-        let fstab = output.generate_fstab()?;
 
         // todo: Also handle custom installs? Needs more information
         let esp = check_uefi().then(|| output.get_esp_partition()).flatten();
@@ -577,10 +569,15 @@ impl FinalInstallationState {
         let cryptdata = output.generate_cryptdata()?;
 
         let rdm_result = super::export::ReadymadeResult::new(self.clone(), repart_cfgs);
+        // XXX: This is a bit hacky, but this function should be called before output.generate_fstab() for
+        // the fstab generator to be correct, IF we're using encryption
+        //
+        // todo: Unfuck this
+        let mut container =
+            output.to_container(passphrase, !rdm_result.state.copy_mode.is_repart())?;
+        let fstab = output.generate_fstab()?;
         // tiffin will run `nix::unistd::chdir("/")` when entering the container, so we can use `sysroot as above`
-        container.run(|| {
-            self._inner_sys_setup(fstab, cryptdata, esp, &xbootldr, rdm_result)
-        })??;
+        container.run(|| self._inner_sys_setup(fstab, cryptdata, esp, &xbootldr, rdm_result))??;
 
         // Let's remove the lockfile now that we're done
         std::fs::remove_file(lockfile_path)
@@ -599,8 +596,6 @@ impl FinalInstallationState {
         xbootldr_node: &str,
         state_dump: super::export::ReadymadeResult,
     ) -> Result<()> {
-        
-
         // ===SAFETY CHECK===
         // Let's make sure we're NOT running OUTSIDE the chroot jail
         // Many fstabs have been lost before due to this.

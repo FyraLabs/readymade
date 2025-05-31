@@ -231,7 +231,11 @@ impl RepartOutput {
 
     /// Create [`tiffin::Container`] from the repartitioning output with the mountpoints
     /// from the DDI partition types
-    pub fn to_container(&self, passphrase: Option<&str>) -> color_eyre::Result<Container> {
+    pub fn to_container(
+        &self,
+        passphrase: Option<&str>,
+        override_host_fhs: bool,
+    ) -> color_eyre::Result<Container> {
         tracing::info!("Creating container from repartitioning output");
         let temp_dir = tempfile::tempdir()?.into_path();
         // A table of decrypted partitions, so we don't have to decrypt the same partition multiple times
@@ -290,11 +294,14 @@ impl RepartOutput {
         }
 
         container.host_bind_mount();
-        container.bind_mount(PathBuf::from("/run/host/usr"), PathBuf::from("/usr"));
-        container.bind_mount(PathBuf::from("/run/host/etc"), PathBuf::from("/etc"));
-        container.bind_mount(PathBuf::from("/run/host/lib"), PathBuf::from("/lib"));
-        container.bind_mount(PathBuf::from("/run/host/lib64"), PathBuf::from("/lib64"));
-        container.bind_mount(PathBuf::from("/run/host/bin"), PathBuf::from("/bin"));
+        // XXX: WTF?
+        if override_host_fhs {
+            container.bind_mount(PathBuf::from("/run/host/usr"), PathBuf::from("/usr"));
+            container.bind_mount(PathBuf::from("/run/host/etc"), PathBuf::from("/etc"));
+            container.bind_mount(PathBuf::from("/run/host/lib"), PathBuf::from("/lib"));
+            container.bind_mount(PathBuf::from("/run/host/lib64"), PathBuf::from("/lib64"));
+            container.bind_mount(PathBuf::from("/run/host/bin"), PathBuf::from("/bin"));
+        }
 
         Ok(container)
     }
