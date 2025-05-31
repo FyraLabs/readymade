@@ -144,8 +144,7 @@ pub fn install_custom(
     let rdm_result = ReadymadeResult::new(state.clone(), None);
     container.run(|| state._inner_sys_setup(fstab, None, efi, &xbootldr, rdm_result))??;
 
-    std::fs::remove_file(lockfile_path)
-        .wrap_err("cannot remove lockfile")?;
+    std::fs::remove_file(lockfile_path).wrap_err("cannot remove lockfile")?;
 
     Ok(())
 }
