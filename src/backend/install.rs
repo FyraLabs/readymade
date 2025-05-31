@@ -807,7 +807,7 @@ impl FinalInstallationState {
             .args(["--dry-run", if dry_run { "yes" } else { "no" }])
             .args(["--definitions", cfgdir.to_str().unwrap()])
             .args(["--empty", "force", "--offline", "false", "--json", "pretty"])
-            .args(["--copy-source", &copy_source].iter().filter(|_| is_bootc))
+            .args(["--copy-source", &copy_source].iter().filter(|_| !is_bootc))
             .args(arg_keyfile.iter().flatten())
             .arg(blockdev)
             .stdout(Stdio::piped())
