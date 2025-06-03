@@ -5,7 +5,7 @@
 next = Suivant
 unknown-os = OS inconnu
 parttype-root = Racine du système de fichiers ({ $path })
-parttype-esp = Partition EFI système ({ $path })
+parttype-esp = Partition système EFI ({ $path })
 parttype-home = Données utilisateur ({ $path })
 parttype-var = Données variables ({ $path })
 page-welcome = Bienvenue dans { $distro }
@@ -45,7 +45,7 @@ page-installationtype-chromebook = Chromebook
 page-installationtype-custom = Personnalisée
 dialog-installtype-encrypt = Chiffrement du disque
 dialog-installtype-password = Mot de passe
-dialog-installtype-repeat = Saisissez le mot de passe à nouveau
+dialog-installtype-repeat = Saisissez à nouveau le mot de passe
 dialog-installtype-cancel = Annuler
 dialog-installtype-confirm = Confirmer
 installtype-edit-mp = Modifier le point de montage
@@ -53,7 +53,7 @@ installtype-rm-mp = Supprimer le point de montage
 dialog-mp-part = Partition
 dialog-mp-at = Monter sur
 dialog-mp-opts = Options de montage
-installtype-parttool = Sélectionnez votre outil de partitionnement
+installtype-parttool = Sélectionner votre outil de partitionnement
 stage-extracting = Extraction des fichiers
 stage-copying = Copie des fichiers
 stage-initramfs = Régénération de l'initramfs
@@ -73,9 +73,9 @@ page-installationtype-dual = Double démarrage
 stage-grub2 = Génération du fichier grub.cfg d'étape 2 dans /boot/grub2/grub.cfg...
 dialog-installtype-encrypt-desc =
     Veuillez définir le mot de passe de chiffrement du disque.
-    Si vous perdez ce mot de passe, vos données ne seront pas récupérables.
+    Si vous perdez ce mot de passe, vos données ne pourront pas être récupérées.
 stage-grub = Génération des valeurs système par défaut pour GRUB
-stage-selinux = Définition des étiquettes SELinux
+stage-selinux = Ajout des étiquettes SELinux
 page-confirmation-problem-device-mounted = { $dev } est monté sur { $mountpoint }. Démontez-le pour continuer.
 page-confirmation-problem-devblkopen =
     Le périphérique de blocs <tt>{ $dev }</tt> est utilisé par les processus suivants :

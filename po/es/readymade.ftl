@@ -20,4 +20,10 @@ page-installation = Instalación
 page-installation-progress = Instalando sistema base...
 page-installationtype = Tipo de Instalación
 page-installationtype-chromebook = Chromebook
-
+unknown-os = SO Desconocido
+page-installationtype-tpm = Habilitar TPM
+parttype-esp = Partición de sistema EFI ({ $path })
+parttype-home = Información de usuario
+parttype-other = Punto  de montaje personalizado
+page-welcome = Bienvenido a { $distro }
+page-installationtype-encrypt = Habilitar encriptación de disco
