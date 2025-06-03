@@ -1,8 +1,10 @@
+use file_guard::Lock;
 use ipc_channel::ipc::{IpcError, IpcOneShotServer, IpcSender};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
+    os::unix::process::CommandExt,
     path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::OnceLock,
@@ -818,17 +820,29 @@ impl FinalInstallationState {
             ["--key-file", keyfile_path]
         });
 
-        let repart_cmd = Command::new("systemd-repart")
-            .args(["--dry-run", if dry_run { "yes" } else { "no" }])
-            .args(["--definitions", cfgdir.to_str().unwrap()])
-            .args(["--empty", "force", "--offline", "false", "--json", "pretty"])
-            .args(["--copy-source", &copy_source].iter().filter(|_| !is_bootc))
-            .args(arg_keyfile.iter().flatten())
-            .arg(blockdev)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .output()
-            .context("can't run systemd-repart")?;
+        // Scope to ensure device and lock live long enough for the command
+        let repart_cmd = {
+            // lock device
+            let mut device = std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(blockdev)
+                .context("Failed to open block device")?;
+            // We are locking the device so that repart doesn't fail due to device busy
+            // The lock is held in this scope
+            let mut _lock = file_guard::lock(&mut device, Lock::Exclusive, 0, 1)?;
+            Command::new("systemd-repart")
+                .args(["--dry-run", if dry_run { "yes" } else { "no" }])
+                .args(["--definitions", cfgdir.to_str().unwrap()])
+                .args(["--empty", "force", "--offline", "false", "--json", "pretty"])
+                .args(["--copy-source", &copy_source].iter().filter(|_| !is_bootc))
+                .args(arg_keyfile.iter().flatten())
+                .arg(blockdev)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit())
+                .output()
+                .context("can't run systemd-repart")?
+        };
 
         if !repart_cmd.status.success() {
             bail!(
