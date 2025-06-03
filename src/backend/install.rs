@@ -828,6 +828,9 @@ impl FinalInstallationState {
                 .write(true)
                 .open(blockdev)
                 .context("Failed to open block device")?;
+            // SAFETY: We are locking the device so that repart doesn't fail due to device busy
+            // The lock is held in this scope
+            let mut _lock = file_guard::lock(&mut device, Lock::Exclusive, 0, 1)?;
             // SAFETY: We're locking the device so that repart doesn't fail due to EBUSY
             unsafe {
                 Command::new("systemd-repart")
@@ -839,12 +842,7 @@ impl FinalInstallationState {
                     .arg(blockdev)
                     .stdout(Stdio::piped())
                     .stderr(Stdio::inherit())
-                    .pre_exec(move || {
-                        // SAFETY: We are locking the device so that repart doesn't fail due to device busy
-                        // The lock is held in this scope
-                        let mut _lock = file_guard::lock(&mut device, Lock::Exclusive, 0, 1)?;
-                        Ok(())
-                    })
+                    .pre_exec(move || Ok(()))
                     .output()
                     .context("can't run systemd-repart")?
             }
