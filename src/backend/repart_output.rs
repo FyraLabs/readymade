@@ -229,6 +229,13 @@ impl RepartOutput {
             .map(|part| part.node.clone())
     }
 
+    pub fn get_recovery_partition(&self) -> std::option::Option<String> {
+        self.partitions
+            .iter()
+            .find(|part| part.label == "os_recovery")
+            .map(|part| part.node.clone())
+    }
+
     /// Create [`tiffin::Container`] from the repartitioning output with the mountpoints
     /// from the DDI partition types
     pub fn to_container(
