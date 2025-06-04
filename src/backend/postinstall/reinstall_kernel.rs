@@ -47,16 +47,16 @@ impl PostInstallModule for ReinstallKernel {
 
         stage!(recovery {
             // copy to /boot/vmlinuz-recovery
-            let recovery_vmlinuz_path = format!("/boot/vmlinuz-recovery");
-            if !std::path::Path::new(&recovery_vmlinuz_path).exists() {
+            let recovery_vmlinuz_path = "/boot/vmlinuz-recovery".to_owned();
+            if std::path::Path::new(&recovery_vmlinuz_path).exists() {
+                tracing::warn!("Recovery kernel already exists at {recovery_vmlinuz_path}, skipping copy");
+            } else {
                 std::fs::copy(&vmlinuz_path, &recovery_vmlinuz_path)
                     .map_err(|e| color_eyre::eyre::eyre!(e))?;
-            } else {
-                tracing::warn!("Recovery kernel already exists at {recovery_vmlinuz_path}, skipping copy");
             }
 
             // create a recovery initramfs
-            let recovery_initramfs_path = format!("/boot/initramfs-recovery.img");
+            let recovery_initramfs_path = "/boot/initramfs-recovery.img".to_owned();
 
             let recovery_dracut = Command::new("dracut")
                 .arg("--force")
@@ -76,6 +76,7 @@ impl PostInstallModule for ReinstallKernel {
             }
             tracing::info!("Recovery initramfs created at {recovery_initramfs_path}");
         });
+        // todo: grub.d template for boot entry in OS
 
         Ok(())
     }
