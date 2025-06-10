@@ -131,26 +131,8 @@ Example configuration file:
 [distro]
 name = "Ultramarine Linux"
 icon = "fedora-logo-icon" # optional
+bios_support = true # false by default
 
 [install]
 allowed_installtypes = ["chromebookinstall", "wholedisk", "dualboot", "custom"]
-```
-
----
-
-# Tasks
-
-## Generating pot file
-
-```
-cargo install xtr
-xtr src/main.rs -o po/readymade.pot --package-name Readymade --package-version 0.1.0
-```
-
-## Installing po files
-
-(Taking Japanese as an example)
-
-```
-msgfmt po/ja.po -o /usr/share/locale/ja/LC_MESSAGES/com.fyralabs.Readymade.mo
 ```

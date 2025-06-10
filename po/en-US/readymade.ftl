@@ -93,3 +93,5 @@ stage-grub2 = Generating stage 2 grub.cfg in /boot/grub2/grub.cfg...
 stage-biosgrub = Installing BIOS Grub2
 stage-kernel = Reinstalling kernels
 stage-selinux = Setting SELinux labels
+
+err-no-bios = Cannot detect /sys/firmware/efi, and the distribution disabled BIOS support.

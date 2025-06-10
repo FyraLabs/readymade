@@ -167,6 +167,15 @@ impl SimpleComponent for AppModel {
             model.page = Page::Welcome;
         }
 
+        if !CONFIG.read().distro.bios_support
+            && !std::fs::exists("/sys/firmware/efi").is_ok_and(|x| x)
+        {
+            model.page = Page::Failure;
+            model
+                .failure_page
+                .emit(pages::failure::FailurePageMsg::Err(t!("err-no-bios")));
+        }
+
         let widgets = view_output!();
 
         ComponentParts { model, widgets }

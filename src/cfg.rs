@@ -39,6 +39,8 @@ pub struct Distro {
     pub name: String,
     #[serde(default = "_default_icon")]
     pub icon: String,
+    #[serde(default)]
+    pub bios_support: bool,
 }
 
 fn _default_icon() -> String {
