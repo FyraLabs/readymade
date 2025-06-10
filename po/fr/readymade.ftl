@@ -81,3 +81,4 @@ page-confirmation-problem-devblkopen =
     Le périphérique de blocs <tt>{ $dev }</tt> est utilisé par les processus suivants :
     <tt>{ $pids }</tt>
     Ces processus doivent être fermés avant que le programme d'installation ne puisse continuer.
+err-no-bios = Impossible de détecter /sys/firmware/efi, et la distribution a désactivé la prise en charge BIOS.
