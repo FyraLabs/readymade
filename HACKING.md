@@ -30,7 +30,6 @@ To build Readymade, you need to have the following dependencies installed:
 - GTK4
 - libhelium
 - libgnome-desktop4
-- GNU Gettext (for l10n)
 - Rust
 
 To build Readymade, simply run:
