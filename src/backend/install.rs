@@ -4,7 +4,6 @@ use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
-    os::unix::process::CommandExt,
     path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::OnceLock,

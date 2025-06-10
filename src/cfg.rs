@@ -159,6 +159,7 @@ mod tests {
                 distro: Distro {
                     name: "Ultramarine Linux".into(),
                     icon: "fedora-logo-icon".into(),
+                    bios_support: false,
                 },
                 install: Install {
                     allowed_installtypes: vec![InstallationType::ChromebookInstall],
