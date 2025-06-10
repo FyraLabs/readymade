@@ -110,9 +110,10 @@ pub fn install_custom(
         color_eyre::eyre::bail!("generated fstab is empty!? what happened?");
     }
 
-    let temp_dir = tempfile::tempdir()?.into_path();
+    let tempdir = tempfile::tempdir()?;
+    let tmpdir_path = tempdir.path();
 
-    let mut container = tiffin::Container::new(temp_dir);
+    let mut container = tiffin::Container::new(tmpdir_path.to_owned());
 
     for MountTarget {
         partition,

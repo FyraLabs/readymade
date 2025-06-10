@@ -570,12 +570,18 @@ impl FinalInstallationState {
         let cryptdata = output.generate_cryptdata()?;
 
         let rdm_result = super::export::ReadymadeResult::new(self.clone(), repart_cfgs);
+
+        let tempdir = tempfile::tempdir()?;
+
         // XXX: This is a bit hacky, but this function should be called before output.generate_fstab() for
         // the fstab generator to be correct, IF we're using encryption
         //
         // todo: Unfuck this
-        let mut container =
-            output.to_container(passphrase, !rdm_result.state.copy_mode.is_repart())?;
+        let mut container = output.to_container(
+            &tempdir,
+            passphrase,
+            !rdm_result.state.copy_mode.is_repart(),
+        )?;
         let fstab = output.generate_fstab()?;
         // tiffin will run `nix::unistd::chdir("/")` when entering the container, so we can use `sysroot as above`
         container.run(|| self._inner_sys_setup(fstab, cryptdata, esp, &xbootldr, rdm_result))??;

@@ -233,18 +233,18 @@ impl RepartOutput {
     /// from the DDI partition types
     pub fn to_container(
         &self,
+        tempdir: &tempfile::TempDir,
         passphrase: Option<&str>,
         override_host_fhs: bool,
     ) -> color_eyre::Result<Container> {
         tracing::info!("Creating container from repartitioning output");
-        let temp_dir = tempfile::tempdir()?.into_path();
         // A table of decrypted partitions, so we don't have to decrypt the same partition multiple times
         let mut decrypted_partitions: std::collections::HashMap<String, PathBuf> =
             std::collections::HashMap::new();
 
         // let config: RepartConfig = serde_systemd_unit::from_str(&file_config)?;
 
-        let mut container = Container::new(temp_dir);
+        let mut container = Container::new(tempdir.path().to_owned());
 
         for (mntpoint, node) in self.mountpoints() {
             let node = if is_luks(&node) {
@@ -330,16 +330,13 @@ pub fn luks_decrypt(
     }
 
     tracing::debug!("Decrypting LUKS partition");
-    let temp_dir = tempfile::tempdir()?.into_path();
-    let key_file_path = temp_dir.join("keyfile.txt");
-    let mut key_file = std::fs::File::create(&key_file_path).wrap_err("cannot create key file")?;
+    let mut key_file = tempfile::NamedTempFile::new()?;
     std::io::Write::write_all(&mut key_file, passphrase.as_bytes())
         .wrap_err("cannot write to key file")?;
-    drop(key_file);
     // i guess to_container now also needs to accept an Option<String> for the passphrase
     let cmd = std::process::Command::new("cryptsetup")
         .args(["open", node, label, "--batch-mode", "--key-file"])
-        .arg(key_file_path)
+        .arg(key_file.path())
         .output()?;
 
     if !cmd.status.success() {

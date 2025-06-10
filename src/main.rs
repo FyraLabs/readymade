@@ -331,7 +331,7 @@ fn setup_hooks() -> impl std::any::Any {
         .prefix("readymade-logs")
         .tempdir()
         .expect("create readymade logs tempdir")
-        .into_path();
+        .keep();
     // create dir
     std::fs::create_dir_all(&temp_dir).expect("create readymade logs tempdir");
     let file_appender = tracing_appender::rolling::never(&temp_dir, readymade_log_file);
