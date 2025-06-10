@@ -29,7 +29,6 @@ To build Readymade, you need to have the following dependencies installed:
 
 - GTK4
 - libhelium
-- libgnome-desktop4
 - Rust
 
 To build Readymade, simply run:

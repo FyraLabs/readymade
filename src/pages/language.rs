@@ -5,42 +5,20 @@ use relm4::SharedState;
 use std::rc::Rc;
 
 static SEARCH_STATE: SharedState<gtk::glib::GString> = SharedState::new();
-// This is a list of languages sorted by total speakers:
-// https://en.wikipedia.org/wiki/List_of_languages_by_total_number_of_speakers
-// (2024-08-17)
-//
-// These are filtered by our Ultramarine website plausible statistics and the 5 most popular
-// langauges in the world.
-const POPULAR_LANGS: [&str; 9] = [
-    "en_US", "zh_CN", "zh_TW", "hi_IN", "es_ES", "ar_AE", "fr_FR", "pt_BR", "de_DE",
-];
 
 #[derive(Clone, Debug)]
 struct LanguageRow {
-    locale: String,
-    name: String,
-    native_name: String,
+    locale: &'static str,
+    name: &'static str,
+    native_name: &'static str,
 }
 
-impl From<(String, (String, String))> for LanguageRow {
-    fn from(value: (String, (String, String))) -> Self {
-        let (locale, (name, native_name)) = value;
-        Self {
-            locale,
-            name,
-            native_name,
-        }
-    }
-}
-impl From<LanguageRow> for (String, (String, String)) {
-    fn from(val: LanguageRow) -> Self {
-        (val.locale, (val.name, val.native_name))
-    }
-}
+taidan_proc_macros::comptime_localedef_langrows!(LANGUAGE_ROWS);
 
 #[relm4::factory]
-impl relm4::factory::FactoryComponent for LanguageRow {
-    type Init = (String, (String, String));
+impl relm4::factory::FactoryComponent for &'static LanguageRow {
+    type Widgets = LanguageRowWidgets;
+    type Init = &'static LanguageRow;
     type Input = ();
     type Output = ();
     type CommandOutput = ();
@@ -61,41 +39,23 @@ impl relm4::factory::FactoryComponent for LanguageRow {
         _index: &relm4::factory::DynamicIndex,
         _sender: relm4::FactorySender<Self>,
     ) -> Self {
-        Self::from(init)
+        init
     }
 }
 
 #[derive(Debug)]
-struct BtnFactory(Rc<relm4::factory::FactoryVecDeque<LanguageRow>>);
+struct BtnFactory(Rc<relm4::factory::FactoryVecDeque<&'static LanguageRow>>);
 
 impl Default for BtnFactory {
+    #[allow(clippy::needless_for_each)]
     fn default() -> Self {
         let mut btnfactory = relm4::factory::FactoryVecDeque::builder()
             .launch(gtk::ListBox::default())
             .detach();
 
         let mut btns = btnfactory.guard();
-        crate::util::l10n::list_langs()
-            .into_iter()
-            .sorted_by(|(_, x), (_, y)| x.cmp(y))
-            .for_each(|x| _ = btns.push_back(x));
-        btns.push_back(("en-owo".into(), ("English (owo)".into(), "OWO".into())));
-        btns.drop();
-
-        // sort the popular languages, put to top
-        for lang in POPULAR_LANGS.iter().rev() {
-            let Some(index) = btnfactory
-                .iter()
-                .position(|l: &LanguageRow| l.locale.starts_with(lang))
-            else {
-                continue;
-            };
-            let Some(x) = btnfactory.guard().remove(index) else {
-                unreachable!()
-            };
-            btnfactory.guard().push_front(x.into());
-        }
-
+        LANGUAGE_ROWS.iter().for_each(|x| _ = btns.push_back(x));
+        drop(btns);
         Self(Rc::new(btnfactory))
     }
 }
@@ -226,6 +186,6 @@ fn set_lang(lang: &LanguageRow) {
             .expect("fail to load languages");
         tracing::debug!(lang=?loader.current_languages(), welcome=loader.get_args_concrete("page-welcome", std::iter::once(("distro", "Ultramarine Linux".into())).collect()), "new loader");
         *crate::LL.write() = loader;
-        crate::INSTALLATION_STATE.write().langlocale = Some(lang.locale.clone());
+        crate::INSTALLATION_STATE.write().langlocale = Some(lang.locale.to_owned());
     }
 }

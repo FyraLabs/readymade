@@ -68,6 +68,7 @@ poly_l10n = "0.0.6"
 derivative = "2.2.0"
 parking_lot = "0.12.4"
 file-guard = "0.2.0"
+taidan_proc_macros = { path = "taidan/taidan_proc_macros" }
 
 # [dependencies.os-detect]
 # git = "https://github.com/FyraLabs/distinst"

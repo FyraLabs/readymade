@@ -1,0 +1,3 @@
+[submodule "taidan"]
+	path = taidan
+	url = https://github.com/Ultramarine-Linux/taidan

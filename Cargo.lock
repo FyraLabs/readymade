@@ -116,6 +116,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.98"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
+
+[[package]]
 name = "arc-swap"
 version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -209,12 +215,15 @@ dependencies = [
  "itertools 0.12.1",
  "lazy_static",
  "lazycell",
+ "log",
+ "prettyplease",
  "proc-macro2",
  "quote",
  "regex",
  "rustc-hash 1.1.0",
  "shlex",
  "syn 2.0.100",
+ "which",
 ]
 
 [[package]]
@@ -1581,6 +1590,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
+name = "home"
+version = "0.5.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "589533453244b0995c858700322199b2becb13b627df2851f64a2775d024abcf"
+dependencies = [
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "i18n-config"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1761,6 +1779,12 @@ name = "is_terminal_polyfill"
 version = "1.70.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
+
+[[package]]
+name = "iso3166"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acb5431fdff02922508ca5d38693882ecaeb9377b1c089efd3ce0b73e6bf8e61"
 
 [[package]]
 name = "isolang"
@@ -1953,6 +1977,12 @@ checksum = "902bc563b5d65ad9bba616b490842ef0651066a1a1dc3ce1087113ffcb873c8d"
 dependencies = [
  "zlib-rs",
 ]
+
+[[package]]
+name = "linux-raw-sys"
+version = "0.4.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d26c52dbd32dccf2d10cac7725f8eae5296885fb5703b261f7d0a0739ec807ab"
 
 [[package]]
 name = "linux-raw-sys"
@@ -2610,6 +2640,7 @@ dependencies = [
  "serde_with",
  "strip-ansi-escapes",
  "sys-mount",
+ "taidan_proc_macros",
  "tempfile",
  "thiserror 2.0.12",
  "tiffin",
@@ -2748,6 +2779,63 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust_icu_common"
+version = "5.0.0"
+source = "git+https://github.com/google/rust_icu.git#53e98c8af71a572c0bfc459b533f9ae7019dc73d"
+dependencies = [
+ "anyhow",
+ "rust_icu_sys",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "rust_icu_sys"
+version = "5.0.0"
+source = "git+https://github.com/google/rust_icu.git#53e98c8af71a572c0bfc459b533f9ae7019dc73d"
+dependencies = [
+ "anyhow",
+ "bindgen 0.69.5",
+ "lazy_static",
+ "libc",
+ "paste",
+]
+
+[[package]]
+name = "rust_icu_uenum"
+version = "5.0.0"
+source = "git+https://github.com/google/rust_icu.git#53e98c8af71a572c0bfc459b533f9ae7019dc73d"
+dependencies = [
+ "paste",
+ "rust_icu_common",
+ "rust_icu_sys",
+]
+
+[[package]]
+name = "rust_icu_uloc"
+version = "5.0.0"
+source = "git+https://github.com/google/rust_icu.git#53e98c8af71a572c0bfc459b533f9ae7019dc73d"
+dependencies = [
+ "anyhow",
+ "log",
+ "paste",
+ "rust_icu_common",
+ "rust_icu_sys",
+ "rust_icu_uenum",
+ "rust_icu_ustring",
+]
+
+[[package]]
+name = "rust_icu_ustring"
+version = "5.0.0"
+source = "git+https://github.com/google/rust_icu.git#53e98c8af71a572c0bfc459b533f9ae7019dc73d"
+dependencies = [
+ "log",
+ "paste",
+ "rust_icu_common",
+ "rust_icu_sys",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2776,6 +2864,19 @@ dependencies = [
 
 [[package]]
 name = "rustix"
+version = "0.38.44"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fdb5bc1ae2baa591800df16c9ca78619bf65c0488b41b96ccec5d11220d8c154"
+dependencies = [
+ "bitflags",
+ "errno",
+ "libc",
+ "linux-raw-sys 0.4.15",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "rustix"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e56a18552996ac8d29ecc3b190b4fdbb2d91ca4ec396de7bbffaf43f3d637e96"
@@ -2783,7 +2884,7 @@ dependencies = [
  "bitflags",
  "errno",
  "libc",
- "linux-raw-sys",
+ "linux-raw-sys 0.9.3",
  "windows-sys 0.59.0",
 ]
 
@@ -3152,6 +3253,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "taidan_proc_macros"
+version = "0.1.0"
+dependencies = [
+ "iso3166",
+ "itertools 0.14.0",
+ "quote",
+ "rust_icu_uloc",
+ "unic-langid-impl",
+]
+
+[[package]]
 name = "tap"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3172,7 +3284,7 @@ dependencies = [
  "fastrand",
  "getrandom 0.3.2",
  "once_cell",
- "rustix",
+ "rustix 1.0.3",
  "windows-sys 0.59.0",
 ]
 
@@ -3182,7 +3294,7 @@ version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "45c6481c4829e4cc63825e62c49186a34538b7b2750b73b266581ffb612fb5ed"
 dependencies = [
- "rustix",
+ "rustix 1.0.3",
  "windows-sys 0.59.0",
 ]
 
@@ -3563,7 +3675,7 @@ dependencies = [
  "filetime",
  "indicatif",
  "libc",
- "linux-raw-sys",
+ "linux-raw-sys 0.9.3",
  "quick-error",
  "selinux",
  "uucore",
@@ -3746,6 +3858,18 @@ checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "which"
+version = "4.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87ba24419a2078cd2b0f2ede2691b6c66d8e47836da3b6db8265ebad47afbfc7"
+dependencies = [
+ "either",
+ "home",
+ "once_cell",
+ "rustix 0.38.44",
 ]
 
 [[package]]
@@ -4107,7 +4231,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d65cbf2f12c15564212d48f4e3dfb87923d25d611f2aed18f4cb23f0413d89e"
 dependencies = [
  "libc",
- "rustix",
+ "rustix 1.0.3",
 ]
 
 [[package]]
