@@ -67,7 +67,7 @@ poly_l10n = "0.0.6"
 derivative = "2.2.0"
 parking_lot = "0.12.4"
 file-guard = "0.2.0"
-taidan_proc_macros = { path = "taidan_proc_macros" }
+taidan_proc_macros = { path = "./taidan_proc_macros" }
 
 # [dependencies.os-detect]
 # git = "https://github.com/FyraLabs/distinst"
@@ -129,4 +129,4 @@ equatable_if_let = "allow"
 
 
 [workspace]
-members = ["filesystem-table", "serde-systemd-unit"]
+members = ["filesystem-table", "serde-systemd-unit", "taidan_proc_macros"]
