@@ -54,7 +54,10 @@ page-installation-progress = Installing base system...
 
 page-installcustom = Custom Installation
 page-installcustom-title = Partitions and Mountpoints
-page-installcustom-desc = {$num} definition(s)
+page-installcustom-desc = { $num } { $num ->
+    [one] definition
+    *[other] definitions
+}
 page-installcustom-tool = Open partitioning tool
 page-installcustom-add = Add a new definition/row
 

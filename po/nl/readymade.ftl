@@ -3,12 +3,12 @@ next = Volgende
 
 unknown-os = Onbekend besturingssysteem
 
-parttype-root = Tophiërarchie bestandssysteem (/) ({ $path })
-parttype-extendedboot = Extended Bootloader-partitie ({ $path })
+parttype-root = Top-hiërarchie van het bestandssysteem ({ $path })
+parttype-extendedboot = Extended Boot Loader Partitie ({$path})
 parttype-esp = EFI-systeempartitie ({ $path })
 parttype-home = Gebruikerspartitie ({ $path })
 parttype-var = Partitie voor variabele gegevens (/var) ({ $path })
-parttype-other = Mountpoint aangepaste partitionering
+parttype-other = Door gebruiker aangepast mountpoint
 
 
 page-welcome = Welkom bij { $distro }
@@ -55,11 +55,10 @@ page-installation-progress = Basissysteem installeren...
 
 page-installcustom = Aangepaste installatie
 page-installcustom-title = Partities en mountpoints
-page-installcustom-desc =
-    { $num } { $num ->
-        [one] definitie
-       *[other] definities
-    }
+page-installcustom-desc = { $num } { $num ->
+    [one] definitie
+    *[other] definities
+}
 page-installcustom-tool = Partitioneringstool openen
 page-installcustom-add = Een nieuwe definitie/rij toevoegen
 
@@ -99,3 +98,5 @@ stage-grub2 = Stage 2 grub.cfg genereren in /boot/grub2/grub.cfg...
 stage-biosgrub = BIOS Grub2 installeren
 stage-kernel = Kernels opnieuw installeren
 stage-selinux = SELinux labels instellen
+
+err-no-bios = Kon geen /sys/firmware/efi vinden, en uw distro heeft geen BIOS-ondersteuning.
