@@ -37,5 +37,9 @@
             preprocess="xml-stripblanks"
             alias="list-remove-all-symbolic.svg"
         >icons/list-remove-all-symbolic.svg</file>
+        <file
+            preprocess="xml-stripblanks"
+            alias="dialog-error-symbolic.svg"
+            >icons/dialog-error-symbolic.svg</file>
     </gresource>
 </gresources>
