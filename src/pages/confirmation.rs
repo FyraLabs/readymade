@@ -5,7 +5,7 @@ use crate::prelude::*;
 page!(Confirmation {
     problem: Option<Problem>,
     root: libhelium::ViewMono,
-    warns: Option<Vec<Warning>>,
+    warns: Vec<Warning>,
 }:
     init(root, sender, model, widgets) {
         gtk::glib::timeout_add(Duration::from_secs(1), move || {
@@ -17,10 +17,10 @@ page!(Confirmation {
 
     update(self, message, sender) {
         WarnCancel => {
-            self.warns = None;
+            self.warns.clear();
         },
         WarnConfirm => {
-            let Some(warn) = self.warns.as_mut().expect("no warns??").pop() else {
+            let Some(warn) = self.warns.pop() else {
                 sender
                     .output(Self::Output::StartInstallation)
                     .unwrap();
@@ -35,8 +35,8 @@ page!(Confirmation {
             warn.pop(self.root.clone(), &sender);
         },
         StartInstallation => {
-            self.warns = Some(Warning::list().collect_vec());
-            let Some(warn) = self.warns.as_mut().expect("no warns??").pop() else {
+            self.warns = Warning::list().collect_vec();
+            let Some(warn) = self.warns.pop() else {
                 sender
                     .output(Self::Output::StartInstallation)
                     .unwrap();
@@ -241,6 +241,10 @@ impl Warning {
             .expect("cannot execute sh")
             .success()
             .then_some(Self::EfiPartFound)
+            .filter(|_| {
+                INSTALLATION_STATE.read().installation_type.unwrap()
+                    == crate::backend::install::InstallationType::WholeDisk
+            })
     }
 
     fn list() -> impl Iterator<Item = Self> {
@@ -248,28 +252,39 @@ impl Warning {
     }
 
     fn title(&self) -> String {
-        todo!()
+        match self {
+            Self::EfiPartFound => t!("dialog-confirm-warn-efipartfound-title"),
+        }
+    }
+
+    fn subtitle(&self) -> String {
+        match self {
+            Self::EfiPartFound => t!("dialog-confirm-warn-efipartfound-subtitle"),
+        }
     }
 
     fn desc(&self) -> String {
-        todo!()
+        match self {
+            Self::EfiPartFound => t!("dialog-confirm-warn-efipartfound-desc"),
+        }
     }
 
     fn pop(
         self,
-        widget: impl IsA<gtk::Widget>,
+        parent: impl IsA<gtk::Widget>,
         sender: &ComponentSender<ConfirmationPage>,
     ) -> Controller<Self> {
-        let root_window = widget.toplevel_window();
-        let mut ctrl = Self::builder()
-            .launch(self)
-            .forward(sender.input_sender(), |b| {
+        let root_window = parent.toplevel_window();
+        let mut ctrl = Self::builder().launch((self, root_window.clone())).forward(
+            sender.input_sender(),
+            |b| {
                 if b {
                     ConfirmationPageMsg::WarnConfirm
                 } else {
                     ConfirmationPageMsg::WarnCancel
                 }
-            });
+            },
+        );
         // XXX: by design yes this is a memleak but we have no choice
         ctrl.detach_runtime();
         ctrl.widget().set_transient_for(root_window.as_ref());
@@ -285,7 +300,7 @@ impl Warning {
 
 #[relm4::component]
 impl relm4::SimpleComponent for Warning {
-    type Init = Self;
+    type Init = (Self, Option<gtk::Window>);
     type Input = ();
     type Output = bool;
 
@@ -298,16 +313,21 @@ impl relm4::SimpleComponent for Warning {
     }
 
     fn init(
-        init: Self::Init,
+        (model, root_window): Self::Init,
         #[expect(unused_assignments)] mut root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = init;
         let btn = libhelium::Button::new(None, Some(&t!("dialog-installtype-confirm")));
-        root = libhelium::Dialog::builder()
-            .info(model.desc())
-            .primary_button(&btn)
-            .build();
+        root = libhelium::Dialog::new(
+            true,
+            root_window.as_ref(),
+            &model.title(),
+            &model.subtitle(),
+            &model.desc(),
+            "dialog-error-symbolic",
+            Some(&btn),
+            None::<&libhelium::Button>,
+        );
         let widgets = view_output!();
         btn.connect_clicked(move |_| sender.output(true).unwrap());
         ComponentParts { model, widgets }
