@@ -308,6 +308,9 @@ kurage::generate_component!(EncryptPassDialogue {
             },
         },
 
+        // FIXME: for some reason the libhelium crate does not contain these methods
+        // (actually DialogExt is just totally missing)
+
         // #[name(btn_confirm)]
         // #[wrap(Some)]
         // set_primary_button = &libhelium::Button {
