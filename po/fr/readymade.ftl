@@ -36,7 +36,11 @@ page-installation-contrib = Contribuez à { $distro }
 page-installation-progress = Installation du système de base...
 page-installcustom = Installation personnalisée
 page-installcustom-title = Partitions et points de montage
-page-installcustom-desc = { $num } définition(s)
+page-installcustom-desc =
+    { $num } { $num ->
+        [one] définition
+       *[other] définitions
+    }
 page-installcustom-tool = Ouvrir l'outil de partitionnement
 page-installationtype = Type d'installation
 page-installationtype-entire = Disque entier
