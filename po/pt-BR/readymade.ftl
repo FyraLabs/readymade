@@ -43,7 +43,11 @@ page-installation-contrib-desc = Aprenda como contribuir com o seu tempo, dinhei
 page-installation-progress = Instalando o sistema...
 page-installcustom = Instalação customizada
 page-installcustom-title = Partições e Pontos de Montagem
-page-installcustom-desc = { $num } definição(ões)
+page-installcustom-desc =
+    { $num } { $num ->
+        [uma] definição
+       *[outras] definições
+    }
 page-installcustom-tool = Abrir a ferramenta de particionamento
 page-installcustom-add = Adicione uma nova definição/linha
 page-installationtype = Tipo de instalação
@@ -77,3 +81,4 @@ stage-grub2 = Gerando o grub.cfg de estágio 2 no /boot/grub2/grub.cfg...
 stage-biosgrub = Instalando Grub2 de BIOS
 stage-kernel = Reinstalando kernels
 stage-selinux = Configurando rótulos SELinux
+err-no-bios = Não é possível detectar /sys/firmware/efi, e a distribuição desabilitou o suporte ao BIOS.
