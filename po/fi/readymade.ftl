@@ -56,7 +56,11 @@ page-installation-contrib = Osallistu { $distro }n kehitykseen
 page-installation-contrib-desc = Opi kuinka voit auttaa ajallasi, rahallisesti tai laitteistollasi.
 page-installcustom = Mukautettu asennus
 page-installcustom-title = Osiot ja liitospisteet
-page-installcustom-desc = { $num } määritelmä(t)
+page-installcustom-desc =
+    { $num } { $num ->
+        [yksi] määritelmä
+       *[muut] määritelmät
+    }
 page-installcustom-tool = Avaa osiointityökalu
 page-installcustom-add = Lisää uusi määrittely/rivi
 page-installationtype-entire = Koko levy
@@ -81,3 +85,4 @@ stage-grub2 = Luodaan vaiheen 2 käynnistyslataajaa kohteeseen /boot/grub2/grub.
 stage-biosgrub = Asennetaan BIOS Grub2
 stage-kernel = Asennetaan ytimiä uudelleen
 stage-selinux = Asetetaan SELinux nimiöitä
+err-no-bios = Hakemisto /sys/firmware/efi ei löydy ja jakelun BIOS tuki on lopetettu.
