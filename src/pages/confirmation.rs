@@ -257,12 +257,6 @@ impl Warning {
         }
     }
 
-    fn subtitle(&self) -> String {
-        match self {
-            Self::EfiPartFound => t!("dialog-confirm-warn-efipartfound-subtitle"),
-        }
-    }
-
     fn desc(&self) -> String {
         match self {
             Self::EfiPartFound => t!("dialog-confirm-warn-efipartfound-desc"),
@@ -274,7 +268,7 @@ impl Warning {
         parent: impl IsA<gtk::Widget>,
         sender: &ComponentSender<ConfirmationPage>,
     ) -> Controller<Self> {
-        let root_window = parent.toplevel_window();
+        let root_window = parent.toplevel_window().unwrap();
         let mut ctrl = Self::builder().launch((self, root_window.clone())).forward(
             sender.input_sender(),
             |b| {
@@ -287,12 +281,9 @@ impl Warning {
         );
         // XXX: by design yes this is a memleak but we have no choice
         ctrl.detach_runtime();
-        ctrl.widget().set_transient_for(root_window.as_ref());
+        // ctrl.widget().set_transient_for(root_window.as_ref());
 
-        libhelium::prelude::WindowExt::set_parent(
-            ctrl.widget(),
-            Some(&root_window.expect("no root window")),
-        );
+        ctrl.widget().set_parent(&root_window);
         ctrl.widget().present();
         ctrl
     }
@@ -300,14 +291,14 @@ impl Warning {
 
 #[relm4::component]
 impl relm4::SimpleComponent for Warning {
-    type Init = (Self, Option<gtk::Window>);
+    type Init = (Self, gtk::Window);
     type Input = ();
     type Output = bool;
 
     view! {
         libhelium::Dialog {
-            set_title: Some(&model.title()),
-            set_icon_name: Some("dialog-error-symbolic"),
+            set_title: &model.title(),
+            set_icon: "dialog-error-symbolic",
             connect_destroy[sender] => move |_| sender.output(false).unwrap(),
         },
     }
@@ -319,12 +310,10 @@ impl relm4::SimpleComponent for Warning {
     ) -> ComponentParts<Self> {
         let btn = libhelium::Button::new(None, Some(&t!("dialog-installtype-confirm")));
         root = libhelium::Dialog::new(
-            true,
-            root_window.as_ref(),
-            &model.title(),
-            &model.subtitle(),
-            &model.desc(),
-            "dialog-error-symbolic",
+            &root_window,
+            Some(&model.title()),
+            Some(&model.desc()),
+            Some("dialog-error-symbolic"),
             Some(&btn),
             None::<&libhelium::Button>,
         );
