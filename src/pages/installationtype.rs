@@ -17,8 +17,17 @@ page!(InstallationType {
     root: Option<libhelium::ViewMono>,
     act: Option<NavigationAction>,
     encrypt_btn: gtk::CheckButton,
+    dialog_child: Option<Controller<EncryptPassDialogue>>,
 }:
     init[encrypt_btn](root, sender, model, widgets) {
+        model.dialog_child = Some(
+            EncryptPassDialogue::builder()
+                .launch(())
+                .forward(
+                    sender.input_sender(),
+                    InstallationTypePageMsg::EncryptDialogue,
+                )
+        );
         model.root = Some(root);
     }
     update(self, message, sender) {
@@ -61,15 +70,10 @@ page!(InstallationType {
                 }
             }));
             if INSTALLATION_STATE.read().encrypt {
-                let mut dialogue = EncryptPassDialogue::builder()
-                        .launch(self.root.as_ref().unwrap().toplevel_window().unwrap())
-                        .forward(
-                            sender.input_sender(),
-                            InstallationTypePageMsg::EncryptDialogue,
-                        );
-                    dialogue.widget().present();
-                    dialogue.detach_runtime();
-                    return;
+                self.dialog_child.as_mut().expect("no dialog").widget().present();
+                libhelium::prelude::HeDialogExt::set_visible(self.dialog_child.as_mut().expect("no dialog").widget(), true);
+                self.dialog_child.as_mut().expect("no dialog").detach_runtime();
+                return;
             }
             sender.input(InstallationTypePageMsg::Navigate(self.act.clone().unwrap()));
         },
@@ -79,6 +83,14 @@ page!(InstallationType {
         set_orientation: gtk::Orientation::Vertical,
         set_valign: gtk::Align::Center,
         set_spacing: 18,
+
+        if INSTALLATION_STATE.read().encrypt {
+            gtk::Overlay {
+                set_child: model.dialog_child.as_ref().map(|c| c.widget()),
+            }
+        } else {
+            gtk::Box {}
+        },
 
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
@@ -216,8 +228,7 @@ kurage::generate_component!(EncryptPassDialogue {
     tf_repeat: gtk::PasswordEntry,
     root: libhelium::Dialog,
 }:
-    init[tf_repeat](root, sender, model, widgets) for root_window: gtk::Window {
-        root.set_parent(&root_window);
+    init[tf_repeat](root, sender, model, widgets) {
         model.btn_confirm = widgets.btn_confirm.clone();
         model.root = root;
     }
