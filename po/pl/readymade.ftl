@@ -2,8 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-prev = Wróć
-next = Idź
+prev = Wstecz
+next = Dalej
 page-welcome-try = Wypróbuj
 page-welcome-install = Zainstaluj
 page-failure = Typ instalacji
