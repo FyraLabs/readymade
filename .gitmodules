@@ -1,3 +1,3 @@
 [submodule "taidan_proc_macros"]
 	path = taidan_proc_macros
-	url = git@github.com:FyraLabs/rdms_proc_macros.git
+	url = https://github.com/FyraLabs/rdms_proc_macros.git
