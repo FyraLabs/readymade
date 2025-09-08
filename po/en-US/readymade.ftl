@@ -44,6 +44,10 @@ page-confirmation-problem-devblkopen = The block-device <tt>{$dev}</tt> is in us
     <tt>{$pids}</tt>
     These processes must be closed before the installer can proceed. 
 
+dialog-confirm-warn-efipartfound-title = EFI Partition Detected
+dialog-confirm-warn-efipartfound-desc = If you are installing alongside another system, please ensure its EFI partition does not exist on the destination disk.
+    The selected destination disk contains an EFI partition which will be erased and reformatted during the installation, causing the systems registered in it unbootable. This action is irreversible.
+
 page-installation = Installation
 page-installation-welcome-desc = Get to know your new operating system.
 page-installation-help = Need help?

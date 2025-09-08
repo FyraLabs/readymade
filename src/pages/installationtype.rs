@@ -17,8 +17,17 @@ page!(InstallationType {
     root: Option<libhelium::ViewMono>,
     act: Option<NavigationAction>,
     encrypt_btn: gtk::CheckButton,
+    dialog_child: Option<Controller<EncryptPassDialogue>>,
 }:
     init[encrypt_btn](root, sender, model, widgets) {
+        model.dialog_child = Some(
+            EncryptPassDialogue::builder()
+                .launch(())
+                .forward(
+                    sender.input_sender(),
+                    InstallationTypePageMsg::EncryptDialogue,
+                )
+        );
         model.root = Some(root);
     }
     update(self, message, sender) {
@@ -61,15 +70,10 @@ page!(InstallationType {
                 }
             }));
             if INSTALLATION_STATE.read().encrypt {
-                let mut dialogue = EncryptPassDialogue::builder()
-                        .launch(self.root.as_ref().unwrap().toplevel_window().unwrap())
-                        .forward(
-                            sender.input_sender(),
-                            InstallationTypePageMsg::EncryptDialogue,
-                        );
-                    dialogue.widget().present();
-                    dialogue.detach_runtime();
-                    return;
+                self.dialog_child.as_mut().expect("no dialog").widget().present();
+                libhelium::prelude::HeDialogExt::set_visible(self.dialog_child.as_mut().expect("no dialog").widget(), true);
+                self.dialog_child.as_mut().expect("no dialog").detach_runtime();
+                return;
             }
             sender.input(InstallationTypePageMsg::Navigate(self.act.clone().unwrap()));
         },
@@ -79,6 +83,14 @@ page!(InstallationType {
         set_orientation: gtk::Orientation::Vertical,
         set_valign: gtk::Align::Center,
         set_spacing: 18,
+
+        if INSTALLATION_STATE.read().encrypt {
+            gtk::Overlay {
+                set_child: model.dialog_child.as_ref().map(|c| c.widget()),
+            }
+        } else {
+            gtk::Box {}
+        },
 
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
@@ -216,8 +228,7 @@ kurage::generate_component!(EncryptPassDialogue {
     tf_repeat: gtk::PasswordEntry,
     root: libhelium::Dialog,
 }:
-    init[tf_repeat](root, sender, model, widgets) for root_window: gtk::Window {
-        libhelium::prelude::WindowExt::set_parent(&root, Some(&root_window));
+    init[tf_repeat](root, sender, model, widgets) {
         model.btn_confirm = widgets.btn_confirm.clone();
         model.root = root;
     }
@@ -229,18 +240,15 @@ kurage::generate_component!(EncryptPassDialogue {
         Enter => {
             if self.btn_confirm.is_sensitive() {
                 sender.output(true).unwrap();
-                self.root.set_visible(false);
-                self.root.destroy();
+                self.root.hide_dialog()
             }
         },
     } => bool
 
     libhelium::Dialog {
-        set_modal: true,
-        set_title: Some(&t!("dialog-installtype-encrypt")),
+        set_title: &t!("dialog-installtype-encrypt"),
 
-        #[wrap(Some)]
-        set_child = &gtk::Box {
+        add = &gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
             set_vexpand: true,
             set_hexpand: true,
@@ -276,53 +284,18 @@ kurage::generate_component!(EncryptPassDialogue {
                 },
                 connect_activate => Self::Input::Enter,
             },
-
-            gtk::Box {
-                set_vexpand: true,
-            },
-
-            gtk::Box {
-                set_hexpand: true,
-                set_orientation: gtk::Orientation::Horizontal,
-                set_valign: gtk::Align::End,
-
-                libhelium::Button {
-                    set_label: &t!("dialog-installtype-cancel"),
-                    connect_clicked[sender, root] => move |_| {
-                        root.set_visible(false);
-                        root.destroy();
-                        sender.output(false).unwrap();
-                    }
-                },
-
-                gtk::Box {
-                    set_vexpand: true,
-                },
-
-                #[name(btn_confirm)]
-                libhelium::Button {
-                    set_label: &t!("dialog-installtype-confirm"),
-                    set_sensitive: false,
-                    connect_clicked => Self::Input::Enter,
-                },
-            },
         },
 
-        // FIXME: for some reason the libhelium crate does not contain these methods
-        // (actually DialogExt is just totally missing)
+        #[name(btn_confirm)]
+        set_primary_button = &libhelium::Button {
+            set_label: &t!("dialog-installtype-confirm"),
+            set_sensitive: false,
+            connect_activate => Self::Input::Enter,
+        },
 
-        // #[name(btn_confirm)]
-        // #[wrap(Some)]
-        // set_primary_button = &libhelium::Button {
-        //     set_label: &gettext("Confirm"),
-        //     set_sensitive: false,
-        //     connect_activate => Self::Input::Enter,
-        // },
-
-        // #[wrap(Some)]
-        // set_secondary_button = &libhelium::Button {
-        //     set_label: &gettext("Cancel"),
-        //     connect_activate[sender] => move |_| sender.output(false).unwrap(),
-        // },
+        set_secondary_button = &libhelium::Button {
+            set_label: &t!("dialog-installtype-cancel"),
+            connect_activate[sender] => move |_| sender.output(false).unwrap(),
+        },
     },
 );
