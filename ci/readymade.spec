@@ -1,7 +1,5 @@
-# todo: CI RPM packages xd
-
 Name:           readymade
-Version:        git~%{shortcommit}
+Version:        git~%{sub %gitcommit 1 7}
 Release:        1%?dist
 Summary:        Install ready-made distribution images
 License:        GPL-3.0-or-later
@@ -31,7 +29,8 @@ Provides:       readymade-config
 This package contains the configuration files for Readymade to install Ultramarine Linux.
 
 %prep
-%autosetup -n %{name}-%{gitcommit}
+%dnl %autosetup -n %{name}-%{gitcommit}
+%git_clone %url %gitcommit
 %cargo_prep_online
 # Add debug assertions to the rpm profile
 sed -i 's/^\[profile\.rpm\]/[profile.rpm]\ndebug-assertions = true/' .cargo/config
