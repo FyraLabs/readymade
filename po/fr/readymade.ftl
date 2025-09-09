@@ -86,3 +86,7 @@ page-confirmation-problem-devblkopen =
     <tt>{ $pids }</tt>
     Ces processus doivent être fermés avant que le programme d'installation ne puisse continuer.
 err-no-bios = Impossible de détecter /sys/firmware/efi, et la distribution a désactivé la prise en charge BIOS.
+dialog-confirm-warn-efipartfound-title = Partition EFI détectée
+dialog-confirm-warn-efipartfound-desc =
+    Si vous souhaitez installer le système aux côtés d'un système existant, assurez-vous que la partition EFI de ce dernier n'est pas présente sur le disque de destination.
+    Le disque de destination sélectionné contient une partition EFI qui sera effacée et reformatée durant l'installation, rendant impossible le démarrage sur les systèmes y étant enregistrés. Cette action est irréversible.
