@@ -73,24 +73,25 @@ page!(InstallationType {
                 self.dialog_child.as_mut().expect("no dialog").widget().present();
                 libhelium::prelude::HeDialogExt::set_visible(self.dialog_child.as_mut().expect("no dialog").widget(), true);
                 self.dialog_child.as_mut().expect("no dialog").detach_runtime();
+                tracing::debug!("show dialog");
                 return;
             }
             sender.input(InstallationTypePageMsg::Navigate(self.act.clone().unwrap()));
         },
     } => {}
 
+gtk::Overlay {
+    add_overlay: model.dialog_child.as_ref().map(|c| c.widget()).unwrap_or(&libhelium::Dialog::default()),
+    #[wrap(Some)]
+    set_child = &gtk::Box {
+
+    set_orientation: gtk::Orientation::Vertical,
+
     gtk::Box {
         set_orientation: gtk::Orientation::Vertical,
         set_valign: gtk::Align::Center,
         set_spacing: 18,
 
-        if INSTALLATION_STATE.read().encrypt {
-            gtk::Overlay {
-                set_child: model.dialog_child.as_ref().map(|c| c.widget()),
-            }
-        } else {
-            gtk::Box {}
-        },
 
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
@@ -221,6 +222,7 @@ page!(InstallationType {
             set_sensitive: crate::INSTALLATION_STATE.read().installation_type.is_some(),
         }
     }
+} }
 );
 
 kurage::generate_component!(EncryptPassDialogue {

@@ -167,7 +167,7 @@ fn set_lang(lang: &LanguageRow) {
     if let Ok(locale) = lang
         .locale
         .split_once('.')
-        .map_or(&*lang.locale, |(left, _)| left)
+        .map_or(lang.locale, |(left, _)| left)
         .to_owned()
         .parse::<i18n_embed::unic_langid::LanguageIdentifier>()
         .inspect_err(|e| tracing::error!(?e, "Cannot apply language"))
