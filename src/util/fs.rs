@@ -304,64 +304,6 @@ pub fn copy_dir_uutils<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::os::unix::fs::PermissionsExt;
-    use std::path::Path;
-    fn test_copy_impl<F>(name: &str, copy_fn: F) -> color_eyre::Result<()>
-    where
-        F: Fn(&Path, &Path) -> color_eyre::Result<()>,
-    {
-        let src: &str = &format!("/tmp/test_src_{name}");
-        let dest: &str = &format!("/tmp/test_dest_{name}");
-
-        // set up test environment
-        std::fs::create_dir_all(src)?;
-        std::fs::write(format!("{src}/test.txt"), "test")?;
-        std::fs::set_permissions(
-            format!("{src}/test.txt"),
-            std::fs::Permissions::from_mode(0o700),
-        )?;
-
-        // dest
-        std::fs::create_dir_all(dest)?;
-
-        tracing::info!("Testing {} copy implementation", name);
-        let o = copy_fn(Path::new(src), Path::new(dest));
-
-        o.unwrap();
-        std::fs::metadata(format!("{dest}/test.txt")).unwrap();
-
-        // check 700 permissions
-        let metadata = std::fs::metadata(format!("{dest}/test.txt"))?;
-        assert_eq!(metadata.permissions().mode() & 0o777, 0o700);
-
-        // cleanup
-        std::fs::remove_dir_all(src)?;
-        std::fs::remove_dir_all(dest)?;
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_copy_recurse() -> color_eyre::Result<()> {
-        test_copy_impl("recurse", |from, to| copy_dir_rdm(from, to))
-    }
-
-    #[test]
-    #[cfg(target_family = "unix")]
-    fn test_copy_cp() -> color_eyre::Result<()> {
-        test_copy_impl("cp", |from, to| copy_dir_cp(from, to))
-    }
-
-    #[test]
-    #[cfg(feature = "uutils")]
-    fn test_copy_uucp() -> color_eyre::Result<()> {
-        test_copy_impl("uutils", |from, to| copy_dir_uutils(from, to))
-    }
-}
-
 /// Get partition number from partition path
 ///
 /// # Arguments
@@ -446,4 +388,62 @@ pub fn get_whole_disk(partition_path: &str) -> color_eyre::Result<String> {
         .map_or(path.clone(), |(_, tail)| format!("/dev/{tail}"));
 
     Ok(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::Path;
+    fn test_copy_impl<F>(name: &str, copy_fn: F) -> color_eyre::Result<()>
+    where
+        F: Fn(&Path, &Path) -> color_eyre::Result<()>,
+    {
+        let src: &str = &format!("/tmp/test_src_{name}");
+        let dest: &str = &format!("/tmp/test_dest_{name}");
+
+        // set up test environment
+        std::fs::create_dir_all(src)?;
+        std::fs::write(format!("{src}/test.txt"), "test")?;
+        std::fs::set_permissions(
+            format!("{src}/test.txt"),
+            std::fs::Permissions::from_mode(0o700),
+        )?;
+
+        // dest
+        std::fs::create_dir_all(dest)?;
+
+        tracing::info!("Testing {} copy implementation", name);
+        let o = copy_fn(Path::new(src), Path::new(dest));
+
+        o.unwrap();
+        std::fs::metadata(format!("{dest}/test.txt")).unwrap();
+
+        // check 700 permissions
+        let metadata = std::fs::metadata(format!("{dest}/test.txt"))?;
+        assert_eq!(metadata.permissions().mode() & 0o777, 0o700);
+
+        // cleanup
+        std::fs::remove_dir_all(src)?;
+        std::fs::remove_dir_all(dest)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_copy_recurse() -> color_eyre::Result<()> {
+        test_copy_impl("recurse", |from, to| copy_dir_rdm(from, to))
+    }
+
+    #[test]
+    #[cfg(target_family = "unix")]
+    fn test_copy_cp() -> color_eyre::Result<()> {
+        test_copy_impl("cp", |from, to| copy_dir_cp(from, to))
+    }
+
+    #[test]
+    #[cfg(feature = "uutils")]
+    fn test_copy_uucp() -> color_eyre::Result<()> {
+        test_copy_impl("uutils", |from, to| copy_dir_uutils(from, to))
+    }
 }

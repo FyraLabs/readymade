@@ -1,6 +1,5 @@
 pub(crate) use crate::{NavigationAction, Page, INSTALLATION_STATE};
-pub use color_eyre::eyre::{bail, eyre};
-pub use color_eyre::eyre::{Context, ContextCompat, OptionExt as _};
+pub use color_eyre::eyre::{bail, eyre, Context, ContextCompat, OptionExt, WrapErr};
 pub use color_eyre::{Result, Section};
 pub use itertools::Itertools;
 pub use libhelium::{glib::prelude::*, prelude::*};

@@ -1,12 +1,12 @@
-use color_eyre::eyre::bail;
-use color_eyre::Result;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
-use std::process::Command;
-use std::{io::Write, path::PathBuf};
-use tracing::{debug, info, warn};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+    process::Command,
+};
+use tracing::{info, warn};
 
-use crate::stage;
+use crate::{prelude::*, stage};
 
 use super::{Context, PostInstallModule};
 
@@ -83,40 +83,26 @@ GRUB_ENABLE_BLSCFG={enable_blsconfig}
 ///
 /// * `disk` - The path to the disk to install GRUB2 on.
 fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> Result<()> {
-    info!("Generating GRUB2 configuration...");
-    let _disk = disk.as_ref().to_str();
-    debug!(?_disk);
+    let disk_display = disk.as_ref().display();
+    info!(disk = ?disk_display, "Generating GRUB2 configuration...");
     // this should probably be run inside a chroot... but we'll see
-    if let Err(e) = Command::new("grub2-mkconfig")
-        .arg("-o")
-        .arg("/boot/grub2/grub.cfg")
-        .status()
-    {
-        warn!("Failed to generate GRUB2 configuration: {e}");
-
-        // Check if the file still exists
+    crate::cmd!("grub2-mkconfig" [["-o", "/boot/grub2/grub.cfg"]] => |r| {
+        warn!("Failed to generate GRUB2 configuration (status code {:?})", r.code());
         if !Path::new("/boot/grub/grub.cfg").exists() {
-            return Err(Into::into(e));
+            return Err(color_eyre::Report::msg("Fail to generate GRUB2 cfg").note("/boot/grub/grub.cfg does not exist"));
         }
-    }
+    });
+
     info!("Blessing the disk with GRUB2...");
-    let status = Command::new("grub2-install")
-        .arg("--target=i386-pc")
-        .arg("--recheck")
-        .arg("--boot-directory=/boot")
-        // We are going to force the installation, because for some reason
+    crate::cmd!("grub2-install" [
+        ["--target=i386-pc", "--recheck", "--boot-directory=/boot"],
+        // We are going tov4_10 force the installation, because for some reason
         // grub-install just couldn't find our xbootldr partition
         // even though it exists.
         // 
         // --force is a last resort, but in our layout it's kind of necessary :P
-        .arg("--force")
-        .arg(disk.as_ref())
-        .status()?;
-
-    if !status.success() {
-        bail!("Failed to install GRUB2 on disk {_disk:?}")
-    }
-
+        ["--force"], [disk.as_ref()]
+    ] => |cmd| bail!("Failed to install GRUB2 on disk {disk_display}: status code {:?}", cmd.code()));
     Ok(())
 }
 
@@ -137,7 +123,7 @@ impl PostInstallModule for GRUB2 {
                 // todo: In the event someone thinks this code stinks, please please PLEASE refactor it for us.
 
                 let joined_cmdline = crypt_data.cmdline_opts.join(" ");
-                tracing::info!("Adding cryptsetup cmdline options: {}", joined_cmdline);
+                tracing::info!("Adding cryptsetup cmdline options: {joined_cmdline}");
                 defaults.cmdline_linux = format!("{joined_cmdline} {current_value}");
             }
 
@@ -178,7 +164,7 @@ impl PostInstallModule for GRUB2 {
                     .iter()
                     .find(|dev| dev.fullname == PathBuf::from(xbootldr_disk))
                     .and_then(|dev| dev.uuid.as_ref())
-                    .ok_or_else(|| color_eyre::eyre::eyre!("Could not find UUID for xbootldr partition"))?;
+                    .ok_or_else(|| eyre!("Could not find UUID for xbootldr partition"))?;
 
                 let final_str = template_str.replace("$UUID$", xbootldr_uuid);
 
@@ -186,14 +172,7 @@ impl PostInstallModule for GRUB2 {
             });
 
             stage!(grub2 {
-                let grub_cmd_status = Command::new("grub2-mkconfig")
-                    .arg("-o")
-                    .arg("/boot/grub2/grub.cfg")
-                    .status()?;
-
-                if !grub_cmd_status.success() {
-                    bail!("grub2-mkconfig failed with exit code {:?}", grub_cmd_status.code());
-                }
+                crate::cmd!("grub2-mkconfig" [["-o", "/boot/grub2/grub.cfg"]] => |r| bail!("grub2-mkconfig failed with exit code {:?}", r.code()));
             });
         } else {
             stage!(biosgrub {
