@@ -104,9 +104,7 @@ fn writef(
     f: &backhand::SquashfsFileReader,
 ) -> std::io::Result<()> {
     trace!(size = f.file_len(), "Writing file");
-    let dir = path.parent().ok_or_else(|| {
-        std::io::Error::new(std::io::ErrorKind::Other, "Cannot parse path parent")
-    })?;
+    let dir = (path.parent()).ok_or_else(|| std::io::Error::other("Cannot parse path parent"))?;
     std::fs::create_dir_all(dir)?;
     let mut reader = fs.file(f).reader();
     let mut file = std::fs::File::create_new(path)?;

@@ -1,3 +1,4 @@
+#![allow(clippy::cast_precision_loss)]
 use crate::prelude::*;
 
 #[derive(Debug)]
@@ -33,7 +34,7 @@ page!(InstallDual {
             let s = &mut self.inner;
             let slider_percentage = s.paned.position() as f32 / s.paned.width() as f32;
             s.other_allocation =
-                (((slider_percentage * s.total_size as f32).round()) as u32).clamp(
+                ((slider_percentage * s.total_size as f32).round() as u32).clamp(
                     s.min_other_allocation,
                     s.total_size - s.min_ultramarine_allocation,
                 );

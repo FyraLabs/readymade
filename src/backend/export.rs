@@ -36,7 +36,7 @@ impl ReadymadeResult {
             version: RESULT_DUMP_FORMAT_VERSION,
             readymade_version: env!("CARGO_PKG_VERSION"),
             is_debug_build: cfg!(debug_assertions),
-            state: prep_state_for_export(state.into()).unwrap(),
+            state: prep_state_for_export(state),
             systemd_repart_data,
         }
     }
@@ -76,14 +76,10 @@ impl SystemdRepartData {
     }
 }
 
-pub fn prep_state_for_export(mut state: FinalInstallationState) -> Result<FinalInstallationState> {
+pub fn prep_state_for_export(mut state: FinalInstallationState) -> FinalInstallationState {
     // Clear out passwords
-    if let Some(super::install::EncryptState {
-        ref mut encryption_key,
-        ..
-    }) = state.encrypts
-    {
-        *encryption_key = "REDACTED".to_owned();
+    if let Some(super::install::EncryptState { encryption_key, .. }) = &mut state.encrypts {
+        "REDACTED".clone_into(encryption_key);
     }
-    Ok(state)
+    state
 }

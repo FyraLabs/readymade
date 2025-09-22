@@ -77,7 +77,7 @@ uutils = ["dep:uu_cp"]
 
 
 [build-dependencies]
-glib-build-tools = "0.20.0"
+glib-build-tools = "0.21.0"
 
 [lints.clippy]
 # cargo = { level = "warn", priority = -1 }
@@ -122,7 +122,7 @@ try_err = "warn"
 undocumented_unsafe_blocks = "deny"
 unimplemented = "warn"
 unneeded_field_pattern = "warn"
-unwrap_in_result = "warn"
+# unwrap_in_result = "warn"
 
 equatable_if_let = "allow"
 

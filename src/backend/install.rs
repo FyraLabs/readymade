@@ -584,7 +584,7 @@ impl FinalInstallationState {
         )?;
         let fstab = output.generate_fstab()?;
         // tiffin will run `nix::unistd::chdir("/")` when entering the container, so we can use `sysroot as above`
-        container.run(|| self._inner_sys_setup(fstab, cryptdata, esp, &xbootldr, rdm_result))??;
+        container.run(|| self.inner_sys_setup(fstab, cryptdata, esp, &xbootldr, &rdm_result))??;
 
         // Let's remove the lockfile now that we're done
         std::fs::remove_file(lockfile_path)
@@ -595,13 +595,13 @@ impl FinalInstallationState {
 
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
-    pub fn _inner_sys_setup(
+    pub fn inner_sys_setup(
         &self,
         fstab: String,
         crypt_data: Option<CryptData>,
         esp_node: Option<String>,
         xbootldr_node: &str,
-        state_dump: super::export::ReadymadeResult,
+        state_dump: &super::export::ReadymadeResult,
     ) -> Result<()> {
         // ===SAFETY CHECK===
         // Let's make sure we're NOT running OUTSIDE the chroot jail
@@ -648,12 +648,10 @@ impl FinalInstallationState {
                 .wrap_err("cannot write to /etc/crypttab")?;
         }
 
-        for module in &self.config.postinstall {
-            tracing::debug!(?module, "Running module");
-            module.run(&context)?;
-        }
-
-        Ok(())
+        (self.config.postinstall.iter())
+            .inspect(|module| tracing::debug!(?module, "Running module"))
+            .map(|module| module.run(&context))
+            .try_collect()
     }
 
     #[tracing::instrument]
@@ -882,17 +880,10 @@ impl InstallationType {
 
     fn set_cgpt_flags(blockdev: &Path) -> Result<()> {
         tracing::debug!("Setting cgpt flags");
-        let blockdev_str = blockdev.to_str().context("Invalid block device path")?;
-        let args = [
-            ["add", "-i", "2", "-t"],
-            ["kernel", "-P", "15", "-T"],
-            ["1", "-S", "1", blockdev_str],
-        ];
-        let status = Command::new("cgpt").args(args.concat()).status()?;
-
-        if !status.success() {
-            bail!("cgpt command failed with exit code {:?}", status.code());
-        }
+        crate::cmd!("cgpt" [
+            ["add", "-i", "2", "-t", "kernel", "-P", "15", "-T", "1", "-S", "1"],
+            [blockdev]
+        ] => |r| bail!("cgpt command failed with exit code {:?}", r.code()));
         Ok(())
     }
 }
@@ -903,6 +894,6 @@ mod tests {
     fn test_set_encrypt_to_file() {
         let enc =
             super::FinalInstallationState::set_encrypt_to_file("[Partition]\nType=root", false);
-        assert!(enc.contains("Encrypt=key-file"),);
+        assert!(enc.contains("Encrypt=key-file"));
     }
 }
