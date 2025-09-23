@@ -10,7 +10,7 @@ use tracing::{trace, trace_span};
 
 // TODO: somehow track progress of unsquash
 /// Copy contents of a squashimg into a directory `destroot`.
-/// Normally param `squashfs` should be [crate::util::DEFAULT_SQUASH_LOCATION].
+/// Normally param `squashfs` should be [`crate::util::DEFAULT_SQUASH_LOCATION`].
 #[tracing::instrument(skip(callback))]
 pub fn unsquash_copy<F: FnMut(usize, usize)>(
     squashfs: &Path,

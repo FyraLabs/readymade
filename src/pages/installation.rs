@@ -278,10 +278,10 @@ impl Component for InstallationPage {
     }
 
     #[tracing::instrument]
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, widget: &Self::Root) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, root: &Self::Root) {
         match message {
             InstallationPageMsg::Open(uri) => gtk::UriLauncher::new(&uri).launch(
-                widget.toplevel_window().as_ref(),
+                root.toplevel_window().as_ref(),
                 gtk::gio::Cancellable::NONE,
                 |_| {},
             ),
