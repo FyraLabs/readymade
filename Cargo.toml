@@ -64,7 +64,7 @@ rust-embed = { version = "8.7.2", features = ["include-exclude"] }
 with_builtin_macros = "0.1.0"
 no_color = "0.2.0"
 poly_l10n = "0.0.6"
-derivative = "2.2.0"
+educe = "0.6.0"
 parking_lot = "0.12.4"
 file-guard = "0.2.0"
 taidan_proc_macros = { path = "./taidan_proc_macros" }
