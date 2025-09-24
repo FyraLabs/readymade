@@ -11,6 +11,7 @@ BuildRequires:  clang-devel
 BuildRequires:  gcc
 BuildRequires:  mold
 BuildRequires:  cmake
+BuildRequires:  glibc-all-langpacks
 # We'll need cryptsetup to unlock disks for now
 Requires:       cryptsetup
 Recommends:     readymade-config

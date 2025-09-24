@@ -81,7 +81,7 @@ impl ReadymadeConfig {
     }
 }
 
-/// # Errors
+/// # Errors
 /// - cannot read config file
 #[allow(clippy::module_name_repetitions)]
 #[tracing::instrument]
@@ -89,8 +89,7 @@ pub fn get_cfg() -> Result<ReadymadeConfig> {
     let path = std::env::var("READYMADE_CONFIG");
     match &path {
         Err(std::env::VarError::NotUnicode(s)) => {
-            tracing::error!(?s, "Cannot parse READYMADE_CONFIG due to invalid unicode");
-            tracing::debug!("Falling back to {DEFAULT_CFG_PATH}");
+            tracing::error!(?s, "Cannot parse READYMADE_CONFIG due to invalid unicode; falling back to {DEFAULT_CFG_PATH}");
         }
         Ok(p) => tracing::debug!("Using READYMADE_CONFIG={p}"),
         Err(std::env::VarError::NotPresent) => tracing::trace!("Using {DEFAULT_CFG_PATH}"),

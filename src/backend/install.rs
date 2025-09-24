@@ -23,6 +23,7 @@ use crate::{
 
 pub static IPC_CHANNEL: OnceLock<Mutex<IpcSender<InstallationMessage>>> = OnceLock::new();
 
+#[allow(clippy::unsafe_derive_deserialize)] // false-pos
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum InstallationType {
@@ -51,6 +52,7 @@ pub struct InstallationState {
 }
 
 /// The finalized state of [`InstallationState`].
+#[allow(clippy::unsafe_derive_deserialize)] // false-pos
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FinalInstallationState {
     pub langlocale: String,
@@ -61,11 +63,11 @@ pub struct FinalInstallationState {
     pub copy_mode: DetailedCopyMode,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, derivative::Derivative)]
-#[derivative(Debug)]
+#[derive(Default, Serialize, Deserialize, Clone, educe::Educe)]
+#[educe(Debug)]
 pub struct EncryptState {
     pub tpm: bool,
-    #[derivative(Debug = "ignore")]
+    #[educe(Debug(ignore))]
     pub encryption_key: String,
 }
 

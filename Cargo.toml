@@ -11,8 +11,9 @@ publish = false
 
 [dependencies]
 color-eyre = "=0.6.5"
-relm4 = { version = "0.9", features = ["macros", "gnome_47"] }
-libhelium = { version = "0.12.0", features = ["gtk_v4_10", "v1_6"] }
+relm4 = { version = "*", features = ["macros"] }
+gtk4 = { version = "*", features = ["v4_12"] }
+libhelium = { version = "0.12.0", features = ["gtk_v4_12", "v1_8"] }
 tracing = { version = "0.1.41", features = ["log"] }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 tracing-appender = "0.2"
@@ -35,7 +36,7 @@ strip-ansi-escapes = "0.2.1"
 toml = "0.9.7"
 serde_valid = { version = "1.0.5", features = ["toml"] }
 nix = { version = "0.30.1", features = ["fs", "mount", "user"] }
-backhand = "0.22.0"
+backhand = "0.23.0"
 enum_dispatch = "0.3.13"
 scopeguard = "1.2.0"
 tracing-test = "0.2.5"
@@ -47,7 +48,7 @@ jwalk = "0.8.1"
 xattr = "1.5.0"
 filesystem-table = { version = "0.1.2", path = "./filesystem-table" }
 kurage = "0.1.4"
-uu_cp = { version = "0.1.0", features = [
+uu_cp = { version = "0.2.2", features = [
     "exacl",
     "feat_acl",
     "feat_selinux",
@@ -63,7 +64,7 @@ rust-embed = { version = "8.7.2", features = ["include-exclude"] }
 with_builtin_macros = "0.1.0"
 no_color = "0.2.0"
 poly_l10n = "0.0.6"
-derivative = "2.2.0"
+educe = "0.6.0"
 parking_lot = "0.12.4"
 file-guard = "0.2.0"
 taidan_proc_macros = { path = "./taidan_proc_macros" }
@@ -125,6 +126,8 @@ unneeded_field_pattern = "warn"
 # unwrap_in_result = "warn"
 
 equatable_if_let = "allow"
+cognitive_complexity = "allow"
+cast_possible_truncation = "allow"
 
 
 [workspace]
