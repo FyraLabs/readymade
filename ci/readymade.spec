@@ -30,11 +30,8 @@ Provides:       readymade-config
 This package contains the configuration files for Readymade to install Ultramarine Linux.
 
 %prep
-%dnl %autosetup -n %{name}-%{gitcommit}
 %git_clone %url %gitcommit
 %cargo_prep_online
-# Add debug assertions to the rpm profile
-sed -i 's/^\[profile\.rpm\]/[profile.rpm]\ndebug-assertions = true/' .cargo/config
 
 %build
 %{cargo_build} --locked
