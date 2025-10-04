@@ -179,7 +179,7 @@ impl Problem {
         {
             return Some(Self::DeviceMounted(dev.device, dev.mountpoint));
         }
-        if let Ok(procs) = find_open_block_devices(disk.as_ref()) {
+        if let Some(procs) = find_open_block_devices(disk.as_ref()).ok().filter(|procs| !procs.is_empty()) {
             return Some(Self::DevBlkOpen(disk.to_string(), procs));
         }
         None
