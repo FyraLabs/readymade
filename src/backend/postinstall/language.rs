@@ -8,7 +8,10 @@ pub struct Language;
 
 impl PostInstallModule for Language {
     fn run(&self, context: &Context) -> Result<()> {
-        let lang = context.lang.as_bytes();
+        // use UTF-8 locale, since the non-UTF-8 ones break stuff
+        let lang = format!("{}.UTF-8", context.lang);
+        // shadowing here because format!() has shit lifetime
+        let lang = lang.as_bytes();
         // `LOCALE.CONF(5)`: /etc/locale.conf
         std::fs::write(
             "/etc/locale.conf",
