@@ -3,6 +3,7 @@ allowed_installtypes = ["wholedisk"]
 
 [distro]
 name = "Ultramarine Linux"
+bios_support = true
 
 [[bento]]
 title = "page-welcome"
