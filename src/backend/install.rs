@@ -880,7 +880,7 @@ impl FinalInstallationState {
 impl InstallationType {
     fn cfgdir(&self, is_bootc: bool) -> PathBuf {
         match self {
-            Self::ChromebookInstall => repart_dir().join("chromebook"),
+            Self::ChromebookInstall => repart_dir().join("chromebookinstall"),
             Self::WholeDisk if is_bootc => repart_dir().join("bootcwholedisk"),
             Self::WholeDisk => repart_dir().join("wholedisk"),
             Self::DualBoot(_) => todo!(),
