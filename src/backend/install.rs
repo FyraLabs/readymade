@@ -836,7 +836,13 @@ impl FinalInstallationState {
             // We are locking the device so that repart doesn't fail due to device busy
             // The lock is held in this scope
             let mut _lock = file_guard::lock(&mut device, Lock::Exclusive, 0, 1)?;
-            Command::new("systemd-repart")
+            let mut cmd = Command::new("systemd-repart");
+                // HACK: Disable whole-device TRIM to reduce wear on SSDs and formatting time
+                // https://github.com/systemd/systemd/issues/32760
+                // TODO: Turn off once systemd 259 lands
+                // https://github.com/systemd/systemd/commit/29ee9c6fb7c75c421f887c8579c65eb04d4f634d
+                //
+                cmd.env("SYSTEMD_REPART_MKFS_OPTIONS_BTRFS","--nodiscard")
                 .args(["--dry-run", if dry_run { "yes" } else { "no" }])
                 .args(["--definitions", cfgdir.to_str().unwrap()])
                 .args(["--empty", "force", "--offline", "false", "--json", "pretty"])
@@ -844,9 +850,11 @@ impl FinalInstallationState {
                 .args(arg_keyfile.iter().flatten())
                 .arg(blockdev)
                 .stdout(Stdio::piped())
-                .stderr(Stdio::inherit())
-                .output()
-                .context("can't run systemd-repart")?
+                .stderr(Stdio::inherit());
+                
+            tracing::debug!(?cmd, "Executing systemd-repart command");
+
+            cmd.output().context("can't run systemd-repart")?
         };
 
         if !repart_cmd.status.success() {
