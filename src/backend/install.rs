@@ -616,7 +616,11 @@ impl FinalInstallationState {
         // We will run the specified postinstall modules now
         let context = crate::backend::postinstall::Context {
             destination_disk: self.destination_disk.devpath.clone(),
-            uefi: util::sys::check_uefi(),
+            uefi: if self.installation_type.is_chromebook_install() {
+                true
+            } else {
+                util::sys::check_uefi()
+            },
             esp_partition: esp_node,
             xbootldr_partition: xbootldr_node.to_owned(),
             lang: self.langlocale.clone(),
