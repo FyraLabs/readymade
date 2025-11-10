@@ -71,11 +71,9 @@ page!(InstallationType {
             }));
             // XXX: we shouldn't need to make this an overlay
             //
-            // lains had me do this, it doesn't make sense
+            // it doesn't make sense
             // it makes zero fucking sense
             // it ruins UX, its ugly, but its the ONLY way to get it to even display
-            // they provided me this as a solution without elaboration,
-            // Please, PLEASE just learn Rust over Vala, Lains
             // - @korewaChino
             // --- IGNORE ---
             if INSTALLATION_STATE.read().encrypt {
