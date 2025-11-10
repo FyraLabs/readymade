@@ -18,6 +18,7 @@ page!(InstallationType {
     act: Option<NavigationAction>,
     encrypt_btn: gtk::CheckButton,
     dialog_child: Option<Controller<EncryptPassDialogue>>,
+    overlay: gtk::Overlay,
 }:
     init[encrypt_btn](root, sender, model, widgets) {
         model.dialog_child = Some(
@@ -28,6 +29,10 @@ page!(InstallationType {
                     InstallationTypePageMsg::EncryptDialogue,
                 )
         );
+        if let Some(dialog) = model.dialog_child.as_ref() {
+            widgets.overlay.add_overlay(dialog.widget());
+        }
+        model.overlay = widgets.overlay.clone();
         model.root = Some(root);
     }
     update(self, message, sender) {
@@ -69,10 +74,27 @@ page!(InstallationType {
                     InstallationType::Custom => Page::InstallCustom,
                 }
             }));
+            // XXX: we shouldn't need to make this an overlay
+            // 
+            // lains had me do this, it doesn't make sense
+            // it makes zero fucking sense
+            // it ruins UX, its ugly, but its the ONLY way to get it to even display
+            // they provided me this as a solution without elaboration,
+            // Please, PLEASE just learn Rust over Vala, Lains
+            // - @korewaChino
+            // --- IGNORE ---
             if INSTALLATION_STATE.read().encrypt {
-                self.dialog_child.as_mut().expect("no dialog").widget().present();
-                libhelium::prelude::HeDialogExt::set_visible(self.dialog_child.as_mut().expect("no dialog").widget(), true);
-                self.dialog_child.as_mut().expect("no dialog").detach_runtime();
+                if let Some(dialog_ctrl) = self.dialog_child.as_ref() {
+                    let dialog_widget = dialog_ctrl.widget().clone();
+                    if dialog_widget.parent().is_none() {
+                        self.overlay.add_overlay(&dialog_widget);
+                    }
+                    dialog_widget.present();
+                    libhelium::prelude::HeDialogExt::set_visible(&dialog_widget, true);
+                }
+                if let Some(dialog_ctrl) = self.dialog_child.as_mut() {
+                    dialog_ctrl.detach_runtime();
+                }
                 tracing::debug!("show dialog");
                 return;
             }
@@ -80,8 +102,8 @@ page!(InstallationType {
         },
     } => {}
 
+#[name = "overlay"]
 gtk::Overlay {
-    add_overlay: model.dialog_child.as_ref().map(|c| c.widget()).unwrap_or(&libhelium::Dialog::default()),
     #[wrap(Some)]
     set_child = &gtk::Box {
 
@@ -240,6 +262,7 @@ kurage::generate_component!(EncryptPassDialogue {
             self.btn_confirm.set_sensitive(sensitive);
         },
         Enter => {
+            tracing::debug!("confirm encryption password dialog");
             if self.btn_confirm.is_sensitive() {
                 sender.output(true).unwrap();
                 self.root.hide_dialog()
@@ -292,12 +315,10 @@ kurage::generate_component!(EncryptPassDialogue {
         set_primary_button = &libhelium::Button {
             set_label: &t!("dialog-installtype-confirm"),
             set_sensitive: false,
-            connect_activate => Self::Input::Enter,
+            connect_clicked => Self::Input::Enter,
+            // connect_activate => Self::Input::Enter,
         },
 
-        set_secondary_button = &libhelium::Button {
-            set_label: &t!("dialog-installtype-cancel"),
-            connect_activate[sender] => move |_| sender.output(false).unwrap(),
-        },
+        connect_destroy[sender] => move |_| sender.output(false).unwrap(),
     },
 );
