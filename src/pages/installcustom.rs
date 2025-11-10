@@ -80,7 +80,6 @@ impl SimpleComponent for InstallCustomPage {
 
                 libhelium::BottomBar {
                     set_mode: libhelium::BottomBarMode::Floating,
-                    #[local_ref]
                     set_overlay_widget = &scrolled_window,
 
                     #[watch]
