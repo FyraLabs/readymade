@@ -77,8 +77,8 @@ impl SimpleComponent for InstallCustomPage {
                     #[watch]
                     set_description: &t!("page-installcustom-desc", num = model.choose_mount_factory.len()),
 
-                    #[local_ref]
-                    next_button -> libhelium::OverlayButton {
+                    #[name(next_button)]
+                    libhelium::OverlayButton {
                         set_typeb: libhelium::OverlayButtonTypeButton::Primary,
                         set_icon: "go-next",
                         connect_clicked => InstallCustomPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Confirmation)),
