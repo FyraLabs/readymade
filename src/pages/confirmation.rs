@@ -7,14 +7,12 @@ page!(Confirmation {
     root: libhelium::ViewMono,
     warns: Vec<Warning>,
     warn_dialog: Option<Controller<Warning>>,
-    overlay: gtk::Overlay,
 }:
     init(root, sender, model, widgets) {
         gtk::glib::timeout_add(Duration::from_secs(1), move || {
             sender.input(Self::Input::Check);
             gtk::glib::ControlFlow::Continue
         });
-        model.overlay = widgets.overlay.clone();
         model.root = root;
     }
 
@@ -57,120 +55,106 @@ page!(Confirmation {
         }
     } => { StartInstallation }
 
-    #[name = "overlay"]
-    gtk::Overlay {
+    gtk::CenterBox {
+        set_orientation: gtk::Orientation::Horizontal,
         set_valign: gtk::Align::Center,
         set_vexpand: true,
-        set_hexpand: true,
+
         #[wrap(Some)]
-        set_child = &gtk::Box {
+        set_start_widget = &gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
-            set_spacing: 4,
+            set_spacing: 2,
             set_vexpand: true,
             set_hexpand: true,
+            set_valign: gtk::Align::Center,
+            set_halign: gtk::Align::Center,
 
-            gtk::CenterBox {
-                set_orientation: gtk::Orientation::Horizontal,
-                set_valign: gtk::Align::Center,
-                set_vexpand: true,
-
-                #[wrap(Some)]
-                set_start_widget = &gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    set_spacing: 2,
-                    set_vexpand: true,
-                    set_hexpand: true,
-                    set_valign: gtk::Align::Center,
-                    set_halign: gtk::Align::Center,
-
-                    gtk::Image {
-                        set_icon_name: Some("drive-harddisk"),
-                        inline_css: "-gtk-icon-size: 128px"
-                    },
-
-                    gtk::Label {
-                        #[watch]
-                        set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
-                        inline_css: "font-size: 16px; font-weight: bold"
-                    },
-
-                    gtk::Label {
-                        #[watch]
-                        set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or_default(),
-                    }
-                },
-
-                #[wrap(Some)]
-                set_center_widget = &gtk::Image {
-                    set_icon_name: Some("go-next-symbolic"),
-                    inline_css: "-gtk-icon-size: 64px",
-                    set_margin_horizontal: 16,
-                },
-
-                #[wrap(Some)]
-                set_end_widget = &gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    set_spacing: 2,
-                    set_vexpand: true,
-                    set_hexpand: true,
-                    set_valign: gtk::Align::Center,
-                    set_halign: gtk::Align::Center,
-
-                    gtk::Image {
-                        set_icon_name: Some("drive-harddisk"),
-                        inline_css: "-gtk-icon-size: 128px"
-                    },
-
-                    gtk::Label {
-                        #[watch]
-                        set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
-                        inline_css: "font-size: 16px; font-weight: bold"
-                    },
-
-                    gtk::Label {
-                        set_label: &crate::CONFIG.read().distro.name,
-                    }
-                }
+            gtk::Image {
+                set_icon_name: Some("drive-harddisk"),
+                inline_css: "-gtk-icon-size: 128px"
             },
 
-            // relm4 doesn't support if lets
             gtk::Label {
                 #[watch]
-                set_label: &model.problem.as_ref().map(Problem::msg).unwrap_or_default(),
-                set_use_markup: true,
-                add_css_class: "error",
+                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
+                inline_css: "font-size: 16px; font-weight: bold"
             },
 
-            gtk::Box {
-                set_orientation: gtk::Orientation::Horizontal,
-                set_spacing: 4,
+            gtk::Label {
+                #[watch]
+                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or_default(),
+            }
+        },
 
-                libhelium::Button {
-                    set_is_pill: true,
-                    #[watch]
-                    set_label: &t!("prev"),
-                    add_css_class: "large-button",
-                    connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(
-                            crate::Page::InstallationType
-                    )),
-                },
+        #[wrap(Some)]
+        set_center_widget = &gtk::Image {
+            set_icon_name: Some("go-next-symbolic"),
+            inline_css: "-gtk-icon-size: 64px",
+            set_margin_horizontal: 16,
+        },
 
-                gtk::Box {
-                    set_hexpand: true,
-                },
+        #[wrap(Some)]
+        set_end_widget = &gtk::Box {
+            set_orientation: gtk::Orientation::Vertical,
+            set_spacing: 2,
+            set_vexpand: true,
+            set_hexpand: true,
+            set_valign: gtk::Align::Center,
+            set_halign: gtk::Align::Center,
 
-                libhelium::Button {
-                    #[watch]
-                    set_sensitive: model.problem.is_none(),
-                    set_is_pill: true,
-                    #[watch]
-                    set_label: &t!("page-welcome-install"),
-                    add_css_class: "large-button",
-                    add_css_class: "destructive-action",
-                    connect_clicked => ConfirmationPageMsg::StartInstallation
-                },
+            gtk::Image {
+                set_icon_name: Some("drive-harddisk"),
+                inline_css: "-gtk-icon-size: 128px"
+            },
+
+            gtk::Label {
+                #[watch]
+                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
+                inline_css: "font-size: 16px; font-weight: bold"
+            },
+
+            gtk::Label {
+                set_label: &crate::CONFIG.read().distro.name,
             }
         }
+    },
+
+    // relm4 doesn't support if lets
+    gtk::Label {
+        #[watch]
+        set_label: &model.problem.as_ref().map(Problem::msg).unwrap_or_default(),
+        set_use_markup: true,
+        add_css_class: "error",
+    },
+
+    gtk::Box {
+        set_orientation: gtk::Orientation::Horizontal,
+        set_spacing: 4,
+
+        libhelium::Button {
+            set_is_pill: true,
+            #[watch]
+            set_label: &t!("prev"),
+            add_css_class: "large-button",
+            connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(
+                    crate::Page::InstallationType
+            )),
+        },
+
+        gtk::Box {
+            set_hexpand: true,
+        },
+
+        libhelium::Button {
+            #[watch]
+            set_sensitive: model.problem.is_none(),
+            set_is_pill: true,
+            #[watch]
+            set_label: &t!("page-welcome-install"),
+            add_css_class: "large-button",
+            add_css_class: "destructive-action",
+            connect_clicked => ConfirmationPageMsg::StartInstallation
+        },
     }
 );
 
@@ -178,8 +162,10 @@ impl ConfirmationPage {
     fn clear_warning_dialog(&mut self) {
         if let Some(ctrl) = self.warn_dialog.take() {
             let dialog = ctrl.widget();
-            if dialog.parent().is_some() {
-                self.overlay.remove_overlay(dialog);
+            if let Some(overlay) = self.overlay_widget() {
+                if dialog.parent().is_some() {
+                    overlay.remove_overlay(dialog);
+                }
             }
             libhelium::prelude::HeDialogExt::set_visible(dialog, false);
         }
@@ -187,12 +173,29 @@ impl ConfirmationPage {
 
     fn show_next_warning(&mut self, sender: &relm4::ComponentSender<Self>) -> bool {
         if let Some(warn) = self.warns.pop() {
-            let ctrl = warn.pop(&self.overlay, sender);
-            self.warn_dialog = Some(ctrl);
-            true
+            if let Some(overlay) = self.overlay_widget() {
+                let ctrl = warn.pop(&overlay, sender);
+                self.warn_dialog = Some(ctrl);
+                true
+            } else {
+                tracing::warn!(
+                    "application overlay unavailable; cannot show confirmation warning dialog"
+                );
+                false
+            }
         } else {
             false
         }
+    }
+}
+
+impl ConfirmationPage {
+    fn overlay_widget(&self) -> Option<gtk::Overlay> {
+        let root = &self.root;
+        let widget: &gtk::Widget = root.upcast_ref();
+        widget
+            .ancestor(gtk::Overlay::static_type())
+            .and_then(|ancestor| ancestor.downcast::<gtk::Overlay>().ok())
     }
 }
 

@@ -18,7 +18,6 @@ page!(InstallationType {
     act: Option<NavigationAction>,
     encrypt_btn: gtk::CheckButton,
     dialog_child: Option<Controller<EncryptPassDialogue>>,
-    overlay: gtk::Overlay,
 }:
     init[encrypt_btn](root, sender, model, widgets) {
         model.dialog_child = Some(
@@ -29,10 +28,6 @@ page!(InstallationType {
                     InstallationTypePageMsg::EncryptDialogue,
                 )
         );
-        if let Some(dialog) = model.dialog_child.as_ref() {
-            widgets.overlay.add_overlay(dialog.widget());
-        }
-        model.overlay = widgets.overlay.clone();
         model.root = Some(root);
     }
     update(self, message, sender) {
@@ -75,7 +70,7 @@ page!(InstallationType {
                 }
             }));
             // XXX: we shouldn't need to make this an overlay
-            // 
+            //
             // lains had me do this, it doesn't make sense
             // it makes zero fucking sense
             // it ruins UX, its ugly, but its the ONLY way to get it to even display
@@ -86,8 +81,12 @@ page!(InstallationType {
             if INSTALLATION_STATE.read().encrypt {
                 if let Some(dialog_ctrl) = self.dialog_child.as_ref() {
                     let dialog_widget = dialog_ctrl.widget().clone();
-                    if dialog_widget.parent().is_none() {
-                        self.overlay.add_overlay(&dialog_widget);
+                    if let Some(overlay) = self.overlay_widget() {
+                        if dialog_widget.parent().is_none() {
+                            overlay.add_overlay(&dialog_widget);
+                        }
+                    } else {
+                        tracing::warn!("failed to locate installation overlay; cannot show encryption dialog");
                     }
                     dialog_widget.present();
                     libhelium::prelude::HeDialogExt::set_visible(&dialog_widget, true);
@@ -102,11 +101,7 @@ page!(InstallationType {
         },
     } => {}
 
-#[name = "overlay"]
-gtk::Overlay {
-    #[wrap(Some)]
-    set_child = &gtk::Box {
-
+gtk::Box {
     set_orientation: gtk::Orientation::Vertical,
 
     gtk::Box {
@@ -244,8 +239,18 @@ gtk::Overlay {
             set_sensitive: crate::INSTALLATION_STATE.read().installation_type.is_some(),
         }
     }
-} }
+}
 );
+
+impl InstallationTypePage {
+    fn overlay_widget(&self) -> Option<gtk::Overlay> {
+        let root = self.root.as_ref()?;
+        let widget: &gtk::Widget = root.upcast_ref();
+        widget
+            .ancestor(gtk::Overlay::static_type())
+            .and_then(|ancestor| ancestor.downcast::<gtk::Overlay>().ok())
+    }
+}
 
 kurage::generate_component!(EncryptPassDialogue {
     btn_confirm: libhelium::Button,
