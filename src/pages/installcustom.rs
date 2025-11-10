@@ -64,19 +64,8 @@ impl SimpleComponent for InstallCustomPage {
                 set_hexpand: true,
 
                 #[local_ref]
-                scrolled_window -> gtk::ScrolledWindow {
-                    #[local_ref]
-                    mounts -> gtk::Box {
-                        set_margin_horizontal: 16,
-                        set_spacing: 8,
-                        set_orientation: gtk::Orientation::Vertical,
-                        add_css_class: "content-list",
-                        set_vexpand: true,
-                        set_hexpand: true,
-                        set_valign: gtk::Align::Center,
-                        set_halign: gtk::Align::Fill,
-                    }
-                },
+                scrolled_window -> gtk::ScrolledWindow {},
+                append = &scrolled_window,
 
                 #[local_ref]
                 bottom_bar -> libhelium::BottomBar {
@@ -113,6 +102,8 @@ impl SimpleComponent for InstallCustomPage {
                         connect_clicked => InstallCustomPageMsg::AddRow,
                     },
                 },
+                append = &bottom_bar,
+                },
             },
         }
     }
@@ -134,6 +125,7 @@ impl SimpleComponent for InstallCustomPage {
         let mounts = model.choose_mount_factory.widget();
         let widgets = view_output!();
 
+        widgets.scrolled_window.set_child(Some(&mounts));
         widgets.bottom_bar.set_overlay_widget(Some(&widgets.scrolled_window));
         widgets.bottom_bar.set_overlay_button(Some(&widgets.next_button));
 
