@@ -76,13 +76,6 @@ impl SimpleComponent for InstallCustomPage {
                     #[watch]
                     set_description: &t!("page-installcustom-desc", num = model.choose_mount_factory.len()),
 
-                    #[name(next_button)]
-                    libhelium::OverlayButton {
-                        set_typeb: libhelium::OverlayButtonTypeButton::Primary,
-                        set_icon: "go-next",
-                        connect_clicked => InstallCustomPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Confirmation)),
-                    },
-
                     prepend_button[libhelium::BottomBarPosition::Right] = &libhelium::Button {
                         set_is_iconic: true,
                         #[watch]
@@ -100,6 +93,14 @@ impl SimpleComponent for InstallCustomPage {
                         set_icon: Some("list-add"),
                         connect_clicked => InstallCustomPageMsg::AddRow,
                     },
+                },
+
+                #[name(next_button)]
+                libhelium::OverlayButton {
+                    set_typeb: libhelium::OverlayButtonTypeButton::Primary,
+                    set_icon: "go-next",
+                    connect_clicked => InstallCustomPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Confirmation)),
+                    set_visible: false,
                 },
             },
         }
