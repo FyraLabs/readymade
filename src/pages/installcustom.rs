@@ -125,8 +125,12 @@ impl SimpleComponent for InstallCustomPage {
         let widgets = view_output!();
 
         widgets.scrolled_window.set_child(Some(&mounts));
-        widgets.bottom_bar.set_overlay_widget(Some(&widgets.scrolled_window));
-        widgets.bottom_bar.set_overlay_button(Some(&widgets.next_button));
+        widgets
+            .bottom_bar
+            .set_overlay_widget(Some(&widgets.scrolled_window));
+        widgets
+            .bottom_bar
+            .set_overlay_button(Some(&widgets.next_button));
 
         INSTALLATION_STATE.subscribe(sender.input_sender(), |_| InstallCustomPageMsg::Update);
 
