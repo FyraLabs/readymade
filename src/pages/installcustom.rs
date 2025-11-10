@@ -65,7 +65,6 @@ impl SimpleComponent for InstallCustomPage {
 
                 #[name(scrolled_window)]
                 gtk::ScrolledWindow {},
-                append = &scrolled_window,
 
                 #[name(bottom_bar)]
                 libhelium::BottomBar {
@@ -102,7 +101,6 @@ impl SimpleComponent for InstallCustomPage {
                         connect_clicked => InstallCustomPageMsg::AddRow,
                     },
                 },
-                append = &bottom_bar,
             },
         }
     }
@@ -124,7 +122,8 @@ impl SimpleComponent for InstallCustomPage {
         let mounts = model.choose_mount_factory.widget();
         let widgets = view_output!();
 
-        widgets.scrolled_window.set_child(Some(&mounts));
+        let mounts_widget: &gtk::Widget = mounts.upcast_ref();
+        widgets.scrolled_window.set_child(Some(mounts_widget));
         widgets
             .bottom_bar
             .set_overlay_widget(Some(&widgets.scrolled_window));
