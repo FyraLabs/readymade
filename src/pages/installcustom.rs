@@ -78,9 +78,9 @@ impl SimpleComponent for InstallCustomPage {
                     }
                 },
 
-                libhelium::BottomBar {
+                #[local_ref]
+                bottom_bar -> libhelium::BottomBar {
                     set_mode: libhelium::BottomBarMode::Floating,
-                    set_overlay_widget = &scrolled_window,
 
                     #[watch]
                     set_title: &t!("page-installcustom-title"),
@@ -89,7 +89,7 @@ impl SimpleComponent for InstallCustomPage {
                     set_description: &t!("page-installcustom-desc", num = model.choose_mount_factory.len()),
 
                     #[local_ref]
-                    set_overlay_button = &next_button -> libhelium::OverlayButton {
+                    next_button -> libhelium::OverlayButton {
                         set_typeb: libhelium::OverlayButtonTypeButton::Primary,
                         set_icon: "go-next",
                         connect_clicked => InstallCustomPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Confirmation)),
@@ -133,6 +133,9 @@ impl SimpleComponent for InstallCustomPage {
 
         let mounts = model.choose_mount_factory.widget();
         let widgets = view_output!();
+
+        widgets.bottom_bar.set_overlay_widget(Some(&widgets.scrolled_window));
+        widgets.bottom_bar.set_overlay_button(Some(&widgets.next_button));
 
         INSTALLATION_STATE.subscribe(sender.input_sender(), |_| InstallCustomPageMsg::Update);
 
