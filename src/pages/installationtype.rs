@@ -69,13 +69,7 @@ page!(InstallationType {
                     InstallationType::Custom => Page::InstallCustom,
                 }
             }));
-            // XXX: we shouldn't need to make this an overlay
-            //
-            // it doesn't make sense
-            // it makes zero fucking sense
-            // it ruins UX, its ugly, but its the ONLY way to get it to even display
-            // - @korewaChino
-            // --- IGNORE ---
+
             if INSTALLATION_STATE.read().encrypt {
                 if let Some(dialog_ctrl) = self.dialog_child.as_ref() {
                     let dialog_widget = dialog_ctrl.widget().clone();

@@ -63,7 +63,8 @@ impl SimpleComponent for InstallCustomPage {
                 set_vexpand: true,
                 set_hexpand: true,
 
-                gtk::ScrolledWindow {
+                #[local_ref]
+                scrolled_window -> gtk::ScrolledWindow {
                     #[local_ref]
                     mounts -> gtk::Box {
                         set_margin_horizontal: 16,
@@ -77,25 +78,23 @@ impl SimpleComponent for InstallCustomPage {
                     }
                 },
 
-                // FIXME: help me position this button!!!!
-
-                libhelium::OverlayButton {
-                    set_valign: gtk::Align::End,
-                    set_halign: gtk::Align::End,
-
-                    set_typeb: libhelium::OverlayButtonTypeButton::Primary,
-                    set_icon: "go-next",
-                    connect_clicked => InstallCustomPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Confirmation)),
-                },
-
-
-
                 libhelium::BottomBar {
+                    set_mode: libhelium::BottomBarMode::Floating,
+                    #[local_ref]
+                    set_overlay_widget = &scrolled_window,
+
                     #[watch]
                     set_title: &t!("page-installcustom-title"),
 
                     #[watch]
                     set_description: &t!("page-installcustom-desc", num = model.choose_mount_factory.len()),
+
+                    #[local_ref]
+                    set_overlay_button = &next_button -> libhelium::OverlayButton {
+                        set_typeb: libhelium::OverlayButtonTypeButton::Primary,
+                        set_icon: "go-next",
+                        connect_clicked => InstallCustomPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Confirmation)),
+                    },
 
                     prepend_button[libhelium::BottomBarPosition::Right] = &libhelium::Button {
                         set_is_iconic: true,
