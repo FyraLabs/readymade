@@ -63,12 +63,12 @@ impl SimpleComponent for InstallCustomPage {
                 set_vexpand: true,
                 set_hexpand: true,
 
-                #[local_ref]
-                scrolled_window -> gtk::ScrolledWindow {},
+                #[name(scrolled_window)]
+                gtk::ScrolledWindow {},
                 append = &scrolled_window,
 
-                #[local_ref]
-                bottom_bar -> libhelium::BottomBar {
+                #[name(bottom_bar)]
+                libhelium::BottomBar {
                     set_mode: libhelium::BottomBarMode::Floating,
 
                     #[watch]
