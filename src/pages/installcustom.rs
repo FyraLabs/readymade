@@ -103,7 +103,6 @@ impl SimpleComponent for InstallCustomPage {
                     },
                 },
                 append = &bottom_bar,
-                },
             },
         }
     }
