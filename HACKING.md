@@ -49,7 +49,7 @@ There are however more runtime dependencies required to actually run Readymade, 
 You can simply run Readymade by executing the binary. It should be located in `target/release/readymade`.
 
 There are also extra PolicyKit rules to skip password prompts for `pkexec` to escalate the process as root.
-Copy the `com.fyralabs.pkexec.readymade.policy` file to `/usr/share/polkit-1/actions/` and restart the PolicyKit service.
+Copy the `data/com.fyralabs.pkexec.readymade.policy` file to `/usr/share/polkit-1/actions/` and restart the PolicyKit service.
 
 In development, it may be useful to specify options to the binary, such as the configuration file path, or the log level. You can do this by setting supported environment variables.
 
