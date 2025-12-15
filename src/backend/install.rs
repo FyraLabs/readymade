@@ -418,12 +418,6 @@ impl FinalInstallationState {
             crate::cmd!("umount" [["-R"], [tmproot]] => |_| bail!("umount -R {tmproot:?} failed"));
         }
 
-        if let DetailedInstallationType::ChromebookInstall = inst_type {
-            // FIXME: don't dd?
-            Self::flash_submarine(blockdev)?;
-            InstallationType::set_cgpt_flags(blockdev)?;
-        }
-
         tracing::info!("Cleaning up state...");
 
         if self.encrypts.is_some() {
@@ -660,74 +654,6 @@ impl FinalInstallationState {
             .try_collect()
     }
 
-    #[tracing::instrument]
-    fn flash_submarine(blockdev: &Path) -> Result<()> {
-        tracing::debug!("Flashing submarine…");
-
-        // Find target submarine partition
-        let target_partition = lsblk::BlockDevice::list()?
-            .into_iter()
-            .find(|d| {
-                d.is_part()
-                    && d.disk_name().ok().as_deref()
-                        == blockdev
-                            .strip_prefix("/dev/")
-                            .unwrap_or(&PathBuf::from(""))
-                            .to_str()
-                    && d.name.ends_with('2')
-            })
-            .ok_or_else(|| eyre!("Failed to find submarine partition"))?;
-
-        let source_path = Path::new("/usr/share/submarine/submarine.kpart");
-        let target_path = Path::new("/dev").join(&target_partition.name);
-
-        let mut source_file = std::fs::File::open(source_path)?;
-        let mut target_file = std::fs::OpenOptions::new().write(true).open(target_path)?;
-
-        std::io::copy(&mut source_file, &mut target_file)?;
-        target_file.sync_all()?;
-
-        Ok(())
-    }
-    // As of February 14, 2025, I have disabled the `dd` method for flashing the submarine partition,
-    // because we shouldn't really be dropping to shell commands for this kind of thing.
-    //
-    // The `dd` method is still here for reference if we ever need to use it again.
-    //
-    // See above for the new method of flashing the submarine partition,
-    // programmatically copying the submarine partition to the target disk.
-    //
-    // - Cappy
-    /*
-    #[tracing::instrument]
-    fn dd_submarine(blockdev: &Path) -> Result<()> {
-        tracing::debug!("dd-ing submarine…");
-        if !Command::new("dd")
-            .arg("if=/usr/share/submarine/submarine.kpart")
-            .arg(format!(
-                "of=/dev/{}",
-                lsblk::BlockDevice::list()?
-                    .into_iter()
-                    .find(|d| d.is_part()
-                        && d.disk_name().ok().as_deref()
-                            == blockdev
-                                .strip_prefix("/dev/")
-                                .unwrap_or(&PathBuf::from(""))
-                                .to_str()
-                        && d.name.ends_with('2'))
-                    .ok_or_else(|| eyre!("Failed to find submarine partition"))?
-                    .name
-            ))
-            .arg("status=progress")
-            .status()?
-            .success()
-        {
-            return Err(eyre!("Failed to dd submarine, non-zero exit code"));
-        }
-        Ok(())
-    }
-    */
-
     /// Mount a device or file to /mnt/live-base
     fn mount_dev(dev: &str) -> std::io::Result<sys_mount::Mount> {
         const MOUNTPOINT: &str = "/mnt/live-base";
@@ -890,15 +816,6 @@ impl InstallationType {
             Self::DualBoot(_) => todo!(),
             Self::Custom => unreachable!(),
         }
-    }
-
-    fn set_cgpt_flags(blockdev: &Path) -> Result<()> {
-        tracing::debug!("Setting cgpt flags");
-        crate::cmd!("cgpt" [
-            ["add", "-i", "2", "-t", "kernel", "-P", "15", "-T", "1", "-S", "1"],
-            [blockdev]
-        ] => |r| bail!("cgpt command failed with exit code {:?}", r.code()));
-        Ok(())
     }
 }
 
