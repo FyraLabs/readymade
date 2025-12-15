@@ -1,0 +1,5 @@
+rdm chromebook issues
+
+sometimes os-prober gets stuck
+fails on generating efi stub
+Netto wifi connect experience needs improvement, doesn't seem to work properly in my testing
