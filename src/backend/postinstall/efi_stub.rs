@@ -1,3 +1,4 @@
+use crate::util::sys::check_uefi;
 use color_eyre::{eyre::bail, Result};
 use serde::{Deserialize, Serialize};
 use std::process::Command;
@@ -18,7 +19,7 @@ impl PostInstallModule for EfiStub {
     fn run(&self, context: &Context) -> Result<()> {
         // two guard clauses for checking EFI and
         // existence of an ESP partition
-        if !context.uefi {
+        if !context.uefi || !check_uefi() {
             return Ok(());
         }
 
