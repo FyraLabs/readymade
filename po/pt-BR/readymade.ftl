@@ -15,7 +15,7 @@ page-failure = Falha na instalação
 page-failure-close = Fechar
 page-failure-bug = Reporte uma falha
 page-language = Linguagem
-page-language-search-lang = Pesquisar idioma/localidade
+page-language-search-lang = Pesquisar Idioma/Localidade…
 page-language-next = Próximo
 page-completed = Completo
 page-completed-desc = Instalação completa. Você pode reiniciar agora e aproveitar seu novo sistema.
@@ -27,7 +27,7 @@ page-destination-wait = Esperando o os-prober…
 page-destination-no-disk = Nenhum disco encontrado
 page-destination-no-disk-desc = Não foram encontrados discos adequados para instalação.
 page-installdual = Dual Boot
-page-installdual-otheros = Outro S.O.
+page-installdual-otheros = Outro SO
 page-confirmation = Confirmar
 page-confirmation-problem-device-mounted = { $dev } está montado em { $mountpoint }. Desmonte para prosseguir.
 page-confirmation-problem-devblkopen =
@@ -82,3 +82,7 @@ stage-biosgrub = Instalando Grub2 de BIOS
 stage-kernel = Reinstalando kernels
 stage-selinux = Configurando rótulos SELinux
 err-no-bios = Não é possível detectar /sys/firmware/efi, e a distribuição desabilitou o suporte ao BIOS.
+dialog-confirm-warn-efipartfound-title = Partição EFI Detectada
+dialog-confirm-warn-efipartfound-desc =
+    Caso esteja realizando esta instalação junto a outro sistema, verifique se não existe uma partição EFI no disco de destino.
+    O disco de destino selecionado contêm uma partição EFI que será apagada e reformatada durante a instalação, tornando os sistemas nela registrados não inicializáveis. Essa ação é irreversível.
