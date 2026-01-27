@@ -86,3 +86,7 @@ stage-biosgrub = Instalowanie BIOSowego Grub2
 stage-kernel = Ponowna instalacja jąder
 stage-selinux = Ustawianie etykiet SELinux
 err-no-bios = Nie wykryto /sys/firmware/efi, a dystrybucja wyłączyła wsparcie BIOSu.
+dialog-confirm-warn-efipartfound-title = Wykryto partycję EFI
+dialog-confirm-warn-efipartfound-desc =
+    Jeżeli instalujesz obok innego systemu, proszę upewnić się, że jego partycja EFI nie istnieje na docelowym dysku.
+    Wybrany dysk docelowy zawiera partycję EFI, która może zostać wyczyszczona i sformatowana ponownie podczas instalacji, sprawiając że systemy zarejestrowane w niej są nieuruchamialne. Ta czynność jest nieodwracalna.
