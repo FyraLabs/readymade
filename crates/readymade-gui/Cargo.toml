@@ -1,0 +1,87 @@
+[package]
+name = "readymade-gui"
+version = "0.12.5"
+edition = "2021"
+license = "GPL-3.0-or-later"
+description = "Readymade GUI entrypoint"
+repository = "https://github.com/FyraLabs/readymade"
+publish = false
+
+[dependencies]
+readymade-lib = { path = "../readymade-lib" }
+color-eyre = "=0.6.5"
+relm4 = { version = "*", features = ["macros"] }
+gtk4 = { version = "*", features = ["v4_12"] }
+libhelium = { version = "0.12.0", features = ["gtk_v4_12", "v1_8"] }
+tracing = { version = "0.1.41", features = ["log"] }
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tracing-appender = "0.2"
+tracing-journald = "0.3.1"
+itertools = "0.14.0"
+paste = "1.0.15"
+tempfile = "3.20.0"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+bytesize = { version = "2.0.1", features = ["serde"] }
+ipc-channel = { version = "0.20.0", features = ["async"] }
+i18n-embed = { version = "0.16.0", features = [
+    "desktop-requester",
+    "filesystem-assets",
+    "fluent-system",
+] }
+i18n-embed-fl = "0.10.0"
+rust-embed = { version = "8.7.2", features = ["include-exclude"] }
+with_builtin_macros = "0.1.0"
+no_color = "0.2.0"
+poly_l10n = "0.0.6"
+parking_lot = "0.12.4"
+sentry-eyre = "0.3.0"
+sentry = { version = "0.46.2", features = ["tracing", "logs"] }
+lsblk = "0.6.1"
+kurage = "0.1.4"
+freedesktop-desktop-entry = { version = "0.7.11", git = "https://github.com/madonuko/freedesktop-desktop-entry", default-features = false }
+
+[build-dependencies]
+glib-build-tools = "0.21.0"
+
+[lints.clippy]
+complexity = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+disallowed-macros = "deny"
+excessive-nesting = "warn"
+assertions_on_result_states = "warn"
+clone_on_ref_ptr = "warn"
+create_dir = "warn"
+empty_enum_variants_with_brackets = "warn"
+empty_structs_with_brackets = "warn"
+field_scoped_visibility_modifiers = "deny"
+format_push_string = "warn"
+get_unwrap = "warn"
+if_then_some_else_none = "warn"
+impl_trait_in_params = "warn"
+infinite_loop = "deny"
+let_underscore_must_use = "deny"
+let_underscore_untyped = "warn"
+multiple_inherent_impl = "warn"
+needless_raw_strings = "warn"
+rc_buffer = "warn"
+rc_mutex = "deny"
+redundant_type_annotations = "warn"
+ref_patterns = "warn"
+renamed_function_params = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+semicolon_outside_block = "warn"
+str_to_string = "warn"
+string_lit_chars_any = "warn"
+string_to_string = "warn"
+tests_outside_test_module = "warn"
+todo = "warn"
+try_err = "warn"
+undocumented_unsafe_blocks = "deny"
+unimplemented = "warn"
+unneeded_field_pattern = "warn"
+equatable_if_let = "allow"
+cognitive_complexity = "allow"
+cast_possible_truncation = "allow"
