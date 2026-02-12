@@ -123,8 +123,8 @@ pub struct InstallationPage {
 pub enum InstallationPageMsg {
     Open(String),
     StartInstallation,
-    #[doc(hidden)]
-    Navigate(NavigationAction),
+    // #[doc(hidden)]
+    // Navigate(NavigationAction),
     Update,
     #[doc(hidden)]
     Throb,
@@ -308,9 +308,9 @@ impl Component for InstallationPage {
                     )
                 });
             }
-            InstallationPageMsg::Navigate(action) => sender
-                .output(InstallationPageOutput::Navigate(action))
-                .unwrap(),
+            // InstallationPageMsg::Navigate(action) => sender
+            //     .output(InstallationPageOutput::Navigate(action))
+            //     .unwrap(),
             InstallationPageMsg::Update => {}
             InstallationPageMsg::Throb => self.progress_bar.pulse(),
             InstallationPageMsg::SubprocessMessage(InstallationMessage::Status(status)) => {
