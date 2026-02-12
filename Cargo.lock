@@ -3805,6 +3805,7 @@ dependencies = [
  "sentry-contexts",
  "sentry-core",
  "sentry-debug-images",
+ "sentry-log",
  "sentry-panic",
  "sentry-tracing",
  "tokio",
@@ -3879,6 +3880,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82d0227188c4e1e7884a05ec83465cdd706d748c350c97a1c2820ba34b07b5e6"
 dependencies = [
  "eyre",
+ "sentry-core",
+]
+
+[[package]]
+name = "sentry-log"
+version = "0.46.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e200860daf76e09f9ad111bce25928f96bedbb84bc5934b37f05bb445727c70e"
+dependencies = [
+ "bitflags",
+ "log",
  "sentry-core",
 ]
 

@@ -69,7 +69,7 @@ parking_lot = "0.12.4"
 file-guard = "0.2.0"
 taidan_proc_macros = { path = "./crates/taidan_proc_macros" }
 sentry-eyre = "0.3.0"
-sentry = "0.46.2"
+sentry = { version = "0.46.2", features = ["tracing", "logs"] }
 
 # [dependencies.os-detect]
 # git = "https://github.com/FyraLabs/distinst"
