@@ -9,4 +9,4 @@ jobs:
         uses: FyraLabs/actions/.github/workflows/rust.yml@main
         with:
             test-container: '{"image": "ghcr.io/terrapkg/builder:f41"}'
-            test-pre: dnf install -y libhelium-devel 'pkgconfig(gnome-desktop-4)' clang-devel gcc mold cmake cryptsetup
+            test-pre: dnf install -y libhelium-devel 'pkgconfig(gnome-desktop-4)' 'pkgconfig(openssl)' clang-devel gcc mold cmake cryptsetup
