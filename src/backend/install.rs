@@ -328,6 +328,7 @@ impl FinalInstallationState {
                     .filter(|(key, _)| key.starts_with("REPART_") || key.starts_with("READYMADE_"))
                     .map(|(key, value)| format!("{key}={value}")),
             )
+            .arg("RUST_BACKTRACE=full")
             .arg("NO_COLOR=1")
             .arg(format!(
                 "READYMADE_LOG={}",
@@ -345,6 +346,11 @@ impl FinalInstallationState {
     }
 
     fn subprocess_err(output: &std::process::Output, logs: &str) -> Result<()> {
+        tracing::error!(
+            status = output.status.to_string(),
+            "Readymade subprocess failed"
+        );
+        tracing::error!(logs);
         Err(eyre!("Readymade subprocess failed")
             .with_note(|| output.status.to_string())
             .with_note(|| format!("Logs:\n{logs}")))

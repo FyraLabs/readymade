@@ -12,6 +12,7 @@ BuildRequires:  gcc
 BuildRequires:  mold
 BuildRequires:  cmake
 BuildRequires:  glibc-all-langpacks
+BuildRequires:  openssl-devel
 # We'll need cryptsetup to unlock disks for now
 Requires:       cryptsetup
 Recommends:     readymade-config

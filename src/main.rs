@@ -246,6 +246,17 @@ fn handle_l10n() -> i18n_embed::fluent::FluentLanguageLoader {
 #[allow(clippy::missing_errors_doc)]
 #[allow(clippy::missing_panics_doc)]
 fn main() -> Result<()> {
+    let _guard = sentry::init((
+        "https://d5f6d7f57fee8ac5deac757e05d1b0bd@o271654.ingest.us.sentry.io/4510871707713536",
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            send_default_pii: false,
+            auto_session_tracking: true,
+            session_mode: sentry::SessionMode::Application,
+            enable_logs: true,
+            ..Default::default()
+        },
+    ));
     // PERF: this is probably premature optimisation but hey it kinda helps
     let langs_th = std::thread::spawn(|| LazyLock::force(&AVAILABLE_LANGS));
     let _guard = setup_hooks();
@@ -266,7 +277,9 @@ fn main() -> Result<()> {
 
         *LL.write() = handle_l10n();
         langs_th.join().expect("cannot join available_langs_th");
-        return install_state.install();
+        return install_state
+            .install()
+            .inspect_err(|e| _ = sentry_eyre::capture_report(e));
     }
 
     *CONFIG.write() = cfg::get_cfg()?;
@@ -346,6 +359,7 @@ fn setup_hooks() -> impl std::any::Any {
 
     tracing_subscriber::registry()
         .with(fmt::layer().pretty().with_ansi(!no_color::is_no_color()))
+        .with(sentry::integrations::tracing::layer())
         .with(EnvFilter::from_env("READYMADE_LOG"))
         .with(
             tracing_journald::layer()
