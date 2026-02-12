@@ -2,7 +2,6 @@
 mod pages;
 pub mod prelude;
 
-use libreadymade::backend::{custom::MountTargets, install::FinalInstallationState};
 use parking_lot::{Mutex, RwLock};
 use std::sync::LazyLock;
 
@@ -10,15 +9,15 @@ use crate::prelude::*;
 use gtk::glib::translate::FromGlibPtrNone;
 use i18n_embed::LanguageLoader as _;
 use ipc_channel::ipc::IpcSender;
-use libreadymade::backend::install::{IPC_CHANNEL, InstallationState, InstallationType};
-use libreadymade::cfg;
 use pages::installation::InstallationPageMsg;
+use readymade_lib::backend::install::InstallationType;
+use readymade_lib::{InstallationState, IPC_CHANNEL};
 use relm4::SharedState;
-use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 /// State related to the user's installation configuration
 static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
-static CONFIG: SharedState<cfg::ReadymadeConfig> = SharedState::new();
+static CONFIG: SharedState<readymade_lib::ReadymadeConfig> = SharedState::new();
 
 pub static LL: LazyLock<RwLock<i18n_embed::fluent::FluentLanguageLoader>> =
     LazyLock::new(|| RwLock::new(handle_l10n()));
@@ -190,15 +189,15 @@ impl SimpleComponent for AppModel {
             AppMsg::StartInstallation => {
                 let value = INSTALLATION_STATE.read().installation_type;
                 if let Some(InstallationType::Custom) = value {
-                    INSTALLATION_STATE.write().mounttags = Some(MountTargets(
-                        self.install_custom_page
-                            .model()
-                            .choose_mount_factory
-                            .iter()
-                            .cloned()
-                            .map(|t| t.0)
-                            .collect(),
-                    ));
+                    INSTALLATION_STATE.write().mounttags =
+                        Some(readymade_lib::backend::custom::MountTargets(
+                            self.install_custom_page
+                                .model()
+                                .choose_mount_factory
+                                .iter()
+                                .cloned()
+                                .collect(),
+                        ));
                 }
                 self.installation_page
                     .emit(InstallationPageMsg::StartInstallation);
@@ -269,7 +268,8 @@ fn main() -> Result<()> {
         )?;
 
         IPC_CHANNEL.set(Mutex::new(channel)).unwrap();
-        let install_state: FinalInstallationState = serde_json::from_reader(std::io::stdin())?;
+        let install_state: readymade_lib::FinalInstallationState =
+            serde_json::from_reader(std::io::stdin())?;
 
         *LL.write() = handle_l10n();
         langs_th.join().expect("cannot join available_langs_th");
@@ -278,7 +278,7 @@ fn main() -> Result<()> {
             .inspect_err(|e| _ = sentry_eyre::capture_report(e));
     }
 
-    *CONFIG.write() = cfg::get_cfg()?;
+    *CONFIG.write() = readymade_lib::cfg::get_cfg()?;
     *INSTALLATION_STATE.write() = InstallationState::from(&*CONFIG.read());
 
     gtk::gio::resources_register_include!("resources.gresource")?;
@@ -294,19 +294,19 @@ fn main() -> Result<()> {
         Result::<()>::Ok(())
     });
 
-    let default_accent = unsafe {
-        &libhelium::RGBColor::from_glib_none(std::ptr::from_mut(&mut libhelium::ffi::HeRGBColor {
-            r: 0.0,
-            g: 7.0,
-            b: 143.0,
-        }))
-    };
-
     let app = libhelium::Application::builder()
         .application_id(APPID)
         .flags(libhelium::gtk::gio::ApplicationFlags::default())
         // SAFETY: placeholder
-        .default_accent_color(default_accent)
+        .default_accent_color(unsafe {
+            &libhelium::RGBColor::from_glib_none(std::ptr::from_mut(
+                &mut libhelium::ffi::HeRGBColor {
+                    r: 0.0,
+                    g: 7.0,
+                    b: 143.0,
+                },
+            ))
+        })
         .build();
 
     tracing::debug!("Starting Readymade");
@@ -330,7 +330,7 @@ fn setup_hooks() -> impl std::any::Any {
         {
             let (key, value) = arg.split_once('=').unwrap();
             println!("Setting env var {key} to {value}");
-            unsafe { std::env::set_var(key, value) };
+            std::env::set_var(key, value);
         }
     }
 

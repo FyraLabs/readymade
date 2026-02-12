@@ -1,4 +1,4 @@
-use serde::{ser, Serialize};
+use serde::{Serialize, ser};
 
 #[derive(Default)]
 pub struct Serializer {

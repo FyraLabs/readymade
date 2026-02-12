@@ -1,6 +1,7 @@
 use file_guard::Lock;
 use ipc_channel::ipc::{IpcError, IpcOneShotServer, IpcSender};
 use parking_lot::Mutex;
+use relm4::Sender;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
@@ -15,7 +16,7 @@ use crate::{
         repart_output::{CryptData, RepartOutput},
     },
     consts::{self, repart_dir, LIVE_BASE, ROOTFS_BASE},
-    pages::destination::DiskInit,
+    disks::DiskInit,
     prelude::*,
     stage,
     util::{self, sys::check_uefi},
@@ -40,6 +41,7 @@ pub struct InstallationState {
     pub installation_type: Option<InstallationType>,
     pub mounttags: Option<crate::backend::custom::MountTargets>,
     pub postinstall: Vec<crate::backend::postinstall::Module>,
+    pub config: Option<crate::cfg::ReadymadeConfig>,
     pub encrypt: bool,
     pub tpm: bool,
     pub encryption_key: Option<String>,
@@ -187,6 +189,7 @@ impl From<&crate::cfg::ReadymadeConfig> for InstallationState {
             bootc_enforce_sigpolicy: value.install.bootc_enforce_sigpolicy,
             bootc_kargs: value.install.bootc_kargs.clone(),
             bootc_args: value.install.bootc_args.clone(),
+            config: Some(value.clone()),
             ..Self::default()
         }
     }
@@ -245,7 +248,10 @@ impl From<&InstallationState> for FinalInstallationState {
             destination_disk: value.destination_disk.clone().expect("no destination_disk"),
             installation_type: value.to_detailed_installation_type(),
             encrypts: value.to_encrypt_state(),
-            config: crate::CONFIG.read().clone(),
+            config: value
+                .config
+                .clone()
+                .expect("installation state missing config"),
             copy_mode: value.to_detailed_copy_mode(),
         }
     }
@@ -261,10 +267,7 @@ type CallSubprocessRes = Result<(String, std::io::Result<std::process::Output>)>
 
 impl FinalInstallationState {
     // todo: move methods from installationstate to here!
-    pub fn install_using_subprocess(
-        &self,
-        sender: &relm4::Sender<InstallationMessage>,
-    ) -> Result<()> {
+    pub fn install_using_subprocess(&self, sender: &Sender<InstallationMessage>) -> Result<()> {
         // HACK: #59 necessitates a way to check for this error message to rerun subprocess:
         const REPART_DEVICE_BUSY: &[u8] =
             b"Failed to reread partition table: Device or resource busy\n";
@@ -303,7 +306,7 @@ impl FinalInstallationState {
     }
 
     #[allow(clippy::unwrap_in_result)]
-    fn call_subprocess(&self, sender: &relm4::Sender<InstallationMessage>) -> CallSubprocessRes {
+    fn call_subprocess(&self, sender: &Sender<InstallationMessage>) -> CallSubprocessRes {
         let (server, channel_id) = IpcOneShotServer::new()?;
         let handle_ipc = || {
             let (receiver, _) = server.accept().expect("cannot accept ipc server");

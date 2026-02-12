@@ -8,7 +8,7 @@ use std::{
 use lsblk::Populate;
 use osprobe::OSProbe;
 
-use crate::pages::destination::DiskInit;
+pub use crate::DiskInit;
 
 /// Try and scan the system for disks and their installed OS
 pub fn detect_os() -> Vec<DiskInit> {
@@ -40,7 +40,7 @@ fn make_disk_init(osprobe: &HashMap<PathBuf, String>, mut disk: lsblk::BlockDevi
                 path.starts_with(disk.fullname.to_str().unwrap())
                     .then_some(osname)
             })
-            .map_or_else(|| crate::t!("unknown-os"), ToOwned::to_owned),
+            .map_or_else(|| "Unknown OS".to_owned(), ToOwned::to_owned),
         size: bytesize::ByteSize::kib(disk.capacity().unwrap().unwrap() >> 1),
         devpath: disk.fullname,
     };

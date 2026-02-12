@@ -1,40 +1,9 @@
-use crate::{INSTALLATION_STATE, NavigationAction, prelude::*};
+use std::path::PathBuf;
+
 use relm4::factory::FactoryVecDeque;
-use std::{ops::DerefMut, path::PathBuf};
 
-#[derive(Debug, Clone)]
-pub struct ChooseMount(pub libreadymade::backend::custom::MountTarget);
-
-impl From<AddDialog> for ChooseMount {
-    fn from(
-        AddDialog {
-            partition,
-            mountpoint,
-            mountopts,
-            index,
-        }: AddDialog,
-    ) -> Self {
-        Self(libreadymade::backend::custom::MountTarget {
-            index,
-            partition: std::path::PathBuf::from(&partition),
-            mountpoint: std::path::PathBuf::from(&mountpoint),
-            options: mountopts.clone(),
-        })
-    }
-}
-
-impl std::ops::Deref for ChooseMount {
-    type Target = libreadymade::backend::custom::MountTarget;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for ChooseMount {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+use crate::{prelude::*, NavigationAction, INSTALLATION_STATE};
+use readymade_lib::backend::custom::MountTarget as ChooseMount;
 
 /// Wizard to set up custom partitioning.
 ///
@@ -624,7 +593,7 @@ kurage::generate_component!(AddDialog {
     }
 );
 
-impl From<&AddDialog> for libreadymade::backend::custom::MountTarget {
+impl From<&AddDialog> for ChooseMount {
     fn from(
         AddDialog {
             partition,
@@ -644,12 +613,12 @@ impl From<&AddDialog> for libreadymade::backend::custom::MountTarget {
 
 impl From<&ChooseMount> for AddDialog {
     fn from(
-        ChooseMount(libreadymade::backend::custom::MountTarget {
+        ChooseMount {
             index,
             partition,
             mountpoint,
             options,
-        }): &ChooseMount,
+        }: &ChooseMount,
     ) -> Self {
         Self {
             index: *index,
@@ -660,7 +629,7 @@ impl From<&ChooseMount> for AddDialog {
     }
 }
 
-impl From<AddDialog> for libreadymade::backend::custom::MountTarget {
+impl From<AddDialog> for ChooseMount {
     fn from(
         AddDialog {
             partition,
@@ -680,12 +649,12 @@ impl From<AddDialog> for libreadymade::backend::custom::MountTarget {
 
 impl From<ChooseMount> for AddDialog {
     fn from(
-        ChooseMount(libreadymade::backend::custom::MountTarget {
+        ChooseMount {
             index,
             partition,
             mountpoint,
             options,
-        }): ChooseMount,
+        }: ChooseMount,
     ) -> Self {
         Self {
             index,
@@ -713,7 +682,7 @@ impl AddDialog {
         ctrl.detach_runtime();
         ctrl.widget().set_transient_for(root_window.as_ref());
         libhelium::prelude::WindowExt::set_parent(ctrl.widget(), root_window.as_ref()); // FIXME: doubt if this actually works
-        // temporary hack is to use the gtk one instead
+                                                                                        // temporary hack is to use the gtk one instead
         gtk::prelude::WidgetExt::set_parent(ctrl.widget(), &root_window.expect("no root window"));
         ctrl.widget().present();
         ctrl
@@ -816,10 +785,10 @@ impl PartitionToolSelector {
         let locales = freedesktop_desktop_entry::get_languages_from_env();
         // we could do from_path() but we want to future proof this in case XDG or Fedora
         // changes some paths from now on, plus we don't have to hardcode the paths
-
-        freedesktop_desktop_entry::Iter::new(freedesktop_desktop_entry::default_paths())
+        let x = freedesktop_desktop_entry::Iter::new(freedesktop_desktop_entry::default_paths())
             .entries(Some(&locales))
-            .find(|entry| entry.appid == desktop_entry) // FIXME: why can't we inline this variable
+            .find(|entry| entry.appid == desktop_entry);
+        x // FIXME: why can't we inline this variable
     }
     fn make_window(widget: impl IsA<gtk::Widget>) -> Controller<Self> {
         let root_window = widget.toplevel_window();
