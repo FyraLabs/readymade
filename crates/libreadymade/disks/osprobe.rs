@@ -22,7 +22,9 @@ impl OSProbe {
         // Minimum 4 parts, Part 5, 6 and 7 are optional
 
         let [part, os_name_pretty, /*os_name, part_type,*/ ..] = parts[..] else {
-            panic!("Expected at least 4 OS Probe entries for `{entry}`, but found the following: {parts:?}");
+            panic!(
+                "Expected at least 4 OS Probe entries for `{entry}`, but found the following: {parts:?}"
+            );
         };
 
         tracing::info_span!("Serializing os-prober entry").in_scope(|| Self {

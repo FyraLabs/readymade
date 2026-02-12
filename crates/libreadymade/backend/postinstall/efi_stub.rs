@@ -1,5 +1,5 @@
 use crate::util::sys::check_uefi;
-use color_eyre::{eyre::bail, Result};
+use color_eyre::{Result, eyre::bail};
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 
@@ -58,7 +58,9 @@ impl PostInstallModule for EfiStub {
 
             tracing::error!("Failed to create EFI boot entry");
 
-            tracing::warn!("EFI boot entry creation failed, You may not be able to find the installed OS in the boot menu");
+            tracing::warn!(
+                "EFI boot entry creation failed, You may not be able to find the installed OS in the boot menu"
+            );
 
             // todo: Implement a popup to warn the user, since this is not a critical error but should be noted
         }

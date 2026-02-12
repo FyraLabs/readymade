@@ -5,7 +5,7 @@ use std::{
     time::SystemTime,
 };
 
-use color_eyre::eyre::{bail, eyre, Context as _};
+use color_eyre::eyre::{Context as _, bail, eyre};
 
 /// Ignore errors about nonexisting files.
 pub fn exist_then<T: Default>(r: std::io::Result<T>) -> std::io::Result<T> {
@@ -248,7 +248,7 @@ fn copy_attributes_handle_timestamps(
     dest_path: &Path,
     metadata: &std::fs::Metadata,
 ) -> Result<(), color_eyre::eyre::Error> {
-    use nix::sys::stat::{utimensat, UtimensatFlags};
+    use nix::sys::stat::{UtimensatFlags, utimensat};
     let atime = metadata.accessed()?;
     let mtime = metadata.modified()?;
     let atime_ts = system_time_to_timespec(atime);

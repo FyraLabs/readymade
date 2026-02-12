@@ -1,9 +1,9 @@
-use libreadymade::backend::install::InstallationMessage;
 use crate::prelude::*;
 use crate::{INSTALLATION_STATE, NavigationAction};
 use color_eyre::Result;
 use l10n::BENTO_LOADER as L;
 use libreadymade::backend::install::FinalInstallationState;
+use libreadymade::backend::install::InstallationMessage;
 use relm4::{Component, ComponentParts, ComponentSender};
 use std::time::Duration;
 

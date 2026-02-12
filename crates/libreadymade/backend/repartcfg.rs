@@ -8,8 +8,9 @@
 use bytesize::ByteSize;
 use serde::Deserialize;
 use serde_with::{
+    StringWithSeparator,
     formats::{ColonSeparator, SemicolonSeparator, SpaceSeparator},
-    serde_as, StringWithSeparator,
+    serde_as,
 };
 use std::{env::consts::ARCH, str::FromStr};
 

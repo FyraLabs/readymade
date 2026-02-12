@@ -1,6 +1,6 @@
 use std::os::unix::fs::PermissionsExt;
 
-use color_eyre::{eyre::Context as _, Result, Section as _};
+use color_eyre::{Result, Section as _, eyre::Context as _};
 use serde::{Deserialize, Serialize};
 
 use super::{Context, PostInstallModule};

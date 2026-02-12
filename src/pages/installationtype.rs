@@ -2,8 +2,8 @@ use std::sync::LazyLock;
 
 use crate::prelude::*;
 
+use crate::{INSTALLATION_STATE, NavigationAction, Page};
 use libreadymade::backend::install::InstallationType;
-use crate::{NavigationAction, Page, INSTALLATION_STATE};
 use relm4::RelmWidgetExt;
 
 static TPM_SUPPORT: LazyLock<bool> = LazyLock::new(|| {
