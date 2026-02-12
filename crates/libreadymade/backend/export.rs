@@ -28,6 +28,7 @@ impl ReadymadeResult {
         Ok(serde_json::to_string_pretty(&self)?)
     }
 
+    #[must_use] 
     pub fn new(
         state: FinalInstallationState,
         systemd_repart_data: Option<SystemdRepartData>,
@@ -48,6 +49,7 @@ pub struct SystemdRepartData {
 }
 
 impl SystemdRepartData {
+    #[must_use] 
     pub const fn new(configs: BTreeMap<String, RepartConfig>) -> Self {
         Self { configs }
     }
@@ -76,6 +78,7 @@ impl SystemdRepartData {
     }
 }
 
+#[must_use] 
 pub fn prep_state_for_export(mut state: FinalInstallationState) -> FinalInstallationState {
     // Clear out passwords
     if let Some(super::install::EncryptState { encryption_key, .. }) = &mut state.encrypts {

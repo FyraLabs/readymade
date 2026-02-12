@@ -122,6 +122,7 @@ impl DetailedInstallationType {
         matches!(self, Self::ChromebookInstall)
     }
 
+    #[must_use] 
     pub const fn as_dual_boot(&self) -> Option<&u64> {
         if let Self::DualBoot(v) = self {
             Some(v)
@@ -130,6 +131,7 @@ impl DetailedInstallationType {
         }
     }
 
+    #[must_use] 
     pub const fn mounttags(&self) -> Option<&crate::backend::custom::MountTargets> {
         if let Self::Custom { mounttags } = self {
             Some(mounttags)
@@ -434,11 +436,10 @@ impl FinalInstallationState {
 
             // Close all mapped LUKS devices if exists
 
-            if let Some(mut cache) = super::repart_output::MAPPER_CACHE.try_write() {
-                if let Some(cache) = std::sync::Arc::get_mut(&mut cache) {
+            if let Some(mut cache) = super::repart_output::MAPPER_CACHE.try_write()
+                && let Some(cache) = std::sync::Arc::get_mut(&mut cache) {
                     cache.clear();
                 }
-            }
         }
 
         tracing::info!("install() finished");
@@ -492,7 +493,7 @@ impl FinalInstallationState {
                 //
                 // todo: add some global cache for decrypted partitions
                 let mapper = crate::backend::repart_output::luks_decrypt(&node, pass, &label)?;
-                decrypted_partitions.insert(node.clone(), mapper.clone());
+                decrypted_partitions.insert(node, mapper.clone());
                 mapper
             };
             Result::<_, color_eyre::eyre::Error>::Ok((node, mp))
@@ -671,6 +672,7 @@ impl FinalInstallationState {
         sys_mount::Mount::builder().mount(dev, MOUNTPOINT)
     }
 
+    #[must_use] 
     pub fn determine_copy_source() -> String {
         const FALLBACK: &str = "/mnt/live-base";
         // We'll be using a new feature from systemd 255 (relative repart copy source)

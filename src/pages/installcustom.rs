@@ -816,10 +816,10 @@ impl PartitionToolSelector {
         let locales = freedesktop_desktop_entry::get_languages_from_env();
         // we could do from_path() but we want to future proof this in case XDG or Fedora
         // changes some paths from now on, plus we don't have to hardcode the paths
-        let x = freedesktop_desktop_entry::Iter::new(freedesktop_desktop_entry::default_paths())
+        
+        freedesktop_desktop_entry::Iter::new(freedesktop_desktop_entry::default_paths())
             .entries(Some(&locales))
-            .find(|entry| entry.appid == desktop_entry);
-        x // FIXME: why can't we inline this variable
+            .find(|entry| entry.appid == desktop_entry) // FIXME: why can't we inline this variable
     }
     fn make_window(widget: impl IsA<gtk::Widget>) -> Controller<Self> {
         let root_window = widget.toplevel_window();

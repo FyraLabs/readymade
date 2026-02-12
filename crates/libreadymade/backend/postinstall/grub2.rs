@@ -162,7 +162,7 @@ impl PostInstallModule for GRUB2 {
                 let block_devices = lsblk::BlockDevice::list()?;
                 let xbootldr_uuid = block_devices
                     .iter()
-                    .find(|dev| dev.fullname == PathBuf::from(xbootldr_disk))
+                    .find(|dev| dev.fullname == *xbootldr_disk)
                     .and_then(|dev| dev.uuid.as_ref())
                     .ok_or_else(|| eyre!("Could not find UUID for xbootldr partition"))?;
 

@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::str::FromStr;
 
 use thiserror::Error;
 
@@ -130,30 +130,30 @@ pub struct FsEntry {
 }
 
 impl FsEntry {
-    /// Parse a FsEntry from a line in the fstab file.
+    /// Parse a `FsEntry` from a line in the fstab file.
     pub fn from_line_str(line: &str) -> std::result::Result<Self, FsTableError> {
         // split by whitespace
         let parts: Vec<&str> = line.split_whitespace().collect();
 
         if parts.len() < 6 {
-            return Err(FsTableError::InvalidEntry(line.to_string()));
+            return Err(FsTableError::InvalidEntry(line.to_owned()));
         }
 
-        let device_spec = parts[0].to_string();
+        let device_spec = parts[0].to_owned();
 
         let mountpoint = if parts[1] == "none" {
             None
         } else {
-            Some(parts[1].to_string())
+            Some(parts[1].to_owned())
         };
 
-        let fs_type = parts[2].to_string();
+        let fs_type = parts[2].to_owned();
 
-        let options = parts[3].split(',').map(|s| s.to_string()).collect();
+        let options = parts[3].split(',').map(std::borrow::ToOwned::to_owned).collect();
 
         let dump_freq = parts[4]
             .parse::<u8>()
-            .map_err(|_| FsTableError::InvalidEntry(line.to_string()))?;
+            .map_err(|_| FsTableError::InvalidEntry(line.to_owned()))?;
         let pass = FsckOrder::try_from(parts[5])?;
 
         Ok(Self {
@@ -166,11 +166,12 @@ impl FsEntry {
         })
     }
 
-    /// Serialize the FsEntry into a string that can be written to the fstab file.
+    /// Serialize the `FsEntry` into a string that can be written to the fstab file.
+    #[must_use] 
     pub fn to_line_str(&self) -> String {
         let mountpoint = self.mountpoint.as_deref().unwrap_or("none");
         let options = if self.options.is_empty() {
-            "defaults".to_string()
+            "defaults".to_owned()
         } else {
             self.options.join(",")
         };
@@ -224,7 +225,7 @@ impl std::fmt::Display for FsTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.entries
             .iter()
-            .map(|entry| entry.to_line_str())
+            .map(FsEntry::to_line_str)
             .collect::<Vec<_>>()
             .join("\n")
             .as_str()
@@ -291,20 +292,18 @@ pub fn generate_fstab(prefix: &str) -> Result<FsTable> {
                 match entry.mountpoint.unwrap().strip_prefix(prefix).unwrap() {
                     "" => "/",
                     path => path,
-                }
-                .to_string(),
+                }.to_owned(),
             );
 
             let device_spec_og = entry.device_spec.clone();
 
             let uuid = block_list
                 .iter()
-                .find(|dev| dev.fullname == PathBuf::from(&device_spec_og))
+                .find(|dev| dev.fullname == device_spec_og)
                 .and_then(|dev| dev.uuid.as_ref())
                 .ok_or_else(|| {
                     FsTableError::InvalidEntry(format!(
-                        "Could not find UUID for device: {}",
-                        device_spec_og
+                        "Could not find UUID for device: {device_spec_og}"
                     ))
                 })?;
             entry.device_spec = format!("UUID={uuid}");
