@@ -1,7 +1,7 @@
 #![allow(clippy::str_to_string)]
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_valid::{toml::FromTomlStr, Validate};
+use serde_valid::{Validate, toml::FromTomlStr};
 
 use crate::backend::install::InstallationType;
 use crate::backend::postinstall::Module;
@@ -10,7 +10,7 @@ use crate::backend::postinstall::Module;
 const DEFAULT_CFG_PATH: &str = "/etc/readymade.toml";
 
 #[cfg(debug_assertions)]
-const DEFAULT_CFG_PATH: &str = "templates/ultramarine.toml";
+const DEFAULT_CFG_PATH: &str = "crates/libreadymade/templates/ultramarine.toml";
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -89,7 +89,10 @@ pub fn get_cfg() -> Result<ReadymadeConfig> {
     let path = std::env::var("READYMADE_CONFIG");
     match &path {
         Err(std::env::VarError::NotUnicode(s)) => {
-            tracing::error!(?s, "Cannot parse READYMADE_CONFIG due to invalid unicode; falling back to {DEFAULT_CFG_PATH}");
+            tracing::error!(
+                ?s,
+                "Cannot parse READYMADE_CONFIG due to invalid unicode; falling back to {DEFAULT_CFG_PATH}"
+            );
         }
         Ok(p) => tracing::debug!("Using READYMADE_CONFIG={p}"),
         Err(std::env::VarError::NotPresent) => tracing::trace!("Using {DEFAULT_CFG_PATH}"),

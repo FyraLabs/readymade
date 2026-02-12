@@ -82,7 +82,7 @@ page!(Confirmation {
 
             gtk::Label {
                 #[watch]
-                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or_default(),
+                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name.unwrap_or_else(|| t!("unknown-os"))).unwrap_or_default(),
             }
         },
 
@@ -287,7 +287,7 @@ impl Warning {
             .then_some(Self::EfiPartFound)
             .filter(|_| {
                 INSTALLATION_STATE.read().installation_type.unwrap()
-                    == crate::backend::install::InstallationType::WholeDisk
+                    == libreadymade::backend::install::InstallationType::WholeDisk
             })
     }
 

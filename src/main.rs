@@ -1,23 +1,20 @@
 #![warn(rust_2018_idioms)]
-mod backend;
-pub mod cfg;
-mod consts;
-mod disks;
 mod pages;
 pub mod prelude;
-mod util;
 
+use libreadymade::backend::{custom::MountTargets, install::FinalInstallationState};
 use parking_lot::{Mutex, RwLock};
 use std::sync::LazyLock;
 
 use crate::prelude::*;
-use backend::install::{InstallationState, InstallationType, IPC_CHANNEL};
 use gtk::glib::translate::FromGlibPtrNone;
 use i18n_embed::LanguageLoader as _;
 use ipc_channel::ipc::IpcSender;
+use libreadymade::backend::install::{IPC_CHANNEL, InstallationState, InstallationType};
+use libreadymade::cfg;
 use pages::installation::InstallationPageMsg;
 use relm4::SharedState;
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 /// State related to the user's installation configuration
 static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
@@ -193,15 +190,15 @@ impl SimpleComponent for AppModel {
             AppMsg::StartInstallation => {
                 let value = INSTALLATION_STATE.read().installation_type;
                 if let Some(InstallationType::Custom) = value {
-                    INSTALLATION_STATE.write().mounttags =
-                        Some(crate::backend::custom::MountTargets(
-                            self.install_custom_page
-                                .model()
-                                .choose_mount_factory
-                                .iter()
-                                .cloned()
-                                .collect(),
-                        ));
+                    INSTALLATION_STATE.write().mounttags = Some(MountTargets(
+                        self.install_custom_page
+                            .model()
+                            .choose_mount_factory
+                            .iter()
+                            .cloned()
+                            .map(|t| t.0)
+                            .collect(),
+                    ));
                 }
                 self.installation_page
                     .emit(InstallationPageMsg::StartInstallation);
@@ -272,8 +269,7 @@ fn main() -> Result<()> {
         )?;
 
         IPC_CHANNEL.set(Mutex::new(channel)).unwrap();
-        let install_state: backend::install::FinalInstallationState =
-            serde_json::from_reader(std::io::stdin())?;
+        let install_state: FinalInstallationState = serde_json::from_reader(std::io::stdin())?;
 
         *LL.write() = handle_l10n();
         langs_th.join().expect("cannot join available_langs_th");
@@ -298,19 +294,19 @@ fn main() -> Result<()> {
         Result::<()>::Ok(())
     });
 
+    let default_accent = unsafe {
+        &libhelium::RGBColor::from_glib_none(std::ptr::from_mut(&mut libhelium::ffi::HeRGBColor {
+            r: 0.0,
+            g: 7.0,
+            b: 143.0,
+        }))
+    };
+
     let app = libhelium::Application::builder()
         .application_id(APPID)
         .flags(libhelium::gtk::gio::ApplicationFlags::default())
         // SAFETY: placeholder
-        .default_accent_color(unsafe {
-            &libhelium::RGBColor::from_glib_none(std::ptr::from_mut(
-                &mut libhelium::ffi::HeRGBColor {
-                    r: 0.0,
-                    g: 7.0,
-                    b: 143.0,
-                },
-            ))
-        })
+        .default_accent_color(default_accent)
         .build();
 
     tracing::debug!("Starting Readymade");
@@ -334,7 +330,7 @@ fn setup_hooks() -> impl std::any::Any {
         {
             let (key, value) = arg.split_once('=').unwrap();
             println!("Setting env var {key} to {value}");
-            std::env::set_var(key, value);
+            unsafe { std::env::set_var(key, value) };
         }
     }
 

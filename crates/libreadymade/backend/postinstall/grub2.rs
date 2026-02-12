@@ -99,7 +99,7 @@ fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> Result<()> {
         // We are going tov4_10 force the installation, because for some reason
         // grub-install just couldn't find our xbootldr partition
         // even though it exists.
-        // 
+        //
         // --force is a last resort, but in our layout it's kind of necessary :P
         ["--force"], [disk.as_ref()]
     ] => |cmd| bail!("Failed to install GRUB2 on disk {disk_display}: status code {:?}", cmd.code()));
@@ -111,7 +111,7 @@ pub struct GRUB2;
 
 impl PostInstallModule for GRUB2 {
     fn run(&self, context: &Context) -> Result<()> {
-        stage!(grub {
+        stage!(grub "Generating system grub defaults" {
             let mut defaults = Grub2Defaults::default();
 
             // Now, let's add extra boot opts if they exist
@@ -143,11 +143,11 @@ impl PostInstallModule for GRUB2 {
             // todo: Add support for systemd-boot
             std::fs::create_dir_all("/boot/efi/EFI/fedora")?;
 
-            stage!(grub1 {
+            stage!(grub1 "Generating stage 1 grub.cfg in ESP..." {
                 let mut grub_cfg = std::fs::File::create("/boot/efi/EFI/fedora/grub.cfg")?;
                 let xbootldr_disk = &context.xbootldr_partition;
 
-                let template_str = include_str!("../../../templates/fedora-grub.cfg");
+                let template_str = include_str!("../../templates/fedora-grub.cfg");
                 // We used to blindly search for a partition labeled `xbootldr` here, but now that's not scalable.
                 // now that we are starting to support custom partitioning.
                 // So, now let's get the UUID of the xbootldr partition!
@@ -171,11 +171,11 @@ impl PostInstallModule for GRUB2 {
                 grub_cfg.write_all(final_str.as_bytes())?;
             });
 
-            stage!(grub2 {
+            stage!(grub2 "Generating stage 2 grub.cfg in /boot/grub2/grub.cfg..." {
                 crate::cmd!("grub2-mkconfig" [["-o", "/boot/grub2/grub.cfg"]] => |r| bail!("grub2-mkconfig failed with exit code {:?}", r.code()));
             });
         } else {
-            stage!(biosgrub {
+            stage!(biosgrub "Installing BIOS Grub2" {
                 grub2_install_bios(&context.destination_disk)?;
             });
         }

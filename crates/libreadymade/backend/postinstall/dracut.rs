@@ -1,7 +1,7 @@
 use crate::stage;
 
 use super::{Context, PostInstallModule};
-use color_eyre::{eyre::bail, Result};
+use color_eyre::{Result, eyre::bail};
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 
@@ -10,7 +10,7 @@ pub struct Dracut;
 
 impl PostInstallModule for Dracut {
     fn run(&self, _context: &Context) -> Result<()> {
-        stage!(initramfs {
+        stage!(initramfs "Regenerating initramfs" {
             // We assume the installation wouldn't be used on another system (false only if you install
             // on something like a USB stick anyway)
             // → reduce size of initramfs aggressively for faster boot times

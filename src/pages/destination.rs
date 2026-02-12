@@ -1,21 +1,22 @@
 use crate::prelude::*;
 use relm4::factory::DynamicIndex;
-use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, sync::LazyLock};
+use std::sync::LazyLock;
+
+#[derive(Debug, Clone)]
+pub struct DiskInit(pub libreadymade::disks::Disk);
+
+impl std::ops::Deref for DiskInit {
+    type Target = libreadymade::disks::Disk;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 pub static DISKS_DATA: LazyLock<Vec<DiskInit>> = LazyLock::new(|| {
-    let mut v = crate::disks::detect_os();
+    let mut v = libreadymade::disks::detect_os();
     v.sort();
-    v
+    v.into_iter().map(DiskInit).collect()
 });
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
-pub struct DiskInit {
-    pub disk_name: String,
-    pub os_name: String,
-    pub devpath: PathBuf,
-    pub size: bytesize::ByteSize,
-}
 
 #[relm4::factory(pub)]
 impl FactoryComponent for DiskInit {
@@ -43,7 +44,7 @@ impl FactoryComponent for DiskInit {
             },
 
             gtk::Label {
-                set_label: &self.os_name
+                set_label: &self.os_name.clone().unwrap_or(t!("unknown-os").to_string())
             },
 
             gtk::Label {
@@ -205,7 +206,7 @@ impl Component for DestinationPage {
                     .map(|d| self.disks.get(d.index().try_into().unwrap()).unwrap());
 
                 let mut installation_state_guard = INSTALLATION_STATE.write();
-                installation_state_guard.destination_disk = selected_disk.cloned();
+                installation_state_guard.destination_disk = selected_disk.cloned().map(|d| d.0);
             }
             DestinationPageMsg::Update => {}
         }

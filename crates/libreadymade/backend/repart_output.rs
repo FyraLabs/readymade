@@ -562,7 +562,7 @@ mod tests {
             label: "root-x86-64".to_owned(),
             uuid: uuid::Uuid::nil(),
             partno: 1,
-            file: PathBuf::from("templates/wholedisk/50-root.conf"),
+            file: PathBuf::from("crates/libreadymade/templates/wholedisk/50-root.conf"),
             ..Default::default()
         }
     }

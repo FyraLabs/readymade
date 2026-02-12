@@ -160,7 +160,7 @@ fn populate_fs(mounttags: &MountTargets, destroot: &Path) -> color_eyre::Result<
     let copy_source = PathBuf::from(FinalInstallationState::determine_copy_source());
     tracing::trace!(?copy_source, ?destroot);
     if copy_source.is_file() {
-        crate::stage!(extracting {
+        crate::stage!(extracting "Extracting files" {
             // super::mksys::unsquash_copy(&copy_source, destroot, |_, _| {})?;
             //
             // FIXME: I give up idk why this doesn't work
@@ -186,7 +186,7 @@ fn populate_fs(mounttags: &MountTargets, destroot: &Path) -> color_eyre::Result<
             crate::util::fs::copy_dir("/mnt/rdmsqsh", destroot)?;
         });
     } else {
-        crate::stage!(copying {
+        crate::stage!(copying "Copying files" {
             crate::util::fs::copy_dir(&copy_source, destroot)?;
         });
     }

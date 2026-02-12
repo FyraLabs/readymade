@@ -1,10 +1,40 @@
-use std::path::PathBuf;
-
+use crate::{INSTALLATION_STATE, NavigationAction, prelude::*};
 use relm4::factory::FactoryVecDeque;
+use std::{ops::DerefMut, path::PathBuf};
 
-use crate::{
-    backend::custom::MountTarget as ChooseMount, prelude::*, NavigationAction, INSTALLATION_STATE,
-};
+#[derive(Debug, Clone)]
+pub struct ChooseMount(pub libreadymade::backend::custom::MountTarget);
+
+impl From<AddDialog> for ChooseMount {
+    fn from(
+        AddDialog {
+            partition,
+            mountpoint,
+            mountopts,
+            index,
+        }: AddDialog,
+    ) -> Self {
+        Self(libreadymade::backend::custom::MountTarget {
+            index,
+            partition: std::path::PathBuf::from(&partition),
+            mountpoint: std::path::PathBuf::from(&mountpoint),
+            options: mountopts.clone(),
+        })
+    }
+}
+
+impl std::ops::Deref for ChooseMount {
+    type Target = libreadymade::backend::custom::MountTarget;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for ChooseMount {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 /// Wizard to set up custom partitioning.
 ///
@@ -594,7 +624,7 @@ kurage::generate_component!(AddDialog {
     }
 );
 
-impl From<&AddDialog> for ChooseMount {
+impl From<&AddDialog> for libreadymade::backend::custom::MountTarget {
     fn from(
         AddDialog {
             partition,
@@ -614,12 +644,12 @@ impl From<&AddDialog> for ChooseMount {
 
 impl From<&ChooseMount> for AddDialog {
     fn from(
-        ChooseMount {
+        ChooseMount(libreadymade::backend::custom::MountTarget {
             index,
             partition,
             mountpoint,
             options,
-        }: &ChooseMount,
+        }): &ChooseMount,
     ) -> Self {
         Self {
             index: *index,
@@ -630,7 +660,7 @@ impl From<&ChooseMount> for AddDialog {
     }
 }
 
-impl From<AddDialog> for ChooseMount {
+impl From<AddDialog> for libreadymade::backend::custom::MountTarget {
     fn from(
         AddDialog {
             partition,
@@ -650,12 +680,12 @@ impl From<AddDialog> for ChooseMount {
 
 impl From<ChooseMount> for AddDialog {
     fn from(
-        ChooseMount {
+        ChooseMount(libreadymade::backend::custom::MountTarget {
             index,
             partition,
             mountpoint,
             options,
-        }: ChooseMount,
+        }): ChooseMount,
     ) -> Self {
         Self {
             index,
@@ -683,7 +713,7 @@ impl AddDialog {
         ctrl.detach_runtime();
         ctrl.widget().set_transient_for(root_window.as_ref());
         libhelium::prelude::WindowExt::set_parent(ctrl.widget(), root_window.as_ref()); // FIXME: doubt if this actually works
-                                                                                        // temporary hack is to use the gtk one instead
+        // temporary hack is to use the gtk one instead
         gtk::prelude::WidgetExt::set_parent(ctrl.widget(), &root_window.expect("no root window"));
         ctrl.widget().present();
         ctrl

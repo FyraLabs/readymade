@@ -1,4 +1,4 @@
-use color_eyre::{eyre::bail, Result};
+use color_eyre::{Result, eyre::bail};
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 
@@ -11,7 +11,7 @@ pub struct SELinux;
 
 impl PostInstallModule for SELinux {
     fn run(&self, _context: &Context) -> Result<()> {
-        stage!(selinux {
+        stage!(selinux "Setting SELinux labels" {
             let setfiles_cmd_status = Command::new("setfiles")
                 .args(["-e", "/proc", "-e", "/sys"])
                 .arg("/etc/selinux/targeted/contexts/files/file_contexts")

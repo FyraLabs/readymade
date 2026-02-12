@@ -1,15 +1,16 @@
-use crate::backend::install::InstallationMessage;
+use libreadymade::backend::install::InstallationMessage;
 use crate::prelude::*;
-use crate::{NavigationAction, INSTALLATION_STATE};
+use crate::{INSTALLATION_STATE, NavigationAction};
 use color_eyre::Result;
 use l10n::BENTO_LOADER as L;
+use libreadymade::backend::install::FinalInstallationState;
 use relm4::{Component, ComponentParts, ComponentSender};
 use std::time::Duration;
 
 mod l10n {
     use const_format::formatcp;
-    use i18n_embed::fluent::{fluent_language_loader, FluentLanguageLoader};
-    use i18n_embed::{unic_langid::LanguageIdentifier, FileSystemAssets, LanguageLoader as _};
+    use i18n_embed::fluent::{FluentLanguageLoader, fluent_language_loader};
+    use i18n_embed::{FileSystemAssets, LanguageLoader as _, unic_langid::LanguageIdentifier};
     use itertools::Itertools;
     use std::str::FromStr;
     use std::sync::{Arc, LazyLock};
@@ -298,9 +299,7 @@ impl Component for InstallationPage {
                 });
 
                 sender.spawn_oneshot_command(move || {
-                    let state = crate::backend::install::FinalInstallationState::from(
-                        &*INSTALLATION_STATE.read(),
-                    );
+                    let state = FinalInstallationState::from(&*INSTALLATION_STATE.read());
                     tracing::debug!(?state, "Starting installation...");
 
                     InstallationPageCommandMsg::FinishInstallation(

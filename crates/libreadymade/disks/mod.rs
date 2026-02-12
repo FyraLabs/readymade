@@ -7,11 +7,18 @@ use std::{
 
 use lsblk::Populate;
 use osprobe::OSProbe;
+use serde::{Deserialize, Serialize};
 
-use crate::pages::destination::DiskInit;
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Disk {
+    pub disk_name: String,
+    pub os_name: Option<String>,
+    pub devpath: PathBuf,
+    pub size: bytesize::ByteSize,
+}
 
 /// Try and scan the system for disks and their installed OS
-pub fn detect_os() -> Vec<DiskInit> {
+pub fn detect_os() -> Vec<Disk> {
     let disks = lsblk::BlockDevice::list().unwrap();
     let live_device = find_live_device();
 
@@ -23,14 +30,14 @@ pub fn detect_os() -> Vec<DiskInit> {
 
     (disks.into_iter())
         .filter(|disk| is_valid_disk(live_device.as_deref(), disk))
-        .map(|disk| make_disk_init(&osprobe, disk))
+        .map(|disk| make_disk(&osprobe, disk))
         .collect()
 }
 
-fn make_disk_init(osprobe: &HashMap<PathBuf, String>, mut disk: lsblk::BlockDevice) -> DiskInit {
+fn make_disk(osprobe: &HashMap<PathBuf, String>, mut disk: lsblk::BlockDevice) -> Disk {
     let model =
         (disk.sysfs()).and_then(|p| std::fs::read_to_string(p.join("device").join("model")));
-    let ret = DiskInit {
+    let ret = Disk {
         disk_name: (model.map(|s| s.trim().to_owned()).ok())
             .or_else(|| disk.label.take().or_else(|| disk.id.take()))
             .map_or_else(|| disk.name.clone(), |s| format!("{s} ({})", disk.name)),
@@ -40,7 +47,7 @@ fn make_disk_init(osprobe: &HashMap<PathBuf, String>, mut disk: lsblk::BlockDevi
                 path.starts_with(disk.fullname.to_str().unwrap())
                     .then_some(osname)
             })
-            .map_or(crate::t!("unknown-os"), ToOwned::to_owned),
+            .map(ToOwned::to_owned),
         size: bytesize::ByteSize::kib(disk.capacity().unwrap().unwrap() >> 1),
         devpath: disk.fullname,
     };

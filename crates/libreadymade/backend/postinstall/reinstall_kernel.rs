@@ -1,6 +1,6 @@
 use super::{Context, PostInstallModule};
 use crate::stage;
-use color_eyre::{eyre::bail, Result};
+use color_eyre::{Result, eyre::bail};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::process::Command;
@@ -21,7 +21,7 @@ impl PostInstallModule for ReinstallKernel {
 
         // install kernel
 
-        stage!(kernel {
+        stage!(kernel "Reinstalling kernels" {
             let kernel_install_cmd_status = Command::new("kernel-install")
                 .arg("add")
                 .arg(kver)

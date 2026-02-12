@@ -2,7 +2,8 @@ use std::sync::LazyLock;
 
 use crate::prelude::*;
 
-use crate::{InstallationType, NavigationAction, Page, INSTALLATION_STATE};
+use libreadymade::backend::install::InstallationType;
+use crate::{NavigationAction, Page, INSTALLATION_STATE};
 use relm4::RelmWidgetExt;
 
 static TPM_SUPPORT: LazyLock<bool> = LazyLock::new(|| {
@@ -129,7 +130,7 @@ gtk::Box {
 
             gtk::Label {
                 #[watch]
-                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or_default(),
+                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name.unwrap_or_else(|| t!("unknown-os"))).unwrap_or_default(),
             }
         },
 

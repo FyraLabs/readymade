@@ -14,8 +14,8 @@ use crate::{
         postinstall::PostInstallModule,
         repart_output::{CryptData, RepartOutput},
     },
-    consts::{self, repart_dir, LIVE_BASE, ROOTFS_BASE},
-    pages::destination::DiskInit,
+    consts::{self, LIVE_BASE, ROOTFS_BASE, repart_dir},
+    disks::Disk,
     prelude::*,
     stage,
     util::{self, sys::check_uefi},
@@ -36,7 +36,7 @@ pub enum InstallationType {
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]
 pub struct InstallationState {
     pub langlocale: Option<String>,
-    pub destination_disk: Option<DiskInit>,
+    pub destination_disk: Option<Disk>,
     pub installation_type: Option<InstallationType>,
     pub mounttags: Option<crate::backend::custom::MountTargets>,
     pub postinstall: Vec<crate::backend::postinstall::Module>,
@@ -56,11 +56,12 @@ pub struct InstallationState {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FinalInstallationState {
     pub langlocale: String,
-    pub destination_disk: DiskInit,
+    pub destination_disk: Disk,
     pub installation_type: DetailedInstallationType,
     pub encrypts: Option<EncryptState>,
-    pub config: crate::cfg::ReadymadeConfig,
     pub copy_mode: DetailedCopyMode,
+    pub distro_name: String,
+    pub postinstall: Vec<crate::backend::postinstall::Module>,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone, educe::Educe)]
@@ -245,8 +246,9 @@ impl From<&InstallationState> for FinalInstallationState {
             destination_disk: value.destination_disk.clone().expect("no destination_disk"),
             installation_type: value.to_detailed_installation_type(),
             encrypts: value.to_encrypt_state(),
-            config: crate::CONFIG.read().clone(),
             copy_mode: value.to_detailed_copy_mode(),
+            distro_name: value.distro_name.clone(),
+            postinstall: value.postinstall.clone(),
         }
     }
 }
@@ -383,7 +385,7 @@ impl FinalInstallationState {
         }
 
         self.enable_encryption(&cfgdir)?;
-        let repart_out = stage!(mkpart {
+        let repart_out = stage!(mkpart "Creating partitions and copying files" {
             // todo: not freeze on error, show error message as err handler?
             Self::systemd_repart(blockdev, &cfgdir, self.encrypts.is_some(), self.copy_mode.is_bootc())?
         });
@@ -610,7 +612,9 @@ impl FinalInstallationState {
         // Many fstabs have been lost before due to this.
         let lockfile_path = "/var/run/readymade-setup.lock";
         if Path::new(lockfile_path).exists() {
-            bail!("Safety check failed: Setup lock file inside chroot exists at {lockfile_path}. This is likely a bug in the installer, please report it.");
+            bail!(
+                "Safety check failed: Setup lock file inside chroot exists at {lockfile_path}. This is likely a bug in the installer, please report it."
+            );
         }
 
         // We will run the specified postinstall modules now
@@ -625,7 +629,7 @@ impl FinalInstallationState {
             xbootldr_partition: xbootldr_node.to_owned(),
             lang: self.langlocale.clone(),
             crypt_data: crypt_data.clone(),
-            distro_name: self.config.distro.name.clone(),
+            distro_name: self.distro_name.clone(),
         };
 
         if state_dump.state.copy_mode.is_repart() {
@@ -654,7 +658,7 @@ impl FinalInstallationState {
                 .wrap_err("cannot write to /etc/crypttab")?;
         }
 
-        (self.config.postinstall.iter())
+        (self.postinstall.iter())
             .inspect(|module| tracing::debug!(?module, "Running module"))
             .map(|module| module.run(&context))
             .try_collect()
