@@ -163,9 +163,10 @@ impl ConfirmationPage {
         if let Some(ctrl) = self.warn_dialog.take() {
             let dialog = ctrl.widget();
             if let Some(overlay) = self.overlay_widget()
-                && dialog.parent().is_some() {
-                    overlay.remove_overlay(dialog);
-                }
+                && dialog.parent().is_some()
+            {
+                overlay.remove_overlay(dialog);
+            }
             libhelium::prelude::HeDialogExt::set_visible(dialog, false);
         }
     }

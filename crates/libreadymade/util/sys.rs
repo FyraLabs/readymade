@@ -3,7 +3,7 @@
 /// Simply checks for the existence of the `/sys/firmware/efi` directory.
 ///
 /// False negatives are possible if the system is booted in BIOS mode and the UEFI variables are not exposed.
-#[must_use] 
+#[must_use]
 pub fn check_uefi() -> bool {
     std::fs::metadata("/sys/firmware/efi").is_ok()
 }

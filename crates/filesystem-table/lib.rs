@@ -149,7 +149,10 @@ impl FsEntry {
 
         let fs_type = parts[2].to_owned();
 
-        let options = parts[3].split(',').map(std::borrow::ToOwned::to_owned).collect();
+        let options = parts[3]
+            .split(',')
+            .map(std::borrow::ToOwned::to_owned)
+            .collect();
 
         let dump_freq = parts[4]
             .parse::<u8>()
@@ -167,7 +170,7 @@ impl FsEntry {
     }
 
     /// Serialize the `FsEntry` into a string that can be written to the fstab file.
-    #[must_use] 
+    #[must_use]
     pub fn to_line_str(&self) -> String {
         let mountpoint = self.mountpoint.as_deref().unwrap_or("none");
         let options = if self.options.is_empty() {
@@ -292,7 +295,8 @@ pub fn generate_fstab(prefix: &str) -> Result<FsTable> {
                 match entry.mountpoint.unwrap().strip_prefix(prefix).unwrap() {
                     "" => "/",
                     path => path,
-                }.to_owned(),
+                }
+                .to_owned(),
             );
 
             let device_spec_og = entry.device_spec.clone();

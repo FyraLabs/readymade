@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
-    path::{Path, PathBuf},
+    path::Path,
     process::Command,
 };
 use tracing::{info, warn};

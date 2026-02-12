@@ -7,12 +7,12 @@ pub const LUKS_KEYFILE_PATH: &str = "/run/readymade-luks.key";
 const REPART_DIR: &str = "/usr/share/readymade/repart-cfgs/";
 pub const READYMADE_STATE_PATH: &str = "/var/lib/readymade/state.json";
 
-#[must_use] 
+#[must_use]
 pub fn repart_dir() -> PathBuf {
     PathBuf::from(std::env::var("READYMADE_REPART_DIR").unwrap_or_else(|_| REPART_DIR.into()))
 }
 
-#[must_use] 
+#[must_use]
 pub const fn shim_path() -> &'static str {
     if cfg!(target_arch = "x86_64") {
         EFI_SHIM_X86_64

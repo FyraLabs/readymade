@@ -78,7 +78,7 @@ pub fn cryptsetup_close(mapper: &str) -> Result<(), color_eyre::eyre::Error> {
     Ok(())
 }
 
-#[must_use] 
+#[must_use]
 pub fn generate_unique_mapper_label(mntpoint: &str) -> String {
     let mut label = {
         if mntpoint == "/" {
@@ -216,7 +216,7 @@ impl RepartOutput {
     ///
     /// This is a convenience function for getting the ESP partition, which we can then use for creating
     /// the boot stub later on
-    #[must_use] 
+    #[must_use]
     pub fn get_esp_partition(&self) -> std::option::Option<String> {
         self.partitions
             .iter()
@@ -224,7 +224,7 @@ impl RepartOutput {
             .map(|part| part.node.clone())
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn get_xbootldr_partition(&self) -> std::option::Option<String> {
         self.partitions
             .iter()
@@ -310,7 +310,7 @@ impl RepartOutput {
     }
 }
 
-#[must_use] 
+#[must_use]
 pub fn is_luks(node: &str) -> bool {
     std::process::Command::new("cryptsetup")
         .args(["isLuks", node])
@@ -388,7 +388,7 @@ pub struct RepartPartition {
 impl RepartPartition {
     /// Returns a Discoverable Disk Image (DDI) mountpoint if defined
     /// by checking the partition type
-    #[must_use] 
+    #[must_use]
     pub fn ddi_mountpoint(&self) -> Option<&'static str> {
         match self.part_type.as_str() {
             "xbootldr" => Some("/boot"),

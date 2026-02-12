@@ -122,7 +122,7 @@ impl DetailedInstallationType {
         matches!(self, Self::ChromebookInstall)
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn as_dual_boot(&self) -> Option<&u64> {
         if let Self::DualBoot(v) = self {
             Some(v)
@@ -131,7 +131,7 @@ impl DetailedInstallationType {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub const fn mounttags(&self) -> Option<&crate::backend::custom::MountTargets> {
         if let Self::Custom { mounttags } = self {
             Some(mounttags)
@@ -437,9 +437,10 @@ impl FinalInstallationState {
             // Close all mapped LUKS devices if exists
 
             if let Some(mut cache) = super::repart_output::MAPPER_CACHE.try_write()
-                && let Some(cache) = std::sync::Arc::get_mut(&mut cache) {
-                    cache.clear();
-                }
+                && let Some(cache) = std::sync::Arc::get_mut(&mut cache)
+            {
+                cache.clear();
+            }
         }
 
         tracing::info!("install() finished");
@@ -672,7 +673,7 @@ impl FinalInstallationState {
         sys_mount::Mount::builder().mount(dev, MOUNTPOINT)
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn determine_copy_source() -> String {
         const FALLBACK: &str = "/mnt/live-base";
         // We'll be using a new feature from systemd 255 (relative repart copy source)

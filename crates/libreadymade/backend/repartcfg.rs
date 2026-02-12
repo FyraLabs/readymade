@@ -136,7 +136,7 @@ pub struct Partition {
 }
 
 impl Partition {
-    #[must_use] 
+    #[must_use]
     pub fn mount_point_as_tuple(&self) -> Vec<(String, Option<String>)> {
         self.mount_point
             .iter()
