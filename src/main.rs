@@ -246,11 +246,14 @@ fn handle_l10n() -> i18n_embed::fluent::FluentLanguageLoader {
 #[allow(clippy::missing_errors_doc)]
 #[allow(clippy::missing_panics_doc)]
 fn main() -> Result<()> {
-    let _guard = sentry::init(("https://d5f6d7f57fee8ac5deac757e05d1b0bd@o271654.ingest.us.sentry.io/4510871707713536", sentry::ClientOptions {
-      release: sentry::release_name!(),
-      send_default_pii: true,
-      ..Default::default()
-    }));
+    let _guard = sentry::init((
+        "https://d5f6d7f57fee8ac5deac757e05d1b0bd@o271654.ingest.us.sentry.io/4510871707713536",
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            send_default_pii: true,
+            ..Default::default()
+        },
+    ));
     // PERF: this is probably premature optimisation but hey it kinda helps
     let langs_th = std::thread::spawn(|| LazyLock::force(&AVAILABLE_LANGS));
     let _guard = setup_hooks();
