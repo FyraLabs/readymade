@@ -82,7 +82,7 @@ page!(Confirmation {
 
             gtk::Label {
                 #[watch]
-                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name.unwrap_or_else(|| t!("unknown-os"))).unwrap_or_default(),
+                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name).unwrap_or_default(),
             }
         },
 
@@ -162,10 +162,10 @@ impl ConfirmationPage {
     fn clear_warning_dialog(&mut self) {
         if let Some(ctrl) = self.warn_dialog.take() {
             let dialog = ctrl.widget();
-            if let Some(overlay) = self.overlay_widget()
-                && dialog.parent().is_some()
-            {
-                overlay.remove_overlay(dialog);
+            if let Some(overlay) = self.overlay_widget() {
+                if dialog.parent().is_some() {
+                    overlay.remove_overlay(dialog);
+                }
             }
             libhelium::prelude::HeDialogExt::set_visible(dialog, false);
         }
@@ -187,9 +187,6 @@ impl ConfirmationPage {
             false
         }
     }
-}
-
-impl ConfirmationPage {
     fn overlay_widget(&self) -> Option<gtk::Overlay> {
         let root = &self.root;
         let widget: &gtk::Widget = root.upcast_ref();
@@ -287,7 +284,7 @@ impl Warning {
             .then_some(Self::EfiPartFound)
             .filter(|_| {
                 INSTALLATION_STATE.read().installation_type.unwrap()
-                    == libreadymade::backend::install::InstallationType::WholeDisk
+                    == readymade_lib::InstallationType::WholeDisk
             })
     }
 
@@ -395,7 +392,6 @@ impl relm4::SimpleComponent for Warning {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let widgets = view_output!();
-        let _ = &sender;
         widgets.desc_label.set_label(&model.desc());
         ComponentParts { model, widgets }
     }

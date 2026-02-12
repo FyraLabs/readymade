@@ -1,16 +1,15 @@
 use crate::prelude::*;
-use crate::{INSTALLATION_STATE, NavigationAction};
+use crate::{NavigationAction, INSTALLATION_STATE};
 use color_eyre::Result;
 use l10n::BENTO_LOADER as L;
-use libreadymade::backend::install::FinalInstallationState;
-use libreadymade::backend::install::InstallationMessage;
+use readymade_lib::InstallationMessage;
 use relm4::{Component, ComponentParts, ComponentSender};
 use std::time::Duration;
 
 mod l10n {
     use const_format::formatcp;
-    use i18n_embed::fluent::{FluentLanguageLoader, fluent_language_loader};
-    use i18n_embed::{FileSystemAssets, LanguageLoader as _, unic_langid::LanguageIdentifier};
+    use i18n_embed::fluent::{fluent_language_loader, FluentLanguageLoader};
+    use i18n_embed::{unic_langid::LanguageIdentifier, FileSystemAssets, LanguageLoader as _};
     use itertools::Itertools;
     use std::str::FromStr;
     use std::sync::{Arc, LazyLock};
@@ -124,8 +123,8 @@ pub struct InstallationPage {
 pub enum InstallationPageMsg {
     Open(String),
     StartInstallation,
-    #[doc(hidden)]
-    Navigate(NavigationAction),
+    // #[doc(hidden)]
+    // Navigate(NavigationAction),
     Update,
     #[doc(hidden)]
     Throb,
@@ -299,7 +298,8 @@ impl Component for InstallationPage {
                 });
 
                 sender.spawn_oneshot_command(move || {
-                    let state = FinalInstallationState::from(&*INSTALLATION_STATE.read());
+                    let state =
+                        readymade_lib::FinalInstallationState::from(&*INSTALLATION_STATE.read());
                     tracing::debug!(?state, "Starting installation...");
 
                     InstallationPageCommandMsg::FinishInstallation(
@@ -307,9 +307,9 @@ impl Component for InstallationPage {
                     )
                 });
             }
-            InstallationPageMsg::Navigate(action) => sender
-                .output(InstallationPageOutput::Navigate(action))
-                .unwrap(),
+            // InstallationPageMsg::Navigate(action) => sender
+            //     .output(InstallationPageOutput::Navigate(action))
+            //     .unwrap(),
             InstallationPageMsg::Update => {}
             InstallationPageMsg::Throb => self.progress_bar.pulse(),
             InstallationPageMsg::SubprocessMessage(InstallationMessage::Status(status)) => {

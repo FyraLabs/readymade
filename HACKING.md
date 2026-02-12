@@ -56,7 +56,7 @@ In development, it may be useful to specify options to the binary, such as the c
 For example, to run with tracing and the ultramarine-chromebook template, run the following command:
 
 ```sh
-READYMADE_LOG=trace READYMADE_CONFIG=templates/ultramarine-chromebook.toml cargo run
+READYMADE_LOG=trace READYMADE_CONFIG=crates/libreadymade/templates/ultramarine-chromebook.toml cargo run
 ```
 
 You can also set `READYMADE_DRY_RUN` to configure if whether the install is a dry-run, this will cause an installation failure.

@@ -2506,6 +2506,63 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
+name = "libreadymade"
+version = "0.12.5"
+dependencies = [
+ "backhand",
+ "bytesize",
+ "color-eyre",
+ "const_format",
+ "educe",
+ "enum_dispatch",
+ "file-guard",
+ "filesystem-table",
+ "format-bytes",
+ "freedesktop-desktop-entry",
+ "gtk4",
+ "i18n-embed",
+ "i18n-embed-fl",
+ "ipc-channel",
+ "itertools 0.14.0",
+ "jwalk",
+ "kurage",
+ "libhelium",
+ "lsblk",
+ "nix 0.30.1",
+ "no_color",
+ "parking_lot",
+ "paste",
+ "poly_l10n",
+ "rayon",
+ "relm4",
+ "rust-embed",
+ "scopeguard",
+ "sentry",
+ "sentry-eyre",
+ "serde",
+ "serde-systemd-unit",
+ "serde_json",
+ "serde_valid",
+ "serde_with",
+ "strip-ansi-escapes",
+ "sys-mount",
+ "taidan_proc_macros",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tiffin",
+ "toml 0.9.12+spec-1.1.0",
+ "tracing",
+ "tracing-appender",
+ "tracing-journald",
+ "tracing-subscriber",
+ "tracing-test",
+ "uu_cp",
+ "uuid",
+ "with_builtin_macros",
+ "xattr",
+]
+
+[[package]]
 name = "libredox"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3339,6 +3396,7 @@ dependencies = [
  "jwalk",
  "kurage",
  "libhelium",
+ "libreadymade",
  "lsblk",
  "nix 0.30.1",
  "no_color",

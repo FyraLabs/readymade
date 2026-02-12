@@ -1,0 +1,44 @@
+[
+        {
+                "type": "esp",
+                "label": "esp",
+                "uuid": "94b39668-b1ef-451c-8d8d-8f07a6db2920",
+                "partno": 0,
+                "file": "/usr/share/readymade/repart-cfgs/wholedisk/20-efi.conf",
+                "node": "/dev/vda1",
+                "offset": 1048576,
+                "old_size": "0 B",
+                "raw_size": "536.9 MB",
+                "old_padding": 0,
+                "raw_padding": 0,
+                "activity": "create"
+        },
+        {
+                "type": "xbootldr",
+                "label": "xbootldr",
+                "uuid": "129f1ef9-0acc-4c4e-a120-9c59f227966f",
+                "partno": 1,
+                "file": "/usr/share/readymade/repart-cfgs/wholedisk/45-boot.conf",
+                "node": "/dev/vda2",
+                "offset": 537919488,
+                "old_size": "0 B",
+                "raw_size": "1073.7 MB",
+                "old_padding": 0,
+                "raw_padding": 0,
+                "activity": "create"
+        },
+        {
+                "type": "root-x86-64",
+                "label": "root-x86-64",
+                "uuid": "ceca5daf-f71b-4b3d-92fe-97c817fbcfa1",
+                "partno": 2,
+                "file": "/usr/share/readymade/repart-cfgs/wholedisk/50-root.conf",
+                "node": "/dev/vda3",
+                "offset": 1611661312,
+                "old_size": "0 B",
+                "raw_size": "19.9 GB",
+                "old_padding": 0,
+                "raw_padding": 0,
+                "activity": "create"
+        }
+]
