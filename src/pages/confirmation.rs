@@ -187,9 +187,6 @@ impl ConfirmationPage {
             false
         }
     }
-}
-
-impl ConfirmationPage {
     fn overlay_widget(&self) -> Option<gtk::Overlay> {
         let root = &self.root;
         let widget: &gtk::Widget = root.upcast_ref();
@@ -395,7 +392,6 @@ impl relm4::SimpleComponent for Warning {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let widgets = view_output!();
-        let _ = &sender;
         widgets.desc_label.set_label(&model.desc());
         ComponentParts { model, widgets }
     }
