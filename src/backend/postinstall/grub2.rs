@@ -1,9 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{
-    io::Write,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{io::Write, path::Path, process::Command};
 use tracing::{info, warn};
 
 use crate::{prelude::*, stage};
@@ -99,7 +95,7 @@ fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> Result<()> {
         // We are going tov4_10 force the installation, because for some reason
         // grub-install just couldn't find our xbootldr partition
         // even though it exists.
-        // 
+        //
         // --force is a last resort, but in our layout it's kind of necessary :P
         ["--force"], [disk.as_ref()]
     ] => |cmd| bail!("Failed to install GRUB2 on disk {disk_display}: status code {:?}", cmd.code()));
@@ -162,7 +158,7 @@ impl PostInstallModule for GRUB2 {
                 let block_devices = lsblk::BlockDevice::list()?;
                 let xbootldr_uuid = block_devices
                     .iter()
-                    .find(|dev| dev.fullname == PathBuf::from(xbootldr_disk))
+                    .find(|dev| dev.fullname == *xbootldr_disk)
                     .and_then(|dev| dev.uuid.as_ref())
                     .ok_or_else(|| eyre!("Could not find UUID for xbootldr partition"))?;
 

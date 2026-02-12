@@ -385,7 +385,7 @@ pub fn get_whole_disk(partition_path: &str) -> color_eyre::Result<String> {
     // so we can replace the /sys/devices with /dev
     let path = path
         .rsplit_once('/')
-        .map_or(path.clone(), |(_, tail)| format!("/dev/{tail}"));
+        .map_or_else(|| path.clone(), |(_, tail)| format!("/dev/{tail}"));
 
     Ok(path)
 }
