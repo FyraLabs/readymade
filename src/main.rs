@@ -277,7 +277,9 @@ fn main() -> Result<()> {
 
         *LL.write() = handle_l10n();
         langs_th.join().expect("cannot join available_langs_th");
-        return install_state.install();
+        return install_state
+            .install()
+            .inspect_err(|e| _ = sentry_eyre::capture_report(e));
     }
 
     *CONFIG.write() = cfg::get_cfg()?;

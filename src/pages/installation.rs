@@ -328,7 +328,6 @@ impl Component for InstallationPage {
         match message {
             InstallationPageCommandMsg::FinishInstallation(res) => {
                 if let Err(e) = res {
-                    sentry_eyre::capture_report(&e);
                     sender
                         .output(InstallationPageOutput::SendErr(format!("{e:?}")))
                         .unwrap();
