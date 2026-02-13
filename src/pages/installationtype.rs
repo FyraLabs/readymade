@@ -255,6 +255,7 @@ kurage::generate_component!(EncryptPassDialogue {
     btn_confirm: libhelium::Button,
     tf_repeat: gtk::PasswordEntry,
     root: libhelium::Dialog,
+    weak_passwd: bool,
 }:
     init[tf_repeat](root, sender, model, widgets) {
         model.btn_confirm = widgets.btn_confirm.clone();
@@ -262,9 +263,8 @@ kurage::generate_component!(EncryptPassDialogue {
     }
 
     update(self, message, sender) {
-        SetBtnSensitive(sensitive: bool) => {
-            self.btn_confirm.set_sensitive(sensitive);
-        },
+        UpdateWeakPasswd(weak_passwd: bool) => self.weak_passwd = weak_passwd,
+        SetBtnSensitive(sensitive: bool) =>  self.btn_confirm.set_sensitive(sensitive),
         Enter => {
             tracing::debug!("confirm encryption password dialog");
             if self.btn_confirm.is_sensitive() {
@@ -298,6 +298,7 @@ kurage::generate_component!(EncryptPassDialogue {
                 connect_changed[sender, tf_repeat] => move |en| {
                     sender.input(Self::Input::SetBtnSensitive(en.text() == tf_repeat.text() && !en.text().is_empty()));
                     INSTALLATION_STATE.write().encryption_key = Some(en.text().to_string());
+                    sender.input(Self::Input::UpdateWeakPasswd(en.text().len() < 8 || en.text().to_ascii_lowercase() == en.text()));
                 },
             },
 
@@ -312,6 +313,15 @@ kurage::generate_component!(EncryptPassDialogue {
                     sender.input(Self::Input::SetBtnSensitive(INSTALLATION_STATE.read().encryption_key.as_ref().is_some_and(|p| p == &pass && !pass.is_empty())));
                 },
                 connect_activate => Self::Input::Enter,
+            },
+
+            gtk::Label {
+                set_wrap: true,
+                add_css_class: "warning",
+                set_label: "Password is too weak. We recommend a password with at least 8 uppercase or lowercase characters.",
+                // make the spacing constant
+                #[watch]
+                inline_css: &format!("opacity: {}", if model.weak_passwd { 1 } else { 0 }),
             },
         },
 
