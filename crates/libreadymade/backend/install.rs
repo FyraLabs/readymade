@@ -1,5 +1,6 @@
 use file_guard::Lock;
-use ipc_channel::ipc::{IpcError, IpcOneShotServer, IpcSender};
+use ipc_channel::IpcError;
+use ipc_channel::ipc::{IpcOneShotServer, IpcSender};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -264,10 +265,12 @@ pub enum InstallationMessage {
 type CallSubprocessRes = Result<(String, std::io::Result<std::process::Output>)>;
 
 impl FinalInstallationState {
-    // todo: move methods from installationstate to here!
-    pub fn install_using_subprocess(
+    /// # Errors
+    /// Fails when the subprocess returns non-zero code
+    // TODO: move methods from installationstate to here!
+    pub fn install_using_subprocess<F: FnMut(InstallationMessage) + std::marker::Send>(
         &self,
-        sender: &relm4::Sender<InstallationMessage>,
+        mut sender: F,
     ) -> Result<()> {
         // HACK: #59 necessitates a way to check for this error message to rerun subprocess:
         const REPART_DEVICE_BUSY: &[u8] =
@@ -282,7 +285,7 @@ impl FinalInstallationState {
 
         let mut retries = 0;
         loop {
-            let (logs, res) = self.call_subprocess(sender)?;
+            let (logs, res) = self.call_subprocess(&mut sender)?;
 
             return match res {
                 Ok(output) if output.status.success() => Ok(()),
@@ -307,14 +310,17 @@ impl FinalInstallationState {
     }
 
     #[allow(clippy::unwrap_in_result)]
-    fn call_subprocess(&self, sender: &relm4::Sender<InstallationMessage>) -> CallSubprocessRes {
+    fn call_subprocess<F: FnMut(InstallationMessage) + std::marker::Send>(
+        &self,
+        mut sender: F,
+    ) -> CallSubprocessRes {
         let (server, channel_id) = IpcOneShotServer::new()?;
         let handle_ipc = || {
             let (receiver, _) = server.accept().expect("cannot accept ipc server");
 
             let mut msg;
             while {
-                msg = receiver.recv().map(|msg| sender.emit(msg));
+                msg = receiver.recv().map(|msg| sender(msg));
                 msg.is_ok()
             } {}
             _ = msg.map_err(|e| match e {

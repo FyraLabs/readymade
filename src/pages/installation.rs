@@ -303,7 +303,7 @@ impl Component for InstallationPage {
                     tracing::debug!(?state, "Starting installation...");
 
                     InstallationPageCommandMsg::FinishInstallation(
-                        state.install_using_subprocess(&s),
+                        state.install_using_subprocess(|msg| s.emit(msg)),
                     )
                 });
             }
