@@ -74,3 +74,4 @@ dialog-mp-opts = 掛載選項
 stage-mkpart = 分割緊分區同複製緊快勞
 stage-extracting = 解壓縮緊快勞
 stage-copying = 複製緊快勞
+dialog-confirm-warn-efipartfound-title = 偵察到EFI分區
