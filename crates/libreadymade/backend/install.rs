@@ -320,7 +320,7 @@ impl FinalInstallationState {
 
             let mut msg;
             while {
-                msg = receiver.recv().map(|msg| sender(msg));
+                msg = receiver.recv().map(&mut sender);
                 msg.is_ok()
             } {}
             _ = msg.map_err(|e| match e {
