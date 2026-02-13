@@ -8,66 +8,47 @@ repository = "https://github.com/FyraLabs/readymade"
 publish = false
 
 [dependencies]
-color-eyre = "=0.6.5"
-relm4 = { version = "*", features = ["macros"] }
-gtk4 = { version = "*", features = ["v4_12"] }
-libhelium = { version = "0.12.0", features = ["gtk_v4_12", "v1_8"] }
-tracing = { version = "0.1.41", features = ["log"] }
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-tracing-appender = "0.2"
-itertools = "0.14.0"
-thiserror = "2.0.12"
-paste = "1.0.15"
-tempfile = "3.20.0"
-lsblk = "0.6.1"
-const_format = "0.2.34"
-sys-mount = "3.0.1"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
-bytesize = { version = "2.0.1", features = ["serde"] }
-serde_with = "3.12.0"
-uuid = { version = "1.17.0", features = ["serde"] }
-tiffin = { version = "0.3.2" }
-tracing-journald = "0.3.1"
-rayon = "1.10.0"
-strip-ansi-escapes = "0.2.1"
-toml = "0.9.7"
-serde_valid = { version = "1.0.5", features = ["toml"] }
-nix = { version = "0.30.1", features = ["fs", "mount", "user"] }
-backhand = "0.23.0"
+backhand = "0.24.1"
+bytesize = { version = "2.3.1", features = ["serde"] }
+color-eyre = { workspace = true }
+const_format = { workspace = true }
+educe = "0.6.0"
 enum_dispatch = "0.3.13"
-scopeguard = "1.2.0"
-tracing-test = "0.2.5"
-serde-systemd-unit = { path = "../serde-systemd-unit" }
-format-bytes = "0.3.0"
-ipc-channel = { version = "0.20.0", features = ["async"] }
+file-guard = "0.2.0"
+filesystem-table = { workspace = true }
+format-bytes = { workspace = true }
 freedesktop-desktop-entry = { version = "0.7.11", git = "https://github.com/madonuko/freedesktop-desktop-entry", default-features = false }
+ipc-channel = { workspace = true }
+itertools = { workspace = true }
 jwalk = "0.8.1"
-xattr = "1.5.0"
-filesystem-table = { version = "0.1.2", path = "../filesystem-table" }
-kurage = "0.1.4"
-uu_cp = { version = "0.2.2", features = [
+lsblk = { workspace = true }
+nix = { version = "0.31.1", features = ["fs", "mount", "user"] }
+parking_lot = "0.12.5"
+paste = "1.0.15"
+rayon = "1.11.0"
+scopeguard = "1.2.0"
+serde = { workspace = true }
+serde-systemd-unit = { path = "../serde-systemd-unit" }
+serde_json = "1.0.149"
+serde_valid = { version = "2.0.1", features = ["toml"] }
+serde_with = { workspace = true }
+strip-ansi-escapes = "0.2.1"
+sys-mount = "3.1.0"
+tempfile = { workspace = true }
+thiserror = { workspace = true }
+tiffin = { version = "0.3.2" }
+toml = "1.0.1"
+tracing = { workspace = true }
+tracing-journald = "0.3.2"
+tracing-test = "0.2.6"
+uu_cp = { version = "0.6.0", features = [
     "exacl",
     "feat_acl",
     "feat_selinux",
     "selinux",
 ], optional = true }
-i18n-embed = { version = "0.16.0", features = [
-    "desktop-requester",
-    "filesystem-assets",
-    "fluent-system",
-] }
-i18n-embed-fl = "0.10.0"
-rust-embed = { version = "8.7.2", features = ["include-exclude"] }
-with_builtin_macros = "0.1.0"
-no_color = "0.2.0"
-poly_l10n = "0.0.6"
-educe = "0.6.0"
-parking_lot = "0.12.4"
-file-guard = "0.2.0"
-taidan_proc_macros = { path = "../taidan_proc_macros" }
-sentry-eyre = "0.3.0"
-sentry = { version = "0.46.2", features = ["tracing", "logs"] }
+uuid = { workspace = true }
+xattr = "1.6.1"
 
 [features]
 uutils = ["dep:uu_cp"]
