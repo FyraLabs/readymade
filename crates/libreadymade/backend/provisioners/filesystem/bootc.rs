@@ -1,5 +1,5 @@
 use crate::{
-    backend::provisioners::{CryptData, Mount, Mounts, filesystem::FileSystemProvisionerModule},
+    backend::provisioners::{CryptData, Mounts, filesystem::FileSystemProvisionerModule},
     prelude::*,
 };
 
@@ -39,6 +39,25 @@ impl Bootc {
 
         Ok(())
     }
+
+    // This cleans up any folder that is not on the bootc whitelist from a bootc-installed filesystem
+    fn bootc_cleanup(mountpoint: &Path) -> Result<()> {
+        _ = std::fs::read_dir(mountpoint)?.try_for_each(|f| {
+            let f = f?;
+            match f.file_name().as_encoded_bytes() {
+                b"boot" | b"ostree" | b"efi" | b".bootc-aleph.json" => {}
+                _ => {
+                    _ = if f.file_type()?.is_dir() {
+                        std::fs::remove_dir_all(f.path())
+                    } else {
+                        std::fs::remove_file(f.path())
+                    }
+                }
+            }
+            std::io::Result::Ok(())
+        });
+        Ok(())
+    }
 }
 
 impl FileSystemProvisionerModule for Bootc {
@@ -59,6 +78,26 @@ impl FileSystemProvisionerModule for Bootc {
         )?;
 
         mounts.umount_all(bootc_rootfs_mountpoint);
+        Ok(())
+    }
+
+    fn cleanup(
+        &self,
+        playbook: &crate::playbook::Playbook,
+        mounts: &crate::backend::provisioners::Mounts,
+    ) -> Result<()> {
+        let tmproot = tempfile::tempdir()?;
+        let bootc_rootfs_mountpoint = tmproot.path();
+        mounts.mount_all(
+            bootc_rootfs_mountpoint,
+            playbook
+                .encryption
+                .as_ref()
+                .map(|e| e.encryption_key.as_str()),
+        );
+        Self::bootc_cleanup(bootc_rootfs_mountpoint)?;
+        crate::cmd!("sync" => |_| bail!("`sync` failed"));
+        crate::cmd!("umount" [["-R"], [bootc_rootfs_mountpoint]] => |_| bail!("umount -R {bootc_rootfs_mountpoint:?} failed"));
         Ok(())
     }
 }

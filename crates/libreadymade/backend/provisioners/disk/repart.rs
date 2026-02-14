@@ -1,4 +1,8 @@
-use crate::backend::{ provisioners::Mount, repartcfg::{RepartConfig, Partition}};
+use crate::backend::{
+    provisioners::{EncryptionOption, Mount},
+    repart_output::RepartPartition,
+    repartcfg::{EncryptOption, Partition, RepartConfig},
+};
 use file_guard::Lock;
 use std::process::Stdio;
 
@@ -22,50 +26,59 @@ impl DiskProvisionerModule for Repart {
             &playbook.destination_disk,
             &self.directory,
             playbook.encryption.is_some(),
-            self.copy_source,
+            self.copy_source.as_deref(),
         )?;
         let repartcfg_export = SystemdRepartData::get_configs(&self.directory)?;
+        let mut configs = repartcfg_export.configs.into_iter().collect_vec();
+        configs.sort_by_key(|(k, _)| k.clone());
         Ok(Mounts(
-            repartcfg_export
-                .configs
-                .values()
+            configs
+                .into_iter()
+                .map(|(_, v)| v)
+                .enumerate()
                 .flat_map(
-                    |RepartConfig {
-                         partition:
-                             Partition {
-                                 label,
-                                 node,
-                                 mount_point,
-                                 ...default::Default(),
-                             },
-                     }| {
-                         mount_point
-                             .iter()
-                             .filter_map(|mount_point| {
-                                 if mount_point.is_empty() {
-                                     return None;
-                                 }
-                                 // If there's a colon, split it into two fields
-                                 // only the first colon is considered though, so if there are more than one, the rest are ignored
-                                 let mut parts = mount_point.splitn(2, ':');
-                                 let fst = parts.next()?.to_owned();
-                                 let snd = parts.next().map(std::borrow::ToOwned::to_owned);
-                                 Some(Mount {
-                                     label,
-                                     partition: node,
-                                     mountpoint: fst,
-                                     options: snd,
-                                 })
-                             })
-                             .collect()
-                        mount_point.into_iter().map(|mountpoint| Mount {
-                            label,
-                            partition: node,
-                            mountpoint,
+                    |(
+                        i,
+                        RepartConfig {
+                            partition:
+                                Partition {
+                                    label,
+                                    mount_point,
+                                    encrypt,
+                                    ..
+                                },
+                        },
+                    )| {
+                        let RepartPartition { node, .. } =
+                            repart_out.partitions.get(i).expect("part doesn't exist");
+
+                        mount_point.into_iter().filter_map(move |mount_point| {
+                            if mount_point.is_empty() {
+                                return None;
+                            }
+                            // If there's a colon, split it into two fields
+                            // only the first colon is considered though, so if there are more than one, the rest are ignored
+                            let mut parts = mount_point.splitn(2, ':');
+                            let fst = parts.next()?.to_owned();
+                            let snd = parts.next().map(std::borrow::ToOwned::to_owned);
+                            Some(std::io::Result::Ok(Mount {
+                                label: label.clone(),
+                                partition: PathBuf::from(node),
+                                mountpoint: PathBuf::from(fst),
+                                options: snd.unwrap_or_default(),
+                                encryption_type: match encrypt {
+                                    EncryptOption::Off => None,
+                                    EncryptOption::KeyFile => Some(EncryptionOption::KeyFile),
+                                    EncryptOption::Tpm2 => Some(EncryptionOption::Tpm2),
+                                    EncryptOption::KeyFileTpm2 => {
+                                        Some(EncryptionOption::KeyFileTpm2)
+                                    }
+                                },
+                            }))
                         })
                     },
                 )
-                .collect(),
+                .try_collect()?,
         ))
     }
 }
@@ -74,12 +87,12 @@ fn systemd_repart(
     blockdev: &Path,
     cfgdir: &Path,
     use_keyfile: bool,
-    copy_source: Option<PathBuf>,
+    copy_source: Option<&Path>,
 ) -> Result<crate::backend::repart_output::RepartOutput> {
     let dry_run = std::env::var("READYMADE_DRY_RUN").map_or(cfg!(debug_assertions), |v| v == "1");
     tracing::debug!(?dry_run, "Running systemd-repart");
     let arg_keyfile = use_keyfile.then(|| {
-        let keyfile_path = consts::LUKS_KEYFILE_PATH;
+        let keyfile_path = crate::consts::LUKS_KEYFILE_PATH;
         tracing::debug!("Using keyfile for systemd-repart: {keyfile_path}");
         ["--key-file", keyfile_path]
     });

@@ -1,8 +1,10 @@
 use crate::prelude::*;
 use enum_dispatch::enum_dispatch;
+use manual::Manual;
 use repart::Repart;
 use serde::{Deserialize, Serialize};
 
+pub mod manual;
 pub mod repart;
 
 #[enum_dispatch(DiskProvisioner)]
@@ -20,4 +22,6 @@ pub enum DiskProvisioner {
     /// Uses systemd-repart to partition and provision the disk, this is recommended for most users as it is fast and flexible.
     /// Refer to: https://www.freedesktop.org/software/systemd/man/latest/repart.d.html
     Repart,
+    /// Readymade will not partition the disk. Instead, the user provides a list of mountpoints.
+    Manual,
 }

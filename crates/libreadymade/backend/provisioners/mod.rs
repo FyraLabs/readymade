@@ -6,13 +6,15 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-use color_eyre::eyre::bail;
 use nix::mount::umount;
 
 pub mod disk;
 pub mod filesystem;
 
-#[derive(Debug, Clone)]
+pub use disk::DiskProvisioner;
+pub use filesystem::FileSystemProvisioner;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum EncryptionOption {
     // TODO: document
     KeyFile,
@@ -20,7 +22,7 @@ pub enum EncryptionOption {
     KeyFileTpm2,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Mount {
     /// Path to partition
     pub partition: PathBuf,
@@ -35,7 +37,7 @@ pub struct Mount {
 }
 
 impl Mount {
-    fn mount(&self, root: &Path, passphrase: Option<&str>) -> std::io::Result<()> {
+    fn mount(&self, root: &Path, passphrase: Option<&str>) -> Result<()> {
         create_dir_all(root)?;
 
         let target = (self.mountpoint.strip_prefix("/")).unwrap_or(&self.mountpoint);
@@ -73,7 +75,7 @@ impl Mount {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Mounts(pub Vec<Mount>);
 
 impl Mounts {

@@ -323,11 +323,7 @@ pub fn is_luks(node: &str) -> bool {
 pub static MAPPER_CACHE: std::sync::LazyLock<parking_lot::RwLock<Arc<MapperCache>>> =
     std::sync::LazyLock::new(|| parking_lot::RwLock::new(Arc::new(MapperCache::new())));
 
-pub fn luks_decrypt(
-    node: &str,
-    passphrase: &str,
-    label: &str,
-) -> Result<PathBuf, color_eyre::eyre::Error> {
+pub fn luks_decrypt(node: &str, passphrase: &str, label: &str) -> color_eyre::Result<PathBuf> {
     // Check cache first
     if let Some(path) = MAPPER_CACHE.read().get(node) {
         return Ok(path.clone());
@@ -379,7 +375,7 @@ pub struct RepartPartition {
     /// Path to repart config template
     file: PathBuf,
     /// /dev node (/dev/XXX)
-    node: String,
+    pub node: String,
     offset: usize,
     old_size: ByteSize,
     raw_size: ByteSize,

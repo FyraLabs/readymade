@@ -1,5 +1,5 @@
 use crate::{
-    backend::provisioners::{Mount, Mounts, filesystem::FileSystemProvisionerModule},
+    backend::provisioners::{Mounts, filesystem::FileSystemProvisionerModule},
     prelude::*,
     util::fs::copy_dir,
 };
@@ -14,7 +14,10 @@ impl FileSystemProvisionerModule for Copy {
         let destroot = Path::new("/mnt/custom");
         let mut mounts = mounts.clone();
         mounts.sort_mounts();
-        mounts.mount_all(destroot, playbook.encryption.as_ref().map(|e| &*e.encryption_key))?;
+        mounts.mount_all(
+            destroot,
+            playbook.encryption.as_ref().map(|e| &*e.encryption_key),
+        )?;
 
         scopeguard::defer! {
             if let Err(e) = mounts.umount_all(destroot) {
