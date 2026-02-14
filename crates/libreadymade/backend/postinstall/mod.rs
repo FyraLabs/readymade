@@ -35,9 +35,7 @@ pub struct Context {
     pub esp_partition: Option<String>,
     // Installs should always have an xbootldr partition
     pub xbootldr_partition: String,
-    pub lang: String,
     pub crypt_data: Option<CryptData>,
-    pub distro_name: String,
 }
 
 #[enum_dispatch(Module)]

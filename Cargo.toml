@@ -36,8 +36,11 @@ relm4 = { version = "*", features = ["macros"] }
 rust-embed = { version = "8.11.0", features = ["include-exclude"] }
 sentry = { version = "0.46.2", features = ["tracing", "logs"] }
 sentry-eyre = "0.3.0"
-serde-systemd-unit = { path = "./crates/serde-systemd-unit" }
+serde = { workspace = true }
 serde_json = "1.0.149"
+serde_valid = { version = "2.0.1", features = ["toml"] }
+serde_with = { workspace = true }
+serde-systemd-unit = { path = "./crates/serde-systemd-unit" }
 strip-ansi-escapes = "0.2.1"
 taidan_proc_macros = { path = "./crates/taidan_proc_macros" }
 tempfile = { workspace = true }

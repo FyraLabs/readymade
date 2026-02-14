@@ -10,6 +10,7 @@ use std::{
     sync::OnceLock,
 };
 
+use crate::playbook::Playbook;
 use crate::{
     backend::{
         postinstall::PostInstallModule,
@@ -24,247 +25,15 @@ use crate::{
 
 pub static IPC_CHANNEL: OnceLock<Mutex<IpcSender<InstallationMessage>>> = OnceLock::new();
 
-#[allow(clippy::unsafe_derive_deserialize)] // false-pos
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum InstallationType {
-    WholeDisk,
-    DualBoot(u64),
-    ChromebookInstall,
-    Custom,
-}
-
-#[derive(Default, Debug, Serialize, Deserialize, Clone)]
-pub struct InstallationState {
-    pub langlocale: Option<String>,
-    pub destination_disk: Option<Disk>,
-    pub installation_type: Option<InstallationType>,
-    pub mounttags: Option<crate::backend::custom::MountTargets>,
-    pub postinstall: Vec<crate::backend::postinstall::Module>,
-    pub encrypt: bool,
-    pub tpm: bool,
-    pub encryption_key: Option<String>,
-    pub distro_name: String,
-    pub bootc_imgref: Option<String>,
-    pub bootc_target_imgref: Option<String>,
-    pub bootc_enforce_sigpolicy: bool,
-    pub bootc_kargs: Option<Vec<String>>,
-    pub bootc_args: Option<Vec<String>>,
-}
-
-/// The finalized state of [`InstallationState`].
-#[allow(clippy::unsafe_derive_deserialize)] // false-pos
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct FinalInstallationState {
-    pub langlocale: String,
-    pub destination_disk: Disk,
-    pub installation_type: DetailedInstallationType,
-    pub encrypts: Option<EncryptState>,
-    pub copy_mode: DetailedCopyMode,
-    pub distro_name: String,
-    pub postinstall: Vec<crate::backend::postinstall::Module>,
-}
-
-#[derive(Default, Serialize, Deserialize, Clone, educe::Educe)]
-#[educe(Debug)]
-pub struct EncryptState {
-    pub tpm: bool,
-    #[educe(Debug(ignore))]
-    pub encryption_key: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum DetailedInstallationType {
-    WholeDisk,
-    DualBoot(u64),
-    ChromebookInstall,
-    Custom {
-        mounttags: crate::backend::custom::MountTargets,
-    },
-}
-
-impl From<&DetailedInstallationType> for InstallationType {
-    fn from(value: &DetailedInstallationType) -> Self {
-        match value {
-            DetailedInstallationType::WholeDisk => Self::WholeDisk,
-            DetailedInstallationType::DualBoot(i) => Self::DualBoot(*i),
-            DetailedInstallationType::ChromebookInstall => Self::ChromebookInstall,
-            DetailedInstallationType::Custom { .. } => Self::Custom,
-        }
-    }
-}
-
-impl DetailedInstallationType {
-    fn simple(&self) -> InstallationType {
-        self.into()
-    }
-
-    /// Returns `true` if the detailed installation type is [`WholeDisk`].
-    ///
-    /// [`WholeDisk`]: DetailedInstallationType::WholeDisk
-    #[must_use]
-    pub const fn is_whole_disk(&self) -> bool {
-        matches!(self, Self::WholeDisk)
-    }
-
-    /// Returns `true` if the detailed installation type is [`DualBoot`].
-    ///
-    /// [`DualBoot`]: DetailedInstallationType::DualBoot
-    #[must_use]
-    pub const fn is_dual_boot(&self) -> bool {
-        matches!(self, Self::DualBoot(..))
-    }
-
-    /// Returns `true` if the detailed installation type is [`ChromebookInstall`].
-    ///
-    /// [`ChromebookInstall`]: DetailedInstallationType::ChromebookInstall
-    #[must_use]
-    pub const fn is_chromebook_install(&self) -> bool {
-        matches!(self, Self::ChromebookInstall)
-    }
-
-    #[must_use]
-    pub const fn as_dual_boot(&self) -> Option<&u64> {
-        if let Self::DualBoot(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    #[must_use]
-    pub const fn mounttags(&self) -> Option<&crate::backend::custom::MountTargets> {
-        if let Self::Custom { mounttags } = self {
-            Some(mounttags)
-        } else {
-            None
-        }
-    }
-
-    /// Returns `true` if the detailed installation type is [`Custom`].
-    ///
-    /// [`Custom`]: DetailedInstallationType::Custom
-    #[must_use]
-    pub const fn is_custom(&self) -> bool {
-        matches!(self, Self::Custom { .. })
-    }
-}
-
-#[derive(Default, Debug, Serialize, Deserialize, Clone)]
-pub enum DetailedCopyMode {
-    #[default]
-    Repart,
-    Bootc {
-        bootc_imgref: String,
-        bootc_target_imgref: Option<String>,
-        bootc_enforce_sigpolicy: bool,
-        bootc_kargs: Vec<String>,
-        bootc_args: Vec<String>,
-    },
-}
-
-impl DetailedCopyMode {
-    /// Returns `true` if the detailed copy mode is [`Repart`].
-    ///
-    /// [`Repart`]: DetailedCopyMode::Repart
-    #[must_use]
-    pub const fn is_repart(&self) -> bool {
-        matches!(self, Self::Repart)
-    }
-
-    /// Returns `true` if the detailed copy mode is [`Bootc`].
-    ///
-    /// [`Bootc`]: DetailedCopyMode::Bootc
-    #[must_use]
-    pub const fn is_bootc(&self) -> bool {
-        matches!(self, Self::Bootc { .. })
-    }
-}
-
-impl From<&crate::cfg::ReadymadeConfig> for InstallationState {
-    fn from(value: &crate::cfg::ReadymadeConfig) -> Self {
-        Self {
-            postinstall: value.postinstall.clone(),
-            distro_name: value.distro.name.clone(),
-            bootc_imgref: value.to_bootc_copy_source(),
-            bootc_target_imgref: value.to_bootc_target_copy_source(),
-            bootc_enforce_sigpolicy: value.install.bootc_enforce_sigpolicy,
-            bootc_kargs: value.install.bootc_kargs.clone(),
-            bootc_args: value.install.bootc_args.clone(),
-            ..Self::default()
-        }
-    }
-}
-
-impl InstallationState {
-    fn to_detailed_installation_type(&self) -> DetailedInstallationType {
-        match self
-            .installation_type
-            .as_ref()
-            .expect("A valid installation type should be set before calling install()")
-        {
-            InstallationType::WholeDisk => DetailedInstallationType::WholeDisk,
-            InstallationType::DualBoot(i) => DetailedInstallationType::DualBoot(*i),
-            InstallationType::ChromebookInstall => DetailedInstallationType::ChromebookInstall,
-            InstallationType::Custom => DetailedInstallationType::Custom {
-                mounttags: self
-                    .mounttags
-                    .clone()
-                    .expect("no mounttags needed for installation_type: custom"),
-            },
-        }
-    }
-    #[allow(clippy::unwrap_in_result)]
-    fn to_encrypt_state(&self) -> Option<EncryptState> {
-        self.encrypt.then(|| EncryptState {
-            tpm: self.tpm,
-            encryption_key: self
-                .encryption_key
-                .clone()
-                .expect("no encryption_key but encrypt = true"),
-        })
-    }
-    // FIX: this is terrible why is copy_mode not passed
-    fn to_detailed_copy_mode(&self) -> DetailedCopyMode {
-        (self.bootc_imgref.as_ref()).map_or(DetailedCopyMode::Repart, |bootc_imgref| {
-            DetailedCopyMode::Bootc {
-                bootc_imgref: bootc_imgref.clone(),
-                bootc_target_imgref: self.bootc_target_imgref.clone(),
-                bootc_enforce_sigpolicy: self.bootc_enforce_sigpolicy,
-                bootc_kargs: self.bootc_kargs.clone().unwrap_or_default(),
-                bootc_args: self.bootc_args.clone().unwrap_or_default(),
-            }
-        })
-    }
-}
-
-impl From<&InstallationState> for FinalInstallationState {
-    fn from(value: &InstallationState) -> Self {
-        let langlocale = value.langlocale.clone().unwrap_or_else(|| {
-            tracing::warn!("why is there no langlocale when generate FinalInstallationState");
-            "C.UTF-8".into()
-        });
-        Self {
-            langlocale,
-            destination_disk: value.destination_disk.clone().expect("no destination_disk"),
-            installation_type: value.to_detailed_installation_type(),
-            encrypts: value.to_encrypt_state(),
-            copy_mode: value.to_detailed_copy_mode(),
-            distro_name: value.distro_name.clone(),
-            postinstall: value.postinstall.clone(),
-        }
-    }
-}
-
 /// IPC installation message for non-interactive mode
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize)]
 pub enum InstallationMessage {
     Status(String),
 }
 
 type CallSubprocessRes = Result<(String, std::io::Result<std::process::Output>)>;
 
-impl FinalInstallationState {
+impl Playbook {
     /// # Errors
     /// Fails when the subprocess returns non-zero code
     // TODO: move methods from installationstate to here!
@@ -635,9 +404,7 @@ impl FinalInstallationState {
             },
             esp_partition: esp_node,
             xbootldr_partition: xbootldr_node.to_owned(),
-            lang: self.langlocale.clone(),
             crypt_data: crypt_data.clone(),
-            distro_name: self.distro_name.clone(),
         };
 
         if state_dump.state.copy_mode.is_repart() {

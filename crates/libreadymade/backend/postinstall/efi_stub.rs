@@ -12,7 +12,9 @@ use super::{Context, PostInstallModule};
 
 /// Generate an EFI stub for the bootloader
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct EfiStub;
+pub struct EfiStub {
+    pub distro_name: String,
+}
 
 impl PostInstallModule for EfiStub {
     #[tracing::instrument(skip(self, context))]
@@ -35,7 +37,7 @@ impl PostInstallModule for EfiStub {
         tracing::debug!(
             disk = esp_disk,
             part = partition_number,
-            label = context.distro_name,
+            label = self.distro_name,
             shim_path = shim_path(),
             "Creating EFI boot entry"
         );
@@ -47,7 +49,7 @@ impl PostInstallModule for EfiStub {
             .arg("--part")
             .arg(partition_number.to_string())
             .arg("--label")
-            .arg(&context.distro_name)
+            .arg(&self.distro_name)
             .arg("--loader")
             .arg(shim_path())
             .status()?;

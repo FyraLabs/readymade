@@ -1,0 +1,64 @@
+use crate::{
+    backend::provisioners::{CryptData, Mount, Mounts, filesystem::FileSystemProvisionerModule},
+    prelude::*,
+};
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct Bootc {
+    pub imgref: String,
+    pub target_imgref: Option<String>,
+    pub enforce_sigpolicy: bool,
+    pub kargs: Vec<String>,
+    pub args: Vec<String>,
+}
+
+impl Bootc {
+    /// Call bootc to copy the contents of the container into the target.
+    ///
+    /// The caller must verify that `self.copy_mode.is_bootc()`.
+    #[allow(clippy::unwrap_in_result, clippy::needless_pass_by_value)]
+    pub fn bootc_copy(&self, target_root: &Path, cryptdata: Option<CryptData>) -> Result<()> {
+        let imgref = &self.imgref;
+        let target_imgref = &self.target_imgref;
+        let enforce_sigpolicy = &self.enforce_sigpolicy;
+        let args = &self.args;
+
+        tracing::info!(imgref=?self.imgref, "running bootc install to-filesystem");
+
+        crate::cmd!("bootc" [
+            ["install", "to-filesystem", "--source-imgref", imgref],
+            (cryptdata.iter())
+                .flat_map(|data| data.cmdline_opts.iter().flat_map(|opt| ["--karg", opt])),
+            ["--karg=rhgb", "--karg=quiet", "--karg=splash"],
+            [target_root],
+            (target_imgref.iter()).flat_map(|a| ["--target-imgref", a]),
+            args.iter().flat_map(|e| ["--karg", e]),
+            enforce_sigpolicy.then_some("--enforce-container-sigpolicy"),
+            args.iter(),
+        ] => |cmd| bail!("`bootc install to-filesystem` failed: {:?}", cmd.code()));
+
+        Ok(())
+    }
+}
+
+impl FileSystemProvisionerModule for Bootc {
+    fn run(&self, playbook: &crate::playbook::Playbook, mounts: &Mounts) -> Result<()> {
+        let tmproot = tempfile::tempdir()?;
+        let bootc_rootfs_mountpoint = tmproot.path();
+        mounts.mount_all(
+            bootc_rootfs_mountpoint,
+            playbook
+                .encryption
+                .as_ref()
+                .map(|e| e.encryption_key.as_str()),
+        );
+
+        self.bootc_copy(
+            bootc_rootfs_mountpoint,
+            super::super::generate_cryptdata(mounts)?,
+        )?;
+
+        mounts.umount_all(bootc_rootfs_mountpoint);
+        Ok(())
+    }
+}

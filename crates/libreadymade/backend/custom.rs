@@ -1,18 +1,15 @@
-use std::path::Component;
-use std::path::Path;
-use std::path::PathBuf;
-use std::process::Command;
-
 use super::export::ReadymadeResult;
-use super::install::FinalInstallationState;
-use color_eyre::eyre::Context;
+use crate::prelude::*;
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct MountTarget {
     #[doc(hidden)]
     pub index: usize,
+    /// Path to partition
     pub partition: PathBuf,
+    /// Path to mountpoint
     pub mountpoint: PathBuf,
+    /// Raw text `mountopts`
     pub options: String,
 }
 
@@ -106,7 +103,7 @@ pub fn install_custom(
         .to_string()
         + "\n";
 
-    if fstab.is_empty() {
+    if fstab.trim_ascii().is_empty() {
         color_eyre::eyre::bail!("generated fstab is empty!? what happened?");
     }
 
@@ -151,7 +148,7 @@ pub fn install_custom(
 }
 
 #[allow(clippy::cognitive_complexity)]
-fn populate_fs(mounttags: &MountTargets, destroot: &Path) -> color_eyre::Result<()> {
+fn populate_fs(mounttags: &MountTargets, destroot: &Path) -> Result<()> {
     scopeguard::defer! {
         if let Err(e) = mounttags.umount_all(destroot) {
             tracing::error!("Cannot unmount partitions: {e:?}");

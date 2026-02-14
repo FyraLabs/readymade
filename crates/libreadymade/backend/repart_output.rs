@@ -376,13 +376,16 @@ pub struct RepartPartition {
     label: String,
     uuid: uuid::Uuid,
     partno: i32,
+    /// Path to repart config template
     file: PathBuf,
+    /// /dev node (/dev/XXX)
     node: String,
     offset: usize,
     old_size: ByteSize,
     raw_size: ByteSize,
     old_padding: usize,
     raw_padding: usize,
+    /// action systemd-repart did to this partition
     activity: String,
 }
 impl RepartPartition {

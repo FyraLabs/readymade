@@ -45,7 +45,7 @@ impl ReadymadeResult {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SystemdRepartData {
-    configs: BTreeMap<String, RepartConfig>,
+    pub configs: BTreeMap<String, RepartConfig>,
 }
 
 impl SystemdRepartData {

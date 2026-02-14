@@ -1,6 +1,7 @@
 #![warn(rust_2018_idioms)]
+mod cfg;
 mod pages;
-pub mod prelude;
+mod prelude;
 
 use libreadymade::backend::{custom::MountTargets, install::FinalInstallationState};
 use parking_lot::{Mutex, RwLock};
@@ -11,7 +12,6 @@ use gtk::glib::translate::FromGlibPtrNone;
 use i18n_embed::LanguageLoader as _;
 use ipc_channel::ipc::IpcSender;
 use libreadymade::backend::install::{IPC_CHANNEL, InstallationState, InstallationType};
-use libreadymade::cfg;
 use pages::installation::InstallationPageMsg;
 use relm4::SharedState;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
