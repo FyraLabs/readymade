@@ -47,20 +47,22 @@ impl Mount {
         let target = root.join(target);
         create_dir_all(&target)?;
 
-        if let Some(_) = self.encryption_type {
+        let source = if let Some(_) = self.encryption_type {
             let label = crate::backend::repart_output::generate_unique_mapper_label(
                 format!("{}", self.mountpoint.display()).as_str(),
             );
-            let mapper = crate::backend::repart_output::luks_decrypt(
+            &crate::backend::repart_output::luks_decrypt(
                 format!("{}", self.partition.display()).as_str(),
                 passphrase.unwrap(),
                 &label,
-            )?;
-        }
+            )?
+        } else {
+            &self.partition
+        };
 
         sys_mount::Mount::builder()
             .data(&self.options)
-            .mount(&self.partition, target)?;
+            .mount(&source, target)?;
 
         Ok(())
     }
@@ -102,7 +104,7 @@ impl Mounts {
     }
 
     /// Mount all the targets in the specified order.
-    fn mount_all(&self, root: &Path, passphrase: Option<&str>) -> std::io::Result<()> {
+    fn mount_all(&self, root: &Path, passphrase: Option<&str>) -> Result<()> {
         self.0.iter().try_for_each(|m| m.mount(root, passphrase))
     }
 
@@ -125,15 +127,16 @@ pub struct CryptData {
 }
 
 #[must_use]
-pub fn is_luks(node: &str) -> bool {
-    std::process::Command::new("cryptsetup")
-        .args(["isLuks", node])
+pub fn is_luks(node: &Path) -> bool {
+    Command::new("cryptsetup")
+        .arg("isLuks")
+        .arg(node)
         .status()
         .expect("cannot run cryptsetup")
         .success()
 }
-fn cryptsetup_luks_uuid(node: &str) -> Result<String, color_eyre::eyre::Error> {
-    let cmd = std::process::Command::new("cryptsetup")
+fn cryptsetup_luks_uuid(node: &Path) -> Result<String, color_eyre::eyre::Error> {
+    let cmd = Command::new("cryptsetup")
         .arg("luksUUID")
         .arg(node)
         .output()?;
@@ -160,16 +163,18 @@ pub fn generate_cryptdata(mounts: &Mounts) -> Result<Option<CryptData>, color_ey
 
     let has_luks = luks_partitions.clone().count() > 0;
     for part in luks_partitions {
-        let uuid = cryptsetup_luks_uuid(&part.node).expect("Failed to get LUKS UUID");
-        let label = &part.label;
+        let uuid = cryptsetup_luks_uuid(&part.partition).expect("Failed to get LUKS UUID");
+        let label = part
+            .label
+            .as_ref()
+            .expect("LUKS partition must have a label");
 
         let mut extra_opts = String::new();
 
         let part_uses_tpm: bool = {
             matches!(
                 part.encryption_type,
-                super::repartcfg::EncryptOption::KeyFileTpm2
-                    | super::repartcfg::EncryptOption::Tpm2
+                Some(EncryptionOption::KeyFileTpm2 | EncryptionOption::Tpm2)
             )
         };
 
