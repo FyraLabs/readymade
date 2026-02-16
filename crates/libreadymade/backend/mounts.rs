@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 use std::{
+    cell::OnceCell,
     fmt::Write,
     fs::create_dir_all,
     path::{Component, Path, PathBuf},
@@ -33,8 +34,9 @@ pub struct Mount {
     /// Label of the partition
     pub label: Option<String>,
     /// GPT Partition type (assume we only support GPT)
+    // TODO: make this a method? / private
     #[serde(skip)]
-    pub gpt_type: Option<gpt::partition_types::Type>,
+    pub(crate) gpt_type: OnceCell<gpt::partition_types::Type>,
 }
 
 pub struct MapperCache {
@@ -173,6 +175,29 @@ impl Mount {
         umount(&target)?;
         Ok(())
     }
+
+    pub fn get_gpt_type(&self) -> gpt::partition_types::Type {
+        self.gpt_type
+            .get_or_init(|| {
+                let part = lsblk::BlockDevice::from_path(&self.partition).unwrap();
+                let parent = format!("/dev/{}", part.disk_name().unwrap());
+
+                let partitions = gpt::disk::read_disk(&parent).unwrap();
+                let partitions = partitions.partitions();
+
+                let partition = partitions
+                    .iter()
+                    .map(|(_, p)| p)
+                    .find(|p| {
+                        Some(p.part_guid)
+                            == part.partuuid.as_ref().map(|u| Uuid::from_str(&u).unwrap())
+                    })
+                    .expect("cannot find partition that is supposed to exist");
+
+                partition.part_type_guid.clone()
+            })
+            .clone()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -219,16 +244,16 @@ impl Mounts {
     pub fn get_esp_partition(&self) -> std::option::Option<&Mount> {
         self.0
             .iter()
-            .find(|part| part.gpt_type == Some(partition_types::EFI))
+            .find(|part| part.get_gpt_type() == partition_types::EFI)
     }
 
     #[must_use]
     pub fn get_xbootldr_partition(&self) -> std::option::Option<&Mount> {
         self.0.iter().find(|part| {
-            part.gpt_type
-                == Some(partition_types::Type::from(
+            part.get_gpt_type()
+                == partition_types::Type::from(
                     Uuid::from_str("bc13c2ff-59e6-4262-a352-b275fd6f7172").unwrap(),
-                ))
+                )
         })
     }
 }

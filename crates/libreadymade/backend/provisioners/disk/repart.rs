@@ -103,7 +103,7 @@ impl DiskProvisionerModule for Repart {
                                         Some(EncryptionOption::KeyFileTpm2)
                                     }
                                 },
-                                gpt_type: None,
+                                gpt_type: std::cell::OnceCell::default(),
                                 // gpt_type: Some(partition_types::Type::from(
                                 //     Uuid::from_str(part_type).unwrap(),
                                 // )),
