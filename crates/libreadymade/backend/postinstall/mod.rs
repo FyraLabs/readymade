@@ -7,6 +7,7 @@ use cryptsetup::CryptSetup;
 use dracut::Dracut;
 use efi_stub::EfiStub;
 use enum_dispatch::enum_dispatch;
+use fstab::Fstab;
 use grub2::GRUB2;
 use initial_setup::InitialSetup;
 use language::Language;
@@ -61,4 +62,5 @@ pub enum Module {
     Language,
     CryptSetup,
     Script,
+    Fstab,
 }
