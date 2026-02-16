@@ -1,0 +1,48 @@
+{
+  "destination_disk": "/dev/loop1",
+  "disk_provisioner": {
+    "module": "Repart",
+    "directory": "/home/uv/Projects/FyraLabs/readymade/crates/libreadymade/templates/wholedisk",
+    "copy_source": "/run/media/uv/5953adfb-d2d7-4218-96aa-71c5862aadd2"
+  },
+  "postinstall": [
+    {
+      "module": "Fstab"
+    },
+    {
+      "module": "ReinstallKernel"
+    },
+    {
+      "module": "CleanupBoot"
+    },
+    {
+      "module": "ReinstallKernel"
+    },
+    {
+      "module": "Dracut"
+    },
+    {
+      "module": "GRUB2"
+    },
+    {
+      "module": "PrepareFedora"
+    },
+    {
+      "module": "SELinux"
+    },
+    {
+      "module": "EfiStub",
+      "distro_name": "Ultramarine"
+    },
+    {
+      "module": "InitialSetup"
+    },
+    {
+      "module": "Language",
+      "lang": "en_US"
+    },
+    {
+      "module": "Script"
+    }
+  ]
+}

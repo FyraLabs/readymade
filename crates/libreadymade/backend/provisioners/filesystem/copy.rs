@@ -1,7 +1,6 @@
 use crate::{
-    backend::provisioners::{filesystem::FileSystemProvisionerModule},
+    backend::provisioners::filesystem::FileSystemProvisionerModule, backend::util::fs::copy_dir,
     prelude::*,
-    util::fs::copy_dir,
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]

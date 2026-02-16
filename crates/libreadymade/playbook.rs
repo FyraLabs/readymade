@@ -6,8 +6,8 @@
 use crate::backend::postinstall::PostInstallModule;
 use crate::backend::provisioners::disk::DiskProvisionerModule;
 use crate::backend::provisioners::filesystem::FileSystemProvisionerModule;
+use crate::backend::util::sys::check_uefi;
 use crate::prelude::*;
-use crate::util::sys::check_uefi;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use sys_mount::MountFlags;

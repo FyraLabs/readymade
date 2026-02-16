@@ -1,11 +1,11 @@
-use crate::util::sys::check_uefi;
+use crate::backend::util::sys::check_uefi;
 use color_eyre::{Result, eyre::bail};
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 
 use crate::{
+    backend::util::fs::{get_whole_disk, partition_number},
     consts::shim_path,
-    util::fs::{get_whole_disk, partition_number},
 };
 
 use super::{Context, PostInstallModule};

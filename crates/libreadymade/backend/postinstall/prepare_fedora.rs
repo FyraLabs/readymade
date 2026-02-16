@@ -1,7 +1,7 @@
 use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::util::fs::{exist_then, exist_then_read_dir};
+use crate::backend::util::fs::{exist_then, exist_then_read_dir};
 
 use super::{Context, PostInstallModule};
 

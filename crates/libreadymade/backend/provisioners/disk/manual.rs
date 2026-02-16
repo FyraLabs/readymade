@@ -1,7 +1,8 @@
 use std::str::FromStr;
 
 use crate::{
-    backend::provisioners::disk::DiskProvisionerModule, prelude::*, util::fs::get_whole_disk,
+    backend::provisioners::disk::DiskProvisionerModule, backend::util::fs::get_whole_disk,
+    prelude::*,
 };
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
