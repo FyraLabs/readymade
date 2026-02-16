@@ -1,5 +1,5 @@
 use crate::{
-    backend::provisioners::{CryptData, Mounts, filesystem::FileSystemProvisionerModule},
+    backend::{mounts::generate_cryptdata, provisioners::filesystem::FileSystemProvisionerModule},
     prelude::*,
 };
 
@@ -72,20 +72,13 @@ impl FileSystemProvisionerModule for Bootc {
                 .map(|e| e.encryption_key.as_str()),
         );
 
-        self.bootc_copy(
-            bootc_rootfs_mountpoint,
-            super::super::generate_cryptdata(mounts)?,
-        )?;
+        self.bootc_copy(bootc_rootfs_mountpoint, generate_cryptdata(mounts)?)?;
 
         mounts.umount_all(bootc_rootfs_mountpoint);
         Ok(())
     }
 
-    fn cleanup(
-        &self,
-        playbook: &crate::playbook::Playbook,
-        mounts: &crate::backend::provisioners::Mounts,
-    ) -> Result<()> {
+    fn cleanup(&self, playbook: &crate::playbook::Playbook, mounts: &Mounts) -> Result<()> {
         let tmproot = tempfile::tempdir()?;
         let bootc_rootfs_mountpoint = tmproot.path();
         mounts.mount_all(

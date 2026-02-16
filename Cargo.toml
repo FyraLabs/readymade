@@ -26,7 +26,7 @@ ipc-channel = { workspace = true }
 itertools = { workspace = true }
 kurage = "0.1.4"
 libhelium = { version = "0.12.0", features = ["gtk_v4_12", "v1_8"] }
-libreadymade = { path = "crates/libreadymade" }
+libreadymade = { workspace = true }
 lsblk = { workspace = true }
 no_color = "0.2.0"
 parking_lot = "0.12.5"
@@ -37,17 +37,17 @@ rust-embed = { version = "8.11.0", features = ["include-exclude"] }
 sentry = { version = "0.46.2", features = ["tracing", "logs"] }
 sentry-eyre = "0.3.0"
 serde = { workspace = true }
-serde_json = "1.0.149"
+serde_json = { workspace = true }
 serde_valid = { version = "2.0.1", features = ["toml"] }
 serde_with = { workspace = true }
-serde-systemd-unit = { path = "./crates/serde-systemd-unit" }
+serde-systemd-unit = { workspace = true }
 strip-ansi-escapes = "0.2.1"
 taidan_proc_macros = { path = "./crates/taidan_proc_macros" }
 tempfile = { workspace = true }
 tracing = { workspace = true }
 tracing-appender = "0.2"
 tracing-journald = "0.3.2"
-tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+tracing-subscriber = { workspace = true }
 tracing-test = "0.2.6"
 with_builtin_macros = "0.1.0"
 
@@ -55,18 +55,25 @@ with_builtin_macros = "0.1.0"
 glib-build-tools = "0.21.0"
 
 [workspace.dependencies]
+bytesize = { version = "2.3.1", features = ["serde"] }
 color-eyre = "=0.6.5"
 const_format = "0.2.35"
 filesystem-table = { version = "0.1.2", path = "./crates/filesystem-table" }
 format-bytes = "0.3.0"
 ipc-channel = { version = "0.21.0", features = ["async"] }
 itertools = "0.14.0"
+libreadymade = { path = "crates/libreadymade" }
 lsblk = "0.6.1"
+repart = { path = "./crates/repart" }
 serde = { version = "1.0.228", features = ["derive"] }
+serde-systemd-unit = { path = "./crates/serde-systemd-unit" }
+serde_json = "1.0.149"
 serde_with = "3.16.1"
 tempfile = "3.25.0"
 thiserror = "2.0.18"
 tracing = { version = "0.1.44", features = ["log"] }
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+tracing-test = "0.2.6"
 uuid = { version = "1.20.0", features = ["serde"] }
 
 [workspace.lints.clippy]
@@ -124,5 +131,7 @@ members = [
     "crates/filesystem-table",
     "crates/serde-systemd-unit",
     "crates/taidan_proc_macros",
+    "crates/repart",
+    "crates/readymade-playbook",
     "crates/libreadymade",
 ]

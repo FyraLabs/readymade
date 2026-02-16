@@ -25,14 +25,16 @@ impl PostInstallModule for EfiStub {
             return Ok(());
         }
 
-        tracing::debug!(esp_part = ?context.esp_partition, uefi = ?context.uefi, "Generating EFI stub");
+        let esp_partition = context.mounts.get_esp_partition();
 
-        let Some(esp_partition) = context.esp_partition.as_ref() else {
+        tracing::debug!(esp_part = ?esp_partition, uefi = ?context.uefi, "Generating EFI stub");
+
+        let Some(esp_partition) = esp_partition.as_ref() else {
             bail!("No ESP partition found, cannot generate EFI stub")
         };
         // get the partition number
-        let partition_number = partition_number(esp_partition)?;
-        let esp_disk = get_whole_disk(esp_partition)?;
+        let partition_number = partition_number(&esp_partition.partition)?;
+        let esp_disk = get_whole_disk(&esp_partition.partition)?;
 
         tracing::debug!(
             disk = esp_disk,

@@ -1,0 +1,25 @@
+[package]
+name = "repart"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
+serde-systemd-unit = { workspace = true }
+thiserror = { workspace = true }
+itertools = { workspace = true }
+tracing = { workspace = true }
+bytesize = { workspace = true }
+uuid = { workspace = true }
+const_format = { workspace = true }
+
+[dev-dependencies]
+tracing-test = { workspace = true }
+
+[lib]
+path = "./lib.rs"
+
+[lints]
+workspace = true

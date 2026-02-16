@@ -1,40 +1,8 @@
 use crate::{INSTALLATION_STATE, NavigationAction, prelude::*};
 use relm4::factory::FactoryVecDeque;
-use std::{ops::DerefMut, path::PathBuf};
 
-#[derive(Debug, Clone)]
-pub struct ChooseMount(pub libreadymade::backend::custom::MountTarget);
-
-impl From<AddDialog> for ChooseMount {
-    fn from(
-        AddDialog {
-            partition,
-            mountpoint,
-            mountopts,
-            index,
-        }: AddDialog,
-    ) -> Self {
-        Self(libreadymade::backend::custom::MountTarget {
-            index,
-            partition: std::path::PathBuf::from(&partition),
-            mountpoint: std::path::PathBuf::from(&mountpoint),
-            options: mountopts.clone(),
-        })
-    }
-}
-
-impl std::ops::Deref for ChooseMount {
-    type Target = libreadymade::backend::custom::MountTarget;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for ChooseMount {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+type ChooseMount = MountTarget;
+type MountTarget = AddDialog;
 
 /// Wizard to set up custom partitioning.
 ///
@@ -211,7 +179,7 @@ impl SimpleComponent for InstallCustomPage {
 
                     AddDialog {
                         index,
-                        ..mnt_target.into()
+                        ..mnt_target
                     }
                     .make_window(
                         self.root.clone(),
@@ -263,7 +231,7 @@ impl FactoryComponent for ChooseMount {
             set_spacing: 16,
 
             gtk::Label {
-                set_label: &format!("{} ← {}{}", self.mountpoint.display(), self.partition.display(), if self.options.is_empty() { String::new() } else { format!(" [{}]", self.options) }),
+                set_label: &format!("{} ← {}{}", self.mountpoint.display(), self.partition.display(), if self.options.is_empty() { String::new() } else { format!(" [{}]", self.mountopts) }),
                 add_css_class: "monospace",
             },
 
@@ -623,78 +591,6 @@ kurage::generate_component!(AddDialog {
         },
     }
 );
-
-impl From<&AddDialog> for libreadymade::backend::custom::MountTarget {
-    fn from(
-        AddDialog {
-            partition,
-            mountpoint,
-            mountopts,
-            index,
-        }: &AddDialog,
-    ) -> Self {
-        Self {
-            index: *index,
-            partition: PathBuf::from(partition),
-            mountpoint: PathBuf::from(mountpoint),
-            options: mountopts.clone(),
-        }
-    }
-}
-
-impl From<&ChooseMount> for AddDialog {
-    fn from(
-        ChooseMount(libreadymade::backend::custom::MountTarget {
-            index,
-            partition,
-            mountpoint,
-            options,
-        }): &ChooseMount,
-    ) -> Self {
-        Self {
-            index: *index,
-            partition: partition.display().to_string(),
-            mountpoint: mountpoint.display().to_string(),
-            mountopts: options.clone(),
-        }
-    }
-}
-
-impl From<AddDialog> for libreadymade::backend::custom::MountTarget {
-    fn from(
-        AddDialog {
-            partition,
-            mountpoint,
-            mountopts,
-            index,
-        }: AddDialog,
-    ) -> Self {
-        Self {
-            index,
-            partition: PathBuf::from(partition),
-            mountpoint: PathBuf::from(mountpoint),
-            options: mountopts,
-        }
-    }
-}
-
-impl From<ChooseMount> for AddDialog {
-    fn from(
-        ChooseMount(libreadymade::backend::custom::MountTarget {
-            index,
-            partition,
-            mountpoint,
-            options,
-        }): ChooseMount,
-    ) -> Self {
-        Self {
-            index,
-            partition: partition.display().to_string(),
-            mountpoint: mountpoint.display().to_string(),
-            mountopts: options,
-        }
-    }
-}
 
 impl AddDialog {
     fn make_window<X, F>(

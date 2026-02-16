@@ -9,7 +9,7 @@ pub mod repart;
 
 #[enum_dispatch(DiskProvisioner)]
 pub trait DiskProvisionerModule {
-    fn run(&self, playbook: &crate::playbook::Playbook) -> Result<super::Mounts>;
+    fn run(&self, playbook: &crate::playbook::Playbook) -> Result<Mounts>;
 }
 
 /// The disk provisioner is responsible for partitioning the disk, before the filesystem provisioner sets up the install files on the partitions.

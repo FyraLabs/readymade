@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 
 #[enum_dispatch(FileSystemProvisioner)]
 pub trait FileSystemProvisionerModule {
-    fn run(&self, playbook: &crate::playbook::Playbook, mounts: &super::Mounts) -> Result<()>;
-    fn cleanup(&self, playbook: &crate::playbook::Playbook, mounts: &super::Mounts) -> Result<()> {
+    fn run(&self, playbook: &crate::playbook::Playbook, mounts: &Mounts) -> Result<()>;
+    fn cleanup(&self, playbook: &crate::playbook::Playbook, mounts: &Mounts) -> Result<()> {
         Ok(())
     }
 }

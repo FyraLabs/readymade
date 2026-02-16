@@ -5,54 +5,22 @@
 // Update as of 2024-09-24
 // This module will be stripped of all its old validation code and everything will be serialized as-is for now.
 
-use bytesize::ByteSize;
+use bytesize::ByteSize as Size;
 use serde::Deserialize;
 use serde_with::{
     StringWithSeparator,
     formats::{ColonSeparator, SemicolonSeparator, SpaceSeparator},
     serde_as,
 };
-use std::{env::consts::ARCH, str::FromStr};
+use std::env::consts::ARCH;
 
 use crate::ini_enum;
-
-#[derive(Debug, Copy, Clone, Default)]
-pub struct Size {
-    pub inner: ByteSize,
-}
-
-impl From<ByteSize> for Size {
-    fn from(value: ByteSize) -> Self {
-        Self { inner: value }
-    }
-}
-
-impl serde::Serialize for Size {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_u64(self.inner.as_u64())
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for Size {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        // This data will usually be a string, so we need to parse it into a ByteSize
-        let size = ByteSize::from_str(&String::deserialize(deserializer)?)
-            .map_err(serde::de::Error::custom)?;
-        Ok(Self { inner: size })
-    }
-}
 
 //* https://www.freedesktop.org/software/systemd/man/latest/repart.d.html
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
-pub struct RepartConfig {
+pub struct Config {
     pub partition: Partition,
 }
 
@@ -183,9 +151,7 @@ const fn _default_weight() -> u32 {
 }
 
 const fn _default_size_min_bytes() -> Size {
-    Size {
-        inner: ByteSize::mib(10),
-    }
+    Size::mib(10)
 }
 
 #[derive(Debug, Default)]
@@ -353,57 +319,55 @@ ini_enum! {
 
 #[cfg(test)]
 mod tests {
-    use super::RepartConfig;
+    use super::Config;
 
     #[test]
     fn read_config() {
         let config = include_str!("test/submarine.conf");
-        let res: RepartConfig = serde_systemd_unit::from_str(config).unwrap();
+        let res: Config = serde_systemd_unit::from_str(config).unwrap();
 
         println!("{res:#?}");
         println!("{:?}", res.partition.mount_point_as_tuple());
 
         let config2 = include_str!("test/root.conf");
-        let res2: RepartConfig = serde_systemd_unit::from_str(config2).unwrap();
+        let res2: Config = serde_systemd_unit::from_str(config2).unwrap();
 
         println!("{res2:#?}");
         println!("{:?}", res2.partition.mount_point_as_tuple());
     }
 
     // FIXME: port this to serde_systemd_unit
-    /*
-    #[test]
-    fn ser_new_config() {
-        let res = serde_ini::to_string(&RepartConfig {
-            partition: Partition {
-                part_type: super::PartTypeIdent::Esp,
-                label: Some("My Label".to_owned()),
-                uuid: Some(uuid::uuid!("7466c448-87ac-4e1c-b3e3-fe83b7a19262")),
-                priority: Default::default(),
-                weight: Default::default(),
-                padding_weight: Default::default(),
-                size_min_bytes: super::_default_size_min_bytes(),
-                size_max_bytes: super::Size {
-                    inner: bytesize::ByteSize::kb(100),
-                },
-                padding_min_bytes: super::Size::default(),
-                padding_max_bytes: super::Size::default(),
-                copy_blocks: Some("hai".to_owned()),
-                format: Some(super::FileSystem::Ext4),
-                copy_files: vec![],
-                exclude_files: vec![],
-                exclude_files_target: vec![],
-                make_directories: vec![],
-                subvolumes: vec![],
-                default_subvolume: None,
-                encrypt: crate::backend::repartcfg::EncryptOption::default(),
-                verity: super::Verity::Off,
-                factory_reset: false,
-                mount_point: vec![],
-                ..Default::default()
-            },
-        })
-        .unwrap();
-        println!("{res}");
-    }*/
+
+    // #[test]
+    // fn ser_new_config() {
+    //     let res = serde_systemd_unit::to_string(&RepartConfig {
+    //         partition: Partition {
+    //             part_type: super::PartTypeIdent::Esp,
+    //             label: Some("My Label".to_owned()),
+    //             uuid: Some(uuid::uuid!("7466c448-87ac-4e1c-b3e3-fe83b7a19262")),
+    //             priority: Default::default(),
+    //             weight: Default::default(),
+    //             padding_weight: Default::default(),
+    //             size_min_bytes: super::_default_size_min_bytes(),
+    //             size_max_bytes: bytesize::ByteSize::kb(100),
+    //             padding_min_bytes: super::Size::default(),
+    //             padding_max_bytes: super::Size::default(),
+    //             copy_blocks: Some("hai".to_owned()),
+    //             format: Some(super::FileSystem::Ext4),
+    //             copy_files: vec![],
+    //             exclude_files: vec![],
+    //             exclude_files_target: vec![],
+    //             make_directories: vec![],
+    //             subvolumes: vec![],
+    //             default_subvolume: None,
+    //             encrypt: Default::default(),
+    //             verity: super::Verity::Off,
+    //             factory_reset: false,
+    //             mount_point: vec![],
+    //             ..Default::default()
+    //         },
+    //     })
+    //     .unwrap();
+    //     println!("{res}");
+    // }
 }

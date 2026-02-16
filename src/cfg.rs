@@ -188,12 +188,12 @@ mod tests {
                     bootc_args: None,
                 },
                 postinstall: vec![
-                    crate::backend::postinstall::grub2::GRUB2.into(),
-                    crate::backend::postinstall::cleanup_boot::CleanupBoot.into(),
-                    crate::backend::postinstall::reinstall_kernel::ReinstallKernel.into(),
-                    crate::backend::postinstall::dracut::Dracut.into(),
-                    crate::backend::postinstall::prepare_fedora::PrepareFedora.into(),
-                    crate::backend::postinstall::selinux::SELinux.into(),
+                    libreadymade::backend::postinstall::grub2::GRUB2.into(),
+                    libreadymade::backend::postinstall::cleanup_boot::CleanupBoot.into(),
+                    libreadymade::backend::postinstall::reinstall_kernel::ReinstallKernel.into(),
+                    libreadymade::backend::postinstall::dracut::Dracut.into(),
+                    libreadymade::backend::postinstall::prepare_fedora::PrepareFedora.into(),
+                    libreadymade::backend::postinstall::selinux::SELinux.into(),
                 ],
                 bentos: [
                     Bento {

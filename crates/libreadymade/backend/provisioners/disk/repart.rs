@@ -1,18 +1,46 @@
-use crate::backend::{
-    provisioners::{EncryptionOption, Mount},
-    repart_output::RepartPartition,
-    repartcfg::{EncryptOption, Partition, RepartConfig},
-};
-use file_guard::Lock;
-use std::process::Stdio;
+use gpt::partition_types;
+use repart::{Config, EncryptOption, Output, OutputPartition, Partition};
 
-use crate::{
-    backend::{
-        export::SystemdRepartData,
-        provisioners::{Mounts, disk::DiskProvisionerModule},
-    },
-    prelude::*,
-};
+use file_guard::Lock;
+use std::{collections::BTreeMap, process::Stdio, str::FromStr};
+use uuid::Uuid;
+
+use crate::{backend::provisioners::disk::DiskProvisionerModule, prelude::*};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SystemdRepartData {
+    pub configs: BTreeMap<String, Config>,
+}
+
+impl SystemdRepartData {
+    #[must_use]
+    pub const fn new(configs: BTreeMap<String, Config>) -> Self {
+        Self { configs }
+    }
+
+    pub fn get_configs(cfg_path: &Path) -> Result<Self> {
+        let mut configs = BTreeMap::new();
+        // Read path
+        for entry in std::fs::read_dir(cfg_path)? {
+            let entry = entry?;
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            let file_config = std::fs::read_to_string(&path)?;
+
+            // Parse the config
+            let config: Config = serde_systemd_unit::from_str(&file_config)?;
+
+            // Add to the list
+            configs.insert(
+                path.file_name().unwrap().to_string_lossy().to_string(),
+                config,
+            );
+        }
+        Ok(Self::new(configs))
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Repart {
@@ -39,7 +67,7 @@ impl DiskProvisionerModule for Repart {
                 .flat_map(
                     |(
                         i,
-                        RepartConfig {
+                        Config {
                             partition:
                                 Partition {
                                     label,
@@ -49,8 +77,9 @@ impl DiskProvisionerModule for Repart {
                                 },
                         },
                     )| {
-                        let RepartPartition { node, .. } =
-                            repart_out.partitions.get(i).expect("part doesn't exist");
+                        let OutputPartition {
+                            node, part_type, ..
+                        } = repart_out.partitions.get(i).expect("part doesn't exist");
 
                         mount_point.into_iter().filter_map(move |mount_point| {
                             if mount_point.is_empty() {
@@ -74,6 +103,10 @@ impl DiskProvisionerModule for Repart {
                                         Some(EncryptionOption::KeyFileTpm2)
                                     }
                                 },
+                                gpt_type: None,
+                                // gpt_type: Some(partition_types::Type::from(
+                                //     Uuid::from_str(part_type).unwrap(),
+                                // )),
                             }))
                         })
                     },
@@ -88,7 +121,7 @@ fn systemd_repart(
     cfgdir: &Path,
     use_keyfile: bool,
     copy_source: Option<&Path>,
-) -> Result<crate::backend::repart_output::RepartOutput> {
+) -> Result<Output> {
     let dry_run = std::env::var("READYMADE_DRY_RUN").map_or(cfg!(debug_assertions), |v| v == "1");
     tracing::debug!(?dry_run, "Running systemd-repart");
     let arg_keyfile = use_keyfile.then(|| {

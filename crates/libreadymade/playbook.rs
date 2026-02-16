@@ -4,14 +4,14 @@
 //! since it is relatively low-level and specific to a particular install (ex. hardcoded disk paths).
 
 use crate::backend::postinstall::PostInstallModule;
-use crate::backend::provisioners::Mounts;
 use crate::backend::provisioners::disk::DiskProvisionerModule;
 use crate::backend::provisioners::filesystem::FileSystemProvisionerModule;
-use crate::backend::repart_output::CryptData;
 use crate::prelude::*;
 use crate::util::sys::check_uefi;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use sys_mount::MountFlags;
+use tiffin::{Container, MountTarget};
 
 /// The encryption configuration for the installation, used by provisioners to determine how to set up encryption on the installation.
 ///
@@ -37,17 +37,57 @@ pub struct Playbook {
     /// The disk provisioner to use for the installation, which describes how the installation disk should be partitioned and setup. Some disk provisioners support copying files to the installation disk, making a filesystem provisioner optional.
     pub disk_provisioner: crate::backend::provisioners::DiskProvisioner,
     /// The filesystem provisioner to use for the installation, which describes how the installation files should be copied to the partitions after they are set up by the disk provisioner.
-    pub filesystem_provisioner: crate::backend::provisioners::FileSystemProvisioner,
+    pub filesystem_provisioner: Option<crate::backend::provisioners::FileSystemProvisioner>,
     /// The post-installation modules to run after the provisioning step is complete, used to perform additional configuration on the installation such as installing a bootloader, configuring SELinux, or running custom scripts.
     pub postinstall: Vec<crate::backend::postinstall::Module>,
+}
+
+// TODO: handle luks lol
+fn mounts_to_container(tempdir: &tempfile::TempDir, mounts: &Mounts) -> Result<Container> {
+    let mut container = Container::new(tempdir.path().to_owned());
+
+    for mount in &mounts.0 {
+        dbg!(&mount.mountpoint, &mount.partition);
+        container.add_mount(
+            MountTarget {
+                target: mount.mountpoint.clone(),
+                flags: MountFlags::empty(),
+                data: None,
+                fstype: None,
+            },
+            mount.partition.clone(),
+        );
+    }
+
+    if check_uefi() {
+        // add efivarfs
+        let mnt_target = MountTarget {
+            target: PathBuf::from("/sys/firmware/efi/efivars"),
+            flags: MountFlags::empty(),
+            data: None,
+            fstype: Some("efivarfs".to_owned()),
+        };
+
+        container.add_mount(mnt_target, PathBuf::from("/sys/firmware/efi/efivars"));
+    }
+
+    container.host_bind_mount();
+
+    Ok(container)
 }
 
 impl Playbook {
     pub fn play(&self) -> Result<()> {
         let mounts = self.disk_provisioner.run(self)?;
-        self.filesystem_provisioner.run(self, &mounts)?;
+        if let Some(filesystem_provisioner) = &self.filesystem_provisioner {
+            filesystem_provisioner.run(self, &mounts)?;
+        }
+
         self.setup_system(&mounts)?;
-        self.filesystem_provisioner.cleanup(self, &mounts)?;
+
+        if let Some(filesystem_provisioner) = &self.filesystem_provisioner {
+            filesystem_provisioner.cleanup(self, &mounts)?;
+        }
         Ok(())
     }
 
@@ -57,28 +97,16 @@ impl Playbook {
         let lockfile_path = "/var/run/readymade-setup.lock";
         std::fs::write(lockfile_path, b"")?;
 
-        // todo: Also handle custom installs? Needs more information
-        let esp = check_uefi().then(|| mounts.get_esp_partition()).flatten();
-        let xbootldr = mounts
-            .get_xbootldr_partition()
-            .context("No xbootldr partition found")?;
-
-        let cryptdata = mounts.generate_cryptdata()?;
-
         let tempdir = tempfile::tempdir()?;
 
         // XXX: This is a bit hacky, but this function should be called before output.generate_fstab() for
         // the fstab generator to be correct, IF we're using encryption
         //
         // todo: Unfuck this
-        let mut container = mounts.to_container(
-            &tempdir,
-            passphrase,
-            !rdm_result.state.copy_mode.is_repart(),
-        )?;
-        let fstab = mounts.generate_fstab()?;
+        let mut container = mounts_to_container(&tempdir, mounts)?;
+        // let fstab = mounts.generate_fstab()?;
         // tiffin will run `nix::unistd::chdir("/")` when entering the container, so we can use `sysroot as above`
-        container.run(|| self.inner_sys_setup(fstab, cryptdata, esp, &xbootldr, &rdm_result))??;
+        container.run(|| self.inner_sys_setup(mounts))??;
 
         // Let's remove the lockfile now that we're done
         std::fs::remove_file(lockfile_path)
@@ -89,13 +117,7 @@ impl Playbook {
 
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
-    pub fn inner_sys_setup(
-        &self,
-        fstab: String,
-        crypt_data: Option<CryptData>,
-        esp_node: Option<String>,
-        xbootldr_node: &str,
-    ) -> Result<()> {
+    pub fn inner_sys_setup(&self, mounts: &Mounts) -> Result<()> {
         // ===SAFETY CHECK===
         // Let's make sure we're NOT running OUTSIDE the chroot jail
         // Many fstabs have been lost before due to this.
@@ -106,44 +128,48 @@ impl Playbook {
             );
         }
 
+        // dbg!(std::fs::read_dir("/")?.collect_vec());
+        // dbg!(std::fs::read_dir("/boot")?.collect_vec());
+
         // We will run the specified postinstall modules now
         let context = crate::backend::postinstall::Context {
-            destination_disk: self.destination_disk.devpath.clone(),
-            uefi: if self.installation_type.is_chromebook_install() {
-                true
-            } else {
-                check_uefi()
-            },
-            esp_partition: esp_node,
-            xbootldr_partition: xbootldr_node.to_owned(),
-            crypt_data: crypt_data.clone(),
+            destination_disk: self.destination_disk.clone(),
+            uefi: check_uefi(),
+            // uefi: if self.installation_type.is_chromebook_install() {
+            //     true
+            // } else {
+            //     check_uefi()
+            // },
+            mounts: mounts.clone(), // esp_partition: esp_node,
+                                    // xbootldr_partition: xbootldr_node.to_owned(),
+                                    // crypt_data: crypt_data.clone(),
         };
 
-        if state_dump.state.copy_mode.is_repart() {
-            tracing::info!("Writing /etc/fstab...");
-            std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc/")?;
-            std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
-        }
+        // if state_dump.state.copy_mode.is_repart() {
+        //     tracing::info!("Writing /etc/fstab...");
+        //     std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc/")?;
+        //     std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
+        // }
 
-        // Write the state dump to the chroot
-        let state_dump_path = Path::new(crate::consts::READYMADE_STATE_PATH);
-        let parent =
-            (state_dump_path.parent()).context("Invalid state dump path - no parent directory")?;
-        std::fs::create_dir_all(parent)
-            .wrap_err("Failed to create parent directories for state dump")?;
-        std::fs::write(
-            state_dump_path,
-            state_dump
-                .export_string()
-                .wrap_err("Failed to serialize state dump")?,
-        )
-        .wrap_err("Failed to write state dump file")?;
+        // // Write the state dump to the chroot
+        // let state_dump_path = Path::new(crate::consts::READYMADE_STATE_PATH);
+        // let parent =
+        //     (state_dump_path.parent()).context("Invalid state dump path - no parent directory")?;
+        // std::fs::create_dir_all(parent)
+        //     .wrap_err("Failed to create parent directories for state dump")?;
+        // std::fs::write(
+        //     state_dump_path,
+        //     state_dump
+        //         .export_string()
+        //         .wrap_err("Failed to serialize state dump")?,
+        // )
+        // .wrap_err("Failed to write state dump file")?;
 
-        if let Some(data) = crypt_data.filter(|_| state_dump.state.copy_mode.is_repart()) {
-            tracing::info!("Writing /etc/crypttab...");
-            std::fs::write("/etc/crypttab", data.crypttab)
-                .wrap_err("cannot write to /etc/crypttab")?;
-        }
+        // if let Some(data) = crypt_data.filter(|_| state_dump.state.copy_mode.is_repart()) {
+        //     tracing::info!("Writing /etc/crypttab...");
+        //     std::fs::write("/etc/crypttab", data.crypttab)
+        //         .wrap_err("cannot write to /etc/crypttab")?;
+        // }
 
         (self.postinstall.iter())
             .inspect(|module| tracing::debug!(?module, "Running module"))

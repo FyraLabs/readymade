@@ -336,7 +336,7 @@ pub fn copy_dir_uutils<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_
 ///
 /// ```
 #[tracing::instrument]
-pub fn partition_number(partition_path: &str) -> color_eyre::Result<usize> {
+pub fn partition_number(partition_path: &Path) -> color_eyre::Result<usize> {
     // first, let's
     let metadata = std::fs::metadata(partition_path)?;
     if !metadata.file_type().is_block_device() {
@@ -345,7 +345,7 @@ pub fn partition_number(partition_path: &str) -> color_eyre::Result<usize> {
 
     let sys_path = format!(
         "/sys/class/block/{}",
-        partition_path.trim_start_matches("/dev/")
+        partition_path.to_str().unwrap().trim_start_matches("/dev/")
     );
     let partition_number_path = format!("{sys_path}/partition");
 
@@ -359,8 +359,11 @@ pub fn partition_number(partition_path: &str) -> color_eyre::Result<usize> {
 }
 
 #[tracing::instrument]
-pub fn get_maj_min(dev: &str) -> color_eyre::Result<String> {
-    let sys_path = format!("/sys/class/block/{}", dev.trim_start_matches("/dev/"));
+pub fn get_maj_min(dev: &Path) -> color_eyre::Result<String> {
+    let sys_path = format!(
+        "/sys/class/block/{}",
+        dev.to_str().unwrap().trim_start_matches("/dev/")
+    );
 
     let maj_min = std::fs::read_to_string(format!("{sys_path}/dev"))
         .map_err(|e| eyre!("Could not read maj:min: {e}"))?
@@ -372,7 +375,7 @@ pub fn get_maj_min(dev: &str) -> color_eyre::Result<String> {
 
 /// Get the whole disk from a partition path. i.e. /dev/sda1 -> /dev/sda, /dev/nvme0n1p2 -> /dev/nvme0n1
 #[tracing::instrument]
-pub fn get_whole_disk(partition_path: &str) -> color_eyre::Result<String> {
+pub fn get_whole_disk(partition_path: &Path) -> color_eyre::Result<String> {
     let majmin = get_maj_min(partition_path)?;
     let sys_path = format!("/sys/dev/block/{majmin}");
 
