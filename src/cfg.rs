@@ -3,8 +3,8 @@ use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_valid::{Validate, toml::FromTomlStr};
 
-use crate::backend::install::InstallationType;
-use crate::backend::postinstall::Module;
+use libreadymade::backend::install::InstallationType;
+use libreadymade::backend::postinstall::Module;
 
 #[cfg(not(debug_assertions))]
 const DEFAULT_CFG_PATH: &str = "/etc/readymade.toml";
@@ -103,6 +103,21 @@ pub fn get_cfg() -> Result<ReadymadeConfig> {
     Ok(ReadymadeConfig::from_toml_str(&toml)?)
 }
 
+impl From<&ReadymadeConfig> for libreadymade::backend::install::InstallationState {
+    fn from(value: &crate::cfg::ReadymadeConfig) -> Self {
+        Self {
+            postinstall: value.postinstall.clone(),
+            distro_name: value.distro.name.clone(),
+            bootc_imgref: value.to_bootc_copy_source(),
+            bootc_target_imgref: value.to_bootc_target_copy_source(),
+            bootc_enforce_sigpolicy: value.install.bootc_enforce_sigpolicy,
+            bootc_kargs: value.install.bootc_kargs.clone(),
+            bootc_args: value.install.bootc_args.clone(),
+            ..Self::default()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -173,12 +188,12 @@ mod tests {
                     bootc_args: None,
                 },
                 postinstall: vec![
-                    crate::backend::postinstall::grub2::GRUB2.into(),
-                    crate::backend::postinstall::cleanup_boot::CleanupBoot.into(),
-                    crate::backend::postinstall::reinstall_kernel::ReinstallKernel.into(),
-                    crate::backend::postinstall::dracut::Dracut.into(),
-                    crate::backend::postinstall::prepare_fedora::PrepareFedora.into(),
-                    crate::backend::postinstall::selinux::SELinux.into(),
+                    libreadymade::backend::postinstall::grub2::GRUB2.into(),
+                    libreadymade::backend::postinstall::cleanup_boot::CleanupBoot.into(),
+                    libreadymade::backend::postinstall::reinstall_kernel::ReinstallKernel.into(),
+                    libreadymade::backend::postinstall::dracut::Dracut.into(),
+                    libreadymade::backend::postinstall::prepare_fedora::PrepareFedora.into(),
+                    libreadymade::backend::postinstall::selinux::SELinux.into(),
                 ],
                 bentos: [
                     Bento {

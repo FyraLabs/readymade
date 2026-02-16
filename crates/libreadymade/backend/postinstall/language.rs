@@ -4,12 +4,14 @@ use serde::{Deserialize, Serialize};
 use super::{Context, PostInstallModule};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Language;
+pub struct Language {
+    pub lang: String,
+}
 
 impl PostInstallModule for Language {
     fn run(&self, context: &Context) -> Result<()> {
         // use UTF-8 locale, since the non-UTF-8 ones break stuff
-        let lang = format!("{}.UTF-8", context.lang);
+        let lang = format!("{}.UTF-8", self.lang);
         // shadowing here because format!() has shit lifetime
         let lang = lang.as_bytes();
         // `LOCALE.CONF(5)`: /etc/locale.conf

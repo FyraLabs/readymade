@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::{io::Write, path::Path, process::Command};
 use tracing::{info, warn};
 
-use crate::{prelude::*, stage};
+use crate::{backend::mounts::generate_cryptdata, prelude::*, stage};
 
 use super::{Context, PostInstallModule};
 
@@ -110,8 +110,10 @@ impl PostInstallModule for GRUB2 {
         stage!(grub "Generating system grub defaults" {
             let mut defaults = Grub2Defaults::default();
 
+            let crypt_data = generate_cryptdata(&context.mounts)?;
+
             // Now, let's add extra boot opts if they exist
-            if let Some(crypt_data) = &context.crypt_data {
+            if let Some(crypt_data) = crypt_data {
                 // prepend
                 let current_value = defaults.cmdline_linux;
 
@@ -141,7 +143,7 @@ impl PostInstallModule for GRUB2 {
 
             stage!(grub1 "Generating stage 1 grub.cfg in ESP..." {
                 let mut grub_cfg = std::fs::File::create("/boot/efi/EFI/fedora/grub.cfg")?;
-                let xbootldr_disk = &context.xbootldr_partition;
+                let xbootldr_disk = &context.mounts.get_xbootldr_partition().ok_or_else(|| eyre!("No xbootldr partition found"))?;
 
                 let template_str = include_str!("../../templates/fedora-grub.cfg");
                 // We used to blindly search for a partition labeled `xbootldr` here, but now that's not scalable.
@@ -158,7 +160,7 @@ impl PostInstallModule for GRUB2 {
                 let block_devices = lsblk::BlockDevice::list()?;
                 let xbootldr_uuid = block_devices
                     .iter()
-                    .find(|dev| dev.fullname == *xbootldr_disk)
+                    .find(|dev| dev.fullname == *xbootldr_disk.partition)
                     .and_then(|dev| dev.uuid.as_ref())
                     .ok_or_else(|| eyre!("Could not find UUID for xbootldr partition"))?;
 

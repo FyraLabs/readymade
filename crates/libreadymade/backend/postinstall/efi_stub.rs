@@ -12,7 +12,9 @@ use super::{Context, PostInstallModule};
 
 /// Generate an EFI stub for the bootloader
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct EfiStub;
+pub struct EfiStub {
+    pub distro_name: String,
+}
 
 impl PostInstallModule for EfiStub {
     #[tracing::instrument(skip(self, context))]
@@ -23,19 +25,21 @@ impl PostInstallModule for EfiStub {
             return Ok(());
         }
 
-        tracing::debug!(esp_part = ?context.esp_partition, uefi = ?context.uefi, "Generating EFI stub");
+        let esp_partition = context.mounts.get_esp_partition();
 
-        let Some(esp_partition) = context.esp_partition.as_ref() else {
+        tracing::debug!(esp_part = ?esp_partition, uefi = ?context.uefi, "Generating EFI stub");
+
+        let Some(esp_partition) = esp_partition.as_ref() else {
             bail!("No ESP partition found, cannot generate EFI stub")
         };
         // get the partition number
-        let partition_number = partition_number(esp_partition)?;
-        let esp_disk = get_whole_disk(esp_partition)?;
+        let partition_number = partition_number(&esp_partition.partition)?;
+        let esp_disk = get_whole_disk(&esp_partition.partition)?;
 
         tracing::debug!(
             disk = esp_disk,
             part = partition_number,
-            label = context.distro_name,
+            label = self.distro_name,
             shim_path = shim_path(),
             "Creating EFI boot entry"
         );
@@ -47,7 +51,7 @@ impl PostInstallModule for EfiStub {
             .arg("--part")
             .arg(partition_number.to_string())
             .arg("--label")
-            .arg(&context.distro_name)
+            .arg(&self.distro_name)
             .arg("--loader")
             .arg(shim_path())
             .status()?;

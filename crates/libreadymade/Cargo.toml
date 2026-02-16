@@ -9,7 +9,7 @@ publish = false
 
 [dependencies]
 backhand = "0.24.1"
-bytesize = { version = "2.3.1", features = ["serde"] }
+bytesize = { workspace = true }
 color-eyre = { workspace = true }
 const_format = { workspace = true }
 educe = "0.6.0"
@@ -18,6 +18,7 @@ file-guard = "0.2.0"
 filesystem-table = { workspace = true }
 format-bytes = { workspace = true }
 freedesktop-desktop-entry = { version = "0.7.11", git = "https://github.com/madonuko/freedesktop-desktop-entry", default-features = false }
+gpt = "4.1.0"
 ipc-channel = { workspace = true }
 itertools = { workspace = true }
 jwalk = "0.8.1"
@@ -26,6 +27,7 @@ nix = { version = "0.31.1", features = ["fs", "mount", "user"] }
 parking_lot = "0.12.5"
 paste = "1.0.15"
 rayon = "1.11.0"
+repart = { workspace = true }
 scopeguard = "1.2.0"
 serde = { workspace = true }
 serde-systemd-unit = { path = "../serde-systemd-unit" }
@@ -36,11 +38,11 @@ strip-ansi-escapes = "0.2.1"
 sys-mount = "3.1.0"
 tempfile = { workspace = true }
 thiserror = { workspace = true }
-tiffin = { version = "0.3.2" }
+tiffin = { version = "0.4.0" }
 toml = "1.0.1"
 tracing = { workspace = true }
 tracing-journald = "0.3.2"
-tracing-test = "0.2.6"
+tracing-test = { workspace = true }
 uu_cp = { version = "0.6.0", features = [
     "exacl",
     "feat_acl",

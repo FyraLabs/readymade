@@ -8,7 +8,6 @@ use std::{collections::BTreeMap, path::Path};
 use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 
-use super::{install::FinalInstallationState, repartcfg::RepartConfig};
 /// The version of the result dump format, for backwards compat reasons
 ///
 /// If there's any changes to the format, this should be bumped up to the next version.
@@ -45,7 +44,7 @@ impl ReadymadeResult {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SystemdRepartData {
-    configs: BTreeMap<String, RepartConfig>,
+    pub configs: BTreeMap<String, RepartConfig>,
 }
 
 impl SystemdRepartData {

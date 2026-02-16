@@ -1,0 +1,17 @@
+[package]
+name = "readymade-playbook"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libreadymade = { workspace = true }
+tracing-subscriber = { workspace = true }
+color-eyre = { workspace = true }
+serde_json = { workspace = true }
+
+[[bin]]
+name = "readymade-playbook"
+path = "./main.rs"
+
+[lints]
+workspace = true

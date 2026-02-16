@@ -1,3 +1,6 @@
+use crate::prelude::*;
+use crate::prelude::*;
+
 use cleanup_boot::CleanupBoot;
 use color_eyre::Result;
 use cryptsetup::CryptSetup;
@@ -14,12 +17,11 @@ use selinux::SELinux;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use super::repart_output::CryptData;
-
 pub mod cleanup_boot;
 pub mod cryptsetup;
 pub mod dracut;
 pub mod efi_stub;
+pub mod fstab;
 pub mod grub2;
 pub mod initial_setup;
 pub mod language;
@@ -32,12 +34,11 @@ pub mod selinux;
 pub struct Context {
     pub destination_disk: PathBuf,
     pub uefi: bool,
-    pub esp_partition: Option<String>,
+    // pub esp_partition: Option<String>,
     // Installs should always have an xbootldr partition
-    pub xbootldr_partition: String,
-    pub lang: String,
-    pub crypt_data: Option<CryptData>,
-    pub distro_name: String,
+    // pub xbootldr_partition: String,
+    // pub crypt_data: Option<CryptData>,
+    pub mounts: Mounts,
 }
 
 #[enum_dispatch(Module)]
