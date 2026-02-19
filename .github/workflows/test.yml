@@ -16,7 +16,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          dnf install -y isotovideo edk2-ovmf
+          dnf install -y isotovideo edk2-ovmf qemu
           dnf builddep -y ci/readymade.spec
 
       - name: Run tests
