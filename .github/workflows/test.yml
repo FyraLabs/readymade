@@ -14,6 +14,24 @@ jobs:
         with:
           submodules: true
 
+      - name: Clean up space
+        run: |
+          df -h
+          # Wipe stuff in our host /usr to make some space
+
+          # We don't need the android SDK
+          rm -rf /hostusr/local/lib/android
+          # We're a Rust shop, not a Haskell shop
+          rm -rf /hostusr/local/.ghcup
+          rm -rf /hostfs/opt/ghc
+          # We don't even use .NET
+          rm -rf /hostusr/share/dotnet
+          # We don't need CodeQL in this action
+          rm -rf /hostfs/opt/hostedtoolcache/CodeQL
+
+          echo "After cleanup:"
+          df -h
+
       - name: Install dependencies
         run: |
           dnf install -y isotovideo edk2-ovmf qemu
