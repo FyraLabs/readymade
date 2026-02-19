@@ -43,12 +43,14 @@ module = "SELinux"
 
 [[postinstall]]
 module = "EfiStub"
+distro_name = "Ultramarine Linux"
 
 [[postinstall]]
 module = "InitialSetup"
 
 [[postinstall]]
 module = "Language"
+lang = "en"
 
 [[postinstall]]
 module = "Script"
