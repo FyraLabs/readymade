@@ -1,11 +1,11 @@
 #!/bin/bash
+set -euxo pipefail
 
 mkdir -p work/install_root
 cd work
 
 if [ ! -f install.img ]; then
-    wget https://images.fyralabs.com/images/ultramarine/43/plasma-base-disk-$(arch).img.zst -O install.img.zst
-    unzstd install.img.zst
+    curl https://images.fyralabs.com/images/ultramarine/43/plasma-base-disk-$(arch).img.zst | unzstd > install.img
 fi
 
 install_device=$(sudo losetup --nooverlap --partscan --show -f install.img)
