@@ -35,7 +35,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          dnf install -y isotovideo edk2-ovmf qemu systemd-repart dosfstools e2fsprogs
+          dnf install -y isotovideo edk2-ovmf qemu systemd-repart dosfstools e2fsprogs btrfs-progs
           dnf builddep -y ci/readymade.spec
 
       - name: Run tests
