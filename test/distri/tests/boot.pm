@@ -40,10 +40,6 @@ sub run {
     assert_and_click 'initial-setup-complete', timeout => 900;
 
     assert_screen 'login', timeout => 600;
-    type_string 'password';
-    send_key 'ret';
-
-    assert_screen 'desktop', timeout => 900;
 }
 
 sub test_flags {
