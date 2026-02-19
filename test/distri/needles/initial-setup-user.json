@@ -1,0 +1,26 @@
+{
+  "properties": [],
+  "tags": [
+    "initial-setup-user"
+  ],
+  "area": [
+    {
+      "xpos": 427,
+      "ypos": 335,
+      "width": 173,
+      "height": 35,
+      "type": "match"
+    },
+    {
+      "xpos": 801,
+      "ypos": 674,
+      "width": 61,
+      "height": 32,
+      "type": "match",
+      "click_point": {
+        "xpos": 29,
+        "ypos": 17
+      }
+    }
+  ]
+}

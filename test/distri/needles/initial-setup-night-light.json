@@ -1,0 +1,26 @@
+{
+  "properties": [],
+  "tags": [
+    "initial-setup-night-light"
+  ],
+  "area": [
+    {
+      "xpos": 448,
+      "ypos": 322,
+      "width": 137,
+      "height": 36,
+      "type": "match"
+    },
+    {
+      "xpos": 641,
+      "ypos": 670,
+      "width": 220,
+      "height": 38,
+      "type": "match",
+      "click_point": {
+        "xpos": 105,
+        "ypos": 23
+      }
+    }
+  ]
+}

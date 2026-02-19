@@ -1,0 +1,42 @@
+{
+  "destination_disk": "$TEST_DESTINATION_DISK",
+  "disk_provisioner": {
+    "module": "Repart",
+    "directory": "$TEST_REPART_DIRECTORY",
+    "copy_source": "$TEST_REPART_COPY_SOURCE"
+  },
+  "postinstall": [
+    {
+      "module": "Fstab"
+    },
+    {
+      "module": "CleanupBoot"
+    },
+    {
+      "module": "ReinstallKernel"
+    },
+    {
+      "module": "Dracut"
+    },
+    {
+      "module": "GRUB2"
+    },
+    {
+      "module": "PrepareFedora"
+    },
+    {
+      "module": "EfiStub",
+      "distro_name": "Ultramarine Linux"
+    },
+    {
+      "module": "InitialSetup"
+    },
+    {
+      "module": "Language",
+      "lang": "en_US"
+    },
+    {
+      "module": "Script"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "properties": [],
+  "tags": [
+    "initial-setup-codecs"
+  ],
+  "area": [
+    {
+      "xpos": 408,
+      "ypos": 309,
+      "width": 217,
+      "height": 31,
+      "type": "match"
+    },
+    {
+      "xpos": 805,
+      "ypos": 679,
+      "width": 53,
+      "height": 26,
+      "type": "match",
+      "click_point": {
+        "xpos": 26,
+        "ypos": 13
+      }
+    }
+  ]
+}

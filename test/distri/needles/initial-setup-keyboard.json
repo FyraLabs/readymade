@@ -1,0 +1,26 @@
+{
+  "properties": [],
+  "tags": [
+    "initial-setup-keyboard"
+  ],
+  "area": [
+    {
+      "xpos": 401,
+      "ypos": 161,
+      "width": 219,
+      "height": 36,
+      "type": "match"
+    },
+    {
+      "xpos": 792,
+      "ypos": 673,
+      "width": 70,
+      "height": 36,
+      "type": "match",
+      "click_point": {
+        "xpos": 38,
+        "ypos": 15
+      }
+    }
+  ]
+}

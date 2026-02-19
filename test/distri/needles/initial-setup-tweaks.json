@@ -1,0 +1,26 @@
+{
+  "properties": [],
+  "tags": [
+    "initial-setup-tweaks"
+  ],
+  "area": [
+    {
+      "xpos": 421,
+      "ypos": 264,
+      "width": 190,
+      "height": 35,
+      "type": "match"
+    },
+    {
+      "xpos": 796,
+      "ypos": 675,
+      "width": 59,
+      "height": 32,
+      "type": "match",
+      "click_point": {
+        "xpos": 35,
+        "ypos": 10
+      }
+    }
+  ]
+}

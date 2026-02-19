@@ -1,0 +1,26 @@
+{
+  "properties": [],
+  "tags": [
+    "initial-setup-network"
+  ],
+  "area": [
+    {
+      "xpos": 422,
+      "ypos": 354,
+      "width": 182,
+      "height": 37,
+      "type": "match"
+    },
+    {
+      "xpos": 802,
+      "ypos": 673,
+      "width": 57,
+      "height": 33,
+      "type": "match",
+      "click_point": {
+        "xpos": 25,
+        "ypos": 16
+      }
+    }
+  ]
+}

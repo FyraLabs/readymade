@@ -1,0 +1,23 @@
+name: End to End Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:43
+    steps:
+      - name: Install dependencies
+        run: |
+          dnf builddep -y ci/readymade.spec
+          dnf install -y isotovideo edk2-ovmf
+
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Run tests
+        run: cd test && ./test.sh

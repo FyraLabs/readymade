@@ -1,0 +1,26 @@
+{
+  "properties": [],
+  "tags": [
+    "initial-setup-welcome"
+  ],
+  "area": [
+    {
+      "xpos": 295,
+      "ypos": 403,
+      "width": 437,
+      "height": 36,
+      "type": "match"
+    },
+    {
+      "xpos": 775,
+      "ypos": 675,
+      "width": 83,
+      "height": 32,
+      "type": "match",
+      "click_point": {
+        "xpos": 38,
+        "ypos": 15
+      }
+    }
+  ]
+}

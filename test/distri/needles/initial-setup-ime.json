@@ -1,0 +1,26 @@
+{
+  "properties": [],
+  "tags": [
+    "initial-setup-ime"
+  ],
+  "area": [
+    {
+      "xpos": 378,
+      "ypos": 311,
+      "width": 274,
+      "height": 28,
+      "type": "match"
+    },
+    {
+      "xpos": 803,
+      "ypos": 670,
+      "width": 59,
+      "height": 42,
+      "type": "match",
+      "click_point": {
+        "xpos": 24,
+        "ypos": 17
+      }
+    }
+  ]
+}

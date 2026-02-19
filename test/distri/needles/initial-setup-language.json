@@ -1,0 +1,26 @@
+{
+  "properties": [],
+  "tags": [
+    "initial-setup-language"
+  ],
+  "area": [
+    {
+      "xpos": 454,
+      "ypos": 159,
+      "width": 122,
+      "height": 39,
+      "type": "match"
+    },
+    {
+      "xpos": 791,
+      "ypos": 671,
+      "width": 69,
+      "height": 41,
+      "type": "match",
+      "click_point": {
+        "xpos": 38,
+        "ypos": 21
+      }
+    }
+  ]
+}
