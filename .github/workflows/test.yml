@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/terrapkg/builder:f43
+      options: -v /usr:/hostusr -v /:/hostfs
     steps:
       - uses: actions/checkout@v6
         with:
