@@ -8,17 +8,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container:
-      image: fedora:43
+      image: ghcr.io/terrapkg/builder:f43
     steps:
-      - name: Install dependencies
-        run: dnf install -y isotovideo edk2-ovmf git
-
       - uses: actions/checkout@v6
         with:
           submodules: true
 
-      - name: Install build dependencies
-        run: dnf builddep -y ci/readymade.spec
+      - name: Install dependencies
+        run: |
+          dnf install -y isotovideo edk2-ovmf
+          dnf builddep -y ci/readymade.spec
 
       - name: Run tests
         run: cd test && ./test.sh
