@@ -61,34 +61,13 @@ impl SimpleComponent for InstallCustomPage {
                 set_vexpand: true,
                 set_hexpand: true,
 
-                gtk::ScrolledWindow {
-                    #[local_ref]
-                    mounts -> gtk::Box {
-                        set_margin_horizontal: 16,
-                        set_spacing: 8,
-                        set_orientation: gtk::Orientation::Vertical,
-                        add_css_class: "content-list",
-                        set_vexpand: true,
-                        set_hexpand: true,
-                        set_valign: gtk::Align::Center,
-                        set_halign: gtk::Align::Fill,
-                    }
-                },
+                #[name(scrolled_window)]
+                gtk::ScrolledWindow {},
 
-                // FIXME: help me position this button!!!!
-
-                libhelium::OverlayButton {
-                    set_valign: gtk::Align::End,
-                    set_halign: gtk::Align::End,
-
-                    set_typeb: libhelium::OverlayButtonTypeButton::Primary,
-                    set_icon: "go-next",
-                    connect_clicked => InstallCustomPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Confirmation)),
-                },
-
-
-
+                #[name(bottom_bar)]
                 libhelium::BottomBar {
+                    set_mode: libhelium::BottomBarMode::Floating,
+
                     #[watch]
                     set_title: &t!("page-installcustom-title"),
 
@@ -113,6 +92,14 @@ impl SimpleComponent for InstallCustomPage {
                         connect_clicked => InstallCustomPageMsg::AddRow,
                     },
                 },
+
+                #[name(next_button)]
+                libhelium::OverlayButton {
+                    set_typeb: libhelium::OverlayButtonTypeButton::Primary,
+                    set_icon: "go-next",
+                    connect_clicked => InstallCustomPageMsg::Navigate(NavigationAction::GoTo(crate::Page::Confirmation)),
+                    set_visible: false,
+                },
             },
         }
     }
@@ -133,6 +120,15 @@ impl SimpleComponent for InstallCustomPage {
 
         let mounts = model.choose_mount_factory.widget();
         let widgets = view_output!();
+
+        let mounts_widget: &gtk::Widget = mounts.upcast_ref();
+        widgets.scrolled_window.set_child(Some(mounts_widget));
+        widgets
+            .bottom_bar
+            .set_overlay_widget(Some(&widgets.scrolled_window));
+        widgets
+            .bottom_bar
+            .set_overlay_button(Some(&widgets.next_button));
 
         INSTALLATION_STATE.subscribe(sender.input_sender(), |_| InstallCustomPageMsg::Update);
 
