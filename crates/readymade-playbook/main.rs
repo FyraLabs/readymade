@@ -1,7 +1,7 @@
-use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 use color_eyre::Result;
 use libreadymade::playbook::Playbook;
-use std::fs;
+use std::{fs, sync::mpsc, thread};
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 fn main() -> Result<()> {
     color_eyre::install()?;
@@ -17,7 +17,19 @@ fn main() -> Result<()> {
 
     let playbook: Playbook = serde_json::from_str(fs::read_to_string(playbook_file)?.as_str())?;
 
-    playbook.play()?;
+    let (tx, rx) = mpsc::channel();
+
+    thread::scope(|s| {
+        let playbook_handle = s.spawn(move || playbook.play(tx));
+
+        s.spawn(move || {
+            while let Ok(progress) = rx.recv() {
+                dbg!(progress);
+            }
+        });
+
+        playbook_handle.join().unwrap()
+    })?;
 
     Ok(())
 }

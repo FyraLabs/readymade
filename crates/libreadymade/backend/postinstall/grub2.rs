@@ -106,6 +106,10 @@ fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> Result<()> {
 pub struct GRUB2;
 
 impl PostInstallModule for GRUB2 {
+    fn name(&self) -> &'static str {
+        "GRUB2"
+    }
+
     fn run(&self, context: &Context) -> Result<()> {
         stage!(grub "Generating system grub defaults" {
             let mut defaults = Grub2Defaults::default();

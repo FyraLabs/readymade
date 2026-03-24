@@ -1,9 +1,8 @@
 use crate::prelude::*;
-use crate::{INSTALLATION_STATE, NavigationAction};
+use crate::{APPLICATION_STATE, NavigationAction, state};
 use color_eyre::Result;
 use l10n::BENTO_LOADER as L;
-use libreadymade::backend::install::FinalInstallationState;
-use libreadymade::backend::install::InstallationMessage;
+use libreadymade::playbook::{Playbook, PlaybookProgress};
 use relm4::{Component, ComponentParts, ComponentSender};
 use std::time::Duration;
 
@@ -123,14 +122,14 @@ pub struct InstallationPage {
 #[derive(Debug)]
 pub enum InstallationPageMsg {
     Open(String),
-    StartInstallation,
+    StartInstallation(Playbook),
     #[doc(hidden)]
     Navigate(NavigationAction),
+    #[doc(hidden)]
+    Progress(PlaybookProgress),
     Update,
     #[doc(hidden)]
     Throb,
-    #[doc(hidden)]
-    SubprocessMessage(InstallationMessage),
 }
 
 #[derive(Debug)]
@@ -268,7 +267,7 @@ impl Component for InstallationPage {
 
         let widgets = view_output!();
 
-        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| InstallationPageMsg::Update);
+        APPLICATION_STATE.subscribe(sender.input_sender(), |_| InstallationPageMsg::Update);
 
         gtk::glib::timeout_add(Duration::from_secs(1), move || {
             sender.input(InstallationPageMsg::Throb);
@@ -286,35 +285,36 @@ impl Component for InstallationPage {
                 gtk::gio::Cancellable::NONE,
                 |_| {},
             ),
-            InstallationPageMsg::StartInstallation => {
+            InstallationPageMsg::StartInstallation(playbook) => {
                 let sender2 = sender.clone();
                 let (s, r) = relm4::channel();
                 sender.oneshot_command(async move {
-                    r.forward(sender2.input_sender().clone(), |msg| {
-                        InstallationPageMsg::SubprocessMessage(msg)
-                    })
-                    .await;
-
+                    r.forward(sender2.input_sender().clone(), InstallationPageMsg::Progress)
+                        .await;
                     InstallationPageCommandMsg::None
                 });
 
                 sender.spawn_oneshot_command(move || {
-                    let state = FinalInstallationState::from(&*INSTALLATION_STATE.read());
-                    tracing::debug!(?state, "Starting installation...");
-
+                    tracing::debug!(?playbook, "Starting installation...");
                     InstallationPageCommandMsg::FinishInstallation(
-                        state.install_using_subprocess(|msg| s.emit(msg)),
+                        state::install_using_subprocess(&playbook, move |msg| s.emit(msg)),
                     )
                 });
             }
             InstallationPageMsg::Navigate(action) => sender
                 .output(InstallationPageOutput::Navigate(action))
                 .unwrap(),
+            InstallationPageMsg::Progress(progress) => match progress {
+                PlaybookProgress::Stage(status) | PlaybookProgress::StageProgress(status) => {
+                    self.progress_bar.set_text(Some(&status));
+                }
+                PlaybookProgress::PostModule(module, index, total) => {
+                    self.progress_bar
+                        .set_text(Some(&format!("Post-install {} / {}: {}", index + 1, total, module)));
+                }
+            },
             InstallationPageMsg::Update => {}
             InstallationPageMsg::Throb => self.progress_bar.pulse(),
-            InstallationPageMsg::SubprocessMessage(InstallationMessage::Status(status)) => {
-                self.progress_bar.set_text(Some(&status));
-            }
         }
     }
 

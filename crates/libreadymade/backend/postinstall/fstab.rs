@@ -10,6 +10,10 @@ use std::fmt::Write;
 pub struct Fstab;
 
 impl PostInstallModule for Fstab {
+    fn name(&self) -> &'static str {
+        "Fstab"
+    }
+
     fn run(&self, context: &Context) -> Result<()> {
         tracing::info!("Writing /etc/fstab...");
         let fstab = generate_fstab(&context.mounts).wrap_err("cannot generate fstab")?;

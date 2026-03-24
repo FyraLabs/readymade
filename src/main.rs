@@ -2,22 +2,23 @@
 mod cfg;
 mod pages;
 mod prelude;
+mod state;
 
-use libreadymade::backend::{custom::MountTargets, install::FinalInstallationState};
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use std::sync::LazyLock;
 
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    state::{APPLICATION_STATE, ApplicationState},
+};
 use gtk::glib::translate::FromGlibPtrNone;
 use i18n_embed::LanguageLoader as _;
-use ipc_channel::ipc::IpcSender;
-use libreadymade::backend::install::{IPC_CHANNEL, InstallationState, InstallationType};
 use pages::installation::InstallationPageMsg;
+use libreadymade::playbook::Playbook;
 use relm4::SharedState;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 /// State related to the user's installation configuration
-static INSTALLATION_STATE: SharedState<InstallationState> = SharedState::new();
 static CONFIG: SharedState<cfg::ReadymadeConfig> = SharedState::new();
 
 pub static LL: LazyLock<RwLock<i18n_embed::fluent::FluentLanguageLoader>> =
@@ -188,20 +189,25 @@ impl SimpleComponent for AppModel {
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
             AppMsg::StartInstallation => {
-                let value = INSTALLATION_STATE.read().installation_type;
-                if let Some(InstallationType::Custom) = value {
-                    INSTALLATION_STATE.write().mounttags = Some(MountTargets(
-                        self.install_custom_page
-                            .model()
-                            .choose_mount_factory
-                            .iter()
-                            .cloned()
-                            .map(|t| t.0)
-                            .collect(),
-                    ));
+                let playbook = {
+                    let custom_mounts =
+                        (APPLICATION_STATE.read().installation_type == Some(cfg::InstallationType::Custom))
+                            .then(|| self.install_custom_page.model().mounts());
+                    APPLICATION_STATE
+                        .read()
+                        .to_playbook(&CONFIG.read(), custom_mounts)
+                };
+
+                match playbook {
+                    Ok(playbook) => self
+                        .installation_page
+                        .emit(InstallationPageMsg::StartInstallation(playbook)),
+                    Err(err) => {
+                        self.page = Page::Failure;
+                        self.failure_page
+                            .emit(pages::failure::FailurePageMsg::Err(format!("{err:?}")));
+                    }
                 }
-                self.installation_page
-                    .emit(InstallationPageMsg::StartInstallation);
             }
             AppMsg::Navigate(NavigationAction::GoTo(page)) => self.page = page,
 
@@ -260,26 +266,33 @@ fn main() -> Result<()> {
 
     if let Some((i, _)) = std::env::args().find_position(|arg| arg == "--non-interactive") {
         tracing::info!("Running in non-interactive mode");
-        // Get installation state from stdin json instead
-
-        let channel = IpcSender::connect(
-            std::env::args()
-                .nth(i.wrapping_add(1))
-                .context("No IPC channel ID passed")?,
-        )?;
-
-        IPC_CHANNEL.set(Mutex::new(channel)).unwrap();
-        let install_state: FinalInstallationState = serde_json::from_reader(std::io::stdin())?;
+        let playbook: Playbook = serde_json::from_reader(std::io::stdin())?;
+        let progress = if let Some(channel_id) = std::env::args().nth(i.wrapping_add(1)) {
+            let sender = ipc_channel::ipc::IpcSender::connect(channel_id)?;
+            let (tx, rx) = Playbook::channel();
+            std::thread::spawn(move || {
+                for msg in rx {
+                    if let Err(err) = sender.send(msg) {
+                        tracing::error!("Failed to send progress to parent process: {err:?}");
+                        break;
+                    }
+                }
+            });
+            tx
+        } else {
+            let (tx, _rx) = Playbook::channel();
+            tx
+        };
 
         *LL.write() = handle_l10n();
         langs_th.join().expect("cannot join available_langs_th");
-        return install_state
-            .install()
+        return playbook
+            .play(progress)
             .inspect_err(|e| _ = sentry_eyre::capture_report(e));
     }
 
     *CONFIG.write() = cfg::get_cfg()?;
-    *INSTALLATION_STATE.write() = InstallationState::from(&*CONFIG.read());
+    *APPLICATION_STATE.write() = ApplicationState::from(&*CONFIG.read());
 
     gtk::gio::resources_register_include!("resources.gresource")?;
 
