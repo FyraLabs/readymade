@@ -3,4 +3,4 @@ disallowed-macros = ["cmd_lib::run_cmd", "cmd_lib::run_fun"]
 # check-private-items = true
 enforce-iter-loop-reborrow = true
 excessive-nesting-threshold = 5
-doc-valid-idents = ["..", "ChromeOS", "QoL"]
+doc-valid-idents = ["..", "ChromeOS", "QoL", "SELinux"]
