@@ -14,7 +14,6 @@ use crate::{
 use gtk::glib::translate::FromGlibPtrNone;
 use i18n_embed::LanguageLoader as _;
 use pages::installation::InstallationPageMsg;
-use libreadymade::playbook::Playbook;
 use relm4::SharedState;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
@@ -190,9 +189,9 @@ impl SimpleComponent for AppModel {
         match message {
             AppMsg::StartInstallation => {
                 let playbook = {
-                    let custom_mounts =
-                        (APPLICATION_STATE.read().installation_type == Some(cfg::InstallationType::Custom))
-                            .then(|| self.install_custom_page.model().mounts());
+                    let custom_mounts = (APPLICATION_STATE.read().installation_type
+                        == Some(cfg::InstallationType::Custom))
+                    .then(|| self.install_custom_page.model().mounts());
                     APPLICATION_STATE
                         .read()
                         .to_playbook(&CONFIG.read(), custom_mounts)
@@ -263,33 +262,6 @@ fn main() -> Result<()> {
     // PERF: this is probably premature optimisation but hey it kinda helps
     let langs_th = std::thread::spawn(|| LazyLock::force(&AVAILABLE_LANGS));
     let _guard = setup_hooks();
-
-    if let Some((i, _)) = std::env::args().find_position(|arg| arg == "--non-interactive") {
-        tracing::info!("Running in non-interactive mode");
-        let playbook: Playbook = serde_json::from_reader(std::io::stdin())?;
-        let progress = if let Some(channel_id) = std::env::args().nth(i.wrapping_add(1)) {
-            let sender = ipc_channel::ipc::IpcSender::connect(channel_id)?;
-            let (tx, rx) = Playbook::channel();
-            std::thread::spawn(move || {
-                for msg in rx {
-                    if let Err(err) = sender.send(msg) {
-                        tracing::error!("Failed to send progress to parent process: {err:?}");
-                        break;
-                    }
-                }
-            });
-            tx
-        } else {
-            let (tx, _rx) = Playbook::channel();
-            tx
-        };
-
-        *LL.write() = handle_l10n();
-        langs_th.join().expect("cannot join available_langs_th");
-        return playbook
-            .play(progress)
-            .inspect_err(|e| _ = sentry_eyre::capture_report(e));
-    }
 
     *CONFIG.write() = cfg::get_cfg()?;
     *APPLICATION_STATE.write() = ApplicationState::from(&*CONFIG.read());

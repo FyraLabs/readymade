@@ -1,27 +1,25 @@
 use std::{
-    io::Write,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::Command,
 };
 
-use ipc_channel::{IpcError, ipc::IpcOneShotServer};
 use libreadymade::{
     backend::{
         mounts::{Mount, Mounts},
         provisioners::{
+            DiskProvisioner, FileSystemProvisioner,
             disk::{manual::Manual, repart::Repart},
             filesystem::{Bootc, Copy},
-            DiskProvisioner, FileSystemProvisioner,
         },
     },
     consts::{LIVE_BASE, ROOTFS_BASE},
     disks::Disk,
-    playbook::{EncryptionConfig, Playbook, PlaybookProgress},
+    playbook::{EncryptionConfig, Playbook},
 };
 use relm4::SharedState;
 
-use crate::prelude::*;
 use crate::cfg::{CopyMode, InstallationType, ReadymadeConfig};
+use crate::prelude::*;
 
 #[derive(Default)]
 pub struct ApplicationState {
@@ -69,7 +67,9 @@ impl ApplicationState {
             InstallationType::Custom => {
                 let mounts = custom_mounts
                     .filter(|mounts| !mounts.0.is_empty())
-                    .ok_or_eyre("Custom installation selected but no mount targets were configured")?;
+                    .ok_or_eyre(
+                        "Custom installation selected but no mount targets were configured",
+                    )?;
                 (
                     DiskProvisioner::Manual(Manual { mounts }),
                     Some(match config.install.copy_mode {
@@ -88,16 +88,19 @@ impl ApplicationState {
                     }),
                 )
             }
-            InstallationType::WholeDisk | InstallationType::ChromebookInstall => match config.install.copy_mode {
+            InstallationType::WholeDisk | InstallationType::ChromebookInstall => match config
+                .install
+                .copy_mode
+            {
                 CopyMode::Bootc => (
                     DiskProvisioner::Repart(Repart {
                         directory: installation_type.cfgdir(true),
                         copy_source: None,
                     }),
                     Some(FileSystemProvisioner::Bootc(Bootc {
-                        imgref: config
-                            .to_bootc_copy_source()
-                            .ok_or_eyre("Bootc copy mode selected but no source image reference is configured")?,
+                        imgref: config.to_bootc_copy_source().ok_or_eyre(
+                            "Bootc copy mode selected but no source image reference is configured",
+                        )?,
                         target_imgref: config.to_bootc_target_copy_source(),
                         enforce_sigpolicy: config.install.bootc_enforce_sigpolicy,
                         kargs: config.install.bootc_kargs.clone().unwrap_or_default(),
@@ -138,92 +141,29 @@ pub fn mount_from_custom_target(partition: &str, mountpoint: &str, options: &str
 pub fn determine_copy_source() -> String {
     const FALLBACK: &str = "/mnt/live-base";
 
-    std::env::var("REPART_COPY_SOURCE").map_or_else(
-        |_| {
-            if std::fs::metadata(ROOTFS_BASE)
-                .map(|m| m.is_dir())
-                .unwrap_or(false)
-            {
-                tracing::info!("Using {ROOTFS_BASE} as copy source");
-                ROOTFS_BASE.to_owned()
-            } else {
-                match mount_live_base(LIVE_BASE) {
-                    Ok(path) => {
-                        let path = path.to_string_lossy().to_string();
-                        tracing::info!("Mounted live-base at {path}");
-                        path
-                    }
-                    Err(err) => {
-                        tracing::warn!(
-                            "Failed to mount `{LIVE_BASE}`, using `{FALLBACK}` as copy source anyway... ({err})"
-                        );
-                        FALLBACK.to_owned()
-                    }
+    std::env::var("REPART_COPY_SOURCE").unwrap_or_else(|_| {
+        if std::fs::metadata(ROOTFS_BASE)
+            .map(|m| m.is_dir())
+            .unwrap_or(false)
+        {
+            tracing::info!("Using {ROOTFS_BASE} as copy source");
+            ROOTFS_BASE.to_owned()
+        } else {
+            match mount_live_base(LIVE_BASE) {
+                Ok(path) => {
+                    let path = path.to_string_lossy().to_string();
+                    tracing::info!("Mounted live-base at {path}");
+                    path
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        "Failed to mount `{LIVE_BASE}`, using `{FALLBACK}` as copy source anyway... ({err})"
+                    );
+                    FALLBACK.to_owned()
                 }
             }
-        },
-        |copy_source| copy_source,
-    )
-}
-
-pub fn install_using_subprocess<F>(playbook: &Playbook, mut on_progress: F) -> Result<()>
-where
-    F: FnMut(PlaybookProgress) + Send + 'static,
-{
-    let (server, channel_id) = IpcOneShotServer::new()?;
-    let ipc_thread = std::thread::spawn(move || {
-        let (receiver, _) = server.accept().expect("cannot accept ipc server");
-
-        let mut msg;
-        while {
-            msg = receiver.recv().map(&mut on_progress);
-            msg.is_ok()
-        } {}
-
-        if let Err(err) = msg {
-            match err {
-                IpcError::Disconnected => {}
-                other => tracing::error!("Failed to receive progress from subprocess: {other:?}"),
-            }
         }
-    });
-
-    let mut child = Command::new("pkexec")
-        .args(["systemd-inhibit", "--who=Readymade", "--why=Installing OS"])
-        .arg(std::env::current_exe()?)
-        .args(["--non-interactive", &channel_id])
-        .args(
-            std::env::vars()
-                .filter(|(key, _)| key.starts_with("REPART_") || key.starts_with("READYMADE_"))
-                .map(|(key, value)| format!("{key}={value}")),
-        )
-        .arg("RUST_BACKTRACE=full")
-        .arg("NO_COLOR=1")
-        .arg(format!(
-            "READYMADE_LOG={}",
-            std::env::var("READYMADE_LOG").as_deref().unwrap_or("info")
-        ))
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let stdin = child.stdin.as_mut().ok_or_eyre("Failed to open subprocess stdin")?;
-    stdin.write_all(serde_json::to_string(playbook)?.as_bytes())?;
-    stdin.flush()?;
-
-    let output = child.wait_with_output()?;
-    ipc_thread.join().expect("cannot join ipc thread");
-    if output.status.success() {
-        return Ok(());
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    Err(eyre!("Readymade subprocess failed"))
-        .with_note(|| output.status.to_string())
-        .with_note(|| format!("stdout:\n{stdout}"))
-        .with_note(|| format!("stderr:\n{stderr}"))
+    })
 }
 
 fn mount_live_base(dev: &str) -> std::io::Result<PathBuf> {

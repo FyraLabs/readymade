@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::{APPLICATION_STATE, NavigationAction, state};
+use crate::{APPLICATION_STATE, NavigationAction};
 use color_eyre::Result;
 use l10n::BENTO_LOADER as L;
 use libreadymade::playbook::{Playbook, PlaybookProgress};
@@ -289,16 +289,17 @@ impl Component for InstallationPage {
                 let sender2 = sender.clone();
                 let (s, r) = relm4::channel();
                 sender.oneshot_command(async move {
-                    r.forward(sender2.input_sender().clone(), InstallationPageMsg::Progress)
-                        .await;
+                    r.forward(
+                        sender2.input_sender().clone(),
+                        InstallationPageMsg::Progress,
+                    )
+                    .await;
                     InstallationPageCommandMsg::None
                 });
 
                 sender.spawn_oneshot_command(move || {
                     tracing::debug!(?playbook, "Starting installation...");
-                    InstallationPageCommandMsg::FinishInstallation(
-                        state::install_using_subprocess(&playbook, move |msg| s.emit(msg)),
-                    )
+                    InstallationPageCommandMsg::FinishInstallation(install(&playbook, s))
                 });
             }
             InstallationPageMsg::Navigate(action) => sender
@@ -309,8 +310,12 @@ impl Component for InstallationPage {
                     self.progress_bar.set_text(Some(&status));
                 }
                 PlaybookProgress::PostModule(module, index, total) => {
-                    self.progress_bar
-                        .set_text(Some(&format!("Post-install {} / {}: {}", index + 1, total, module)));
+                    self.progress_bar.set_text(Some(&format!(
+                        "Post-install {} / {}: {}",
+                        index + 1,
+                        total,
+                        module
+                    )));
                 }
             },
             InstallationPageMsg::Update => {}
@@ -346,4 +351,23 @@ impl Component for InstallationPage {
             InstallationPageCommandMsg::None => {}
         }
     }
+}
+
+pub fn install(playbook: &Playbook, sender: relm4::Sender<PlaybookProgress>) -> Result<()> {
+    let (tx, rx) = Playbook::channel();
+
+    let th = std::thread::spawn(move || {
+        for msg in rx {
+            sender.emit(msg);
+        }
+    });
+
+    let res = playbook
+        .play(tx)
+        .inspect_err(|e| _ = sentry_eyre::capture_report(e));
+
+    th.join()
+        .expect("cannot join PlaybookProgress propagation thread");
+
+    res
 }
