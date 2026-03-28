@@ -126,6 +126,8 @@ Some example configuration files for Ultramarine are in `templates/`.
 Example configuration file:
 
 ```toml
+no_langpage = false
+
 [distro]
 name = "Ultramarine Linux"
 icon = "fedora-logo-icon" # optional
@@ -133,4 +135,30 @@ bios_support = true # false by default
 
 [install]
 allowed_installtypes = ["chromebookinstall", "wholedisk", "dualboot", "custom"]
+copy_mode = "repart" # or "bootc"
+bootc_imgref = "optional string"
+bootc_target_imgref = "optional string"
+
+[[bento]] # 3 of them
+title = "bento1" # translation id
+desc = "bento1-desc" # translation id
+link = "https://wiki.ultramarine-linux.org/en/welcome/"
+icon = "explore-symbolic"
+
+[[bento]]
+title = "bento2"
+desc = "bento2-desc"
+link = "https://wiki.ultramarine-linux.org/en/community/community/"
+icon = "chat-symbolic"
+
+[[bento]]
+title = "bento3"
+desc = "bento3-desc"
+link = "https://wiki.ultramarine-linux.org/en/contributing/contributorguide/"
+icon = "applications-development-symbolic"
 ```
+
+## Playbook
+
+You can execute a headless installation by using the `readymade-playbook` crate.
+See `test/test.sh` for more information.
