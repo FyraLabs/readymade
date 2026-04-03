@@ -6,6 +6,10 @@ use serde::{Deserialize, Serialize};
 pub struct CleanupBoot;
 
 impl PostInstallModule for CleanupBoot {
+    fn name(&self) -> &'static str {
+        "CleanupBoot"
+    }
+
     fn run(&self, _context: &Context) -> Result<()> {
         for file in std::fs::read_dir("/boot")?
             .flatten()

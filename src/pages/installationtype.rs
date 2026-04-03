@@ -2,8 +2,8 @@ use std::sync::LazyLock;
 
 use crate::prelude::*;
 
-use crate::{INSTALLATION_STATE, NavigationAction, Page};
-use libreadymade::backend::install::InstallationType;
+use crate::cfg::InstallationType;
+use crate::{APPLICATION_STATE, NavigationAction, Page};
 use relm4::RelmWidgetExt;
 
 static TPM_SUPPORT: LazyLock<bool> = LazyLock::new(|| {
@@ -34,24 +34,24 @@ page!(InstallationType {
     update(self, message, sender) {
         InstallationTypeSelected(i: InstallationType) => match i {
             InstallationType::WholeDisk => {
-                INSTALLATION_STATE.write().installation_type = Some(InstallationType::WholeDisk);
+                APPLICATION_STATE.write().installation_type = Some(InstallationType::WholeDisk);
                 self.can_encrypt = true;
             },
             InstallationType::DualBoot(_) => {
                 self.can_encrypt = true;
             },
             InstallationType::Custom => {
-                INSTALLATION_STATE.write().installation_type = Some(InstallationType::Custom);
+                APPLICATION_STATE.write().installation_type = Some(InstallationType::Custom);
                 self.can_encrypt = false;
             },
             InstallationType::ChromebookInstall => {
-                INSTALLATION_STATE.write().installation_type =
+                APPLICATION_STATE.write().installation_type =
                     Some(InstallationType::ChromebookInstall);
                 self.can_encrypt = true;
             },
         },
         EncryptDialogue(b: bool) => {
-            INSTALLATION_STATE.write().encrypt = b;
+            APPLICATION_STATE.write().encrypt = b;
             self.encrypt_btn.set_active(b);
             sender
                 .output(InstallationTypePageOutput::Navigate(
@@ -61,7 +61,7 @@ page!(InstallationType {
         },
         Next => {
             self.act = Some(NavigationAction::GoTo({
-                let value = INSTALLATION_STATE.read().installation_type;
+                let value = APPLICATION_STATE.read().installation_type;
                 match value.unwrap() {
                     InstallationType::DualBoot(_) => Page::InstallDual,
                     InstallationType::ChromebookInstall | InstallationType::WholeDisk => {
@@ -77,7 +77,7 @@ page!(InstallationType {
             // it ruins UX, its ugly, but its the ONLY way to get it to even display
             // - @korewaChino
             // --- IGNORE ---
-            if INSTALLATION_STATE.read().encrypt {
+            if APPLICATION_STATE.read().encrypt {
                 if let Some(dialog_ctrl) = self.dialog_child.as_ref() {
                     let dialog_widget = dialog_ctrl.widget().clone();
                     if let Some(overlay) = self.overlay_widget() {
@@ -124,13 +124,13 @@ gtk::Box {
 
             gtk::Label {
                 #[watch]
-                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
+                set_label: &APPLICATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
                 inline_css: "font-size: 16px; font-weight: bold"
             },
 
             gtk::Label {
                 #[watch]
-                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name.unwrap_or_else(|| t!("unknown-os"))).unwrap_or_default(),
+                set_label: &APPLICATION_STATE.read().destination_disk.clone().map(|d| d.os_name.unwrap_or_else(|| t!("unknown-os"))).unwrap_or_default(),
             }
         },
 
@@ -142,11 +142,11 @@ gtk::Box {
             libhelium::Button {
                 set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::WholeDisk),
                 #[watch]
-                set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::WholeDisk),
+                set_is_fill: crate::APPLICATION_STATE.read().installation_type == Some(InstallationType::WholeDisk),
                 #[watch]
-                set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
+                set_is_outline: crate::APPLICATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
                 #[watch]
-                set_is_tint: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
+                set_is_tint: crate::APPLICATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
                 #[watch]
                 set_label: &t!("page-installationtype-entire"),
                 add_css_class: "large-button",
@@ -155,11 +155,11 @@ gtk::Box {
             libhelium::Button {
                 set_visible: crate::CONFIG.read().install.allowed_installtypes.iter().any(|x| matches!(x, InstallationType::DualBoot(_))),
                 #[watch]
-                set_is_fill: matches!(crate::INSTALLATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
+                set_is_fill: matches!(crate::APPLICATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
                 #[watch]
-                set_is_outline: !matches!(crate::INSTALLATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
+                set_is_outline: !matches!(crate::APPLICATION_STATE.read().installation_type, Some(InstallationType::DualBoot(_))),
                 #[watch]
-                set_is_tint: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
+                set_is_tint: crate::APPLICATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
                 #[watch]
                 set_label: &t!("page-installationtype-dual"),
                 add_css_class: "large-button",
@@ -168,11 +168,11 @@ gtk::Box {
             libhelium::Button {
                 set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::Custom),
                 #[watch]
-                set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::Custom),
+                set_is_fill: crate::APPLICATION_STATE.read().installation_type == Some(InstallationType::Custom),
                 #[watch]
-                set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::Custom),
+                set_is_outline: crate::APPLICATION_STATE.read().installation_type != Some(InstallationType::Custom),
                 #[watch]
-                set_is_tint: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
+                set_is_tint: crate::APPLICATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
                 #[watch]
                 set_label: &t!("page-installationtype-custom"),
                 add_css_class: "large-button",
@@ -181,11 +181,11 @@ gtk::Box {
             libhelium::Button {
                 set_visible: crate::CONFIG.read().install.allowed_installtypes.contains(&InstallationType::ChromebookInstall),
                 #[watch]
-                set_is_fill: crate::INSTALLATION_STATE.read().installation_type == Some(InstallationType::ChromebookInstall),
+                set_is_fill: crate::APPLICATION_STATE.read().installation_type == Some(InstallationType::ChromebookInstall),
                 #[watch]
-                set_is_outline: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::ChromebookInstall),
+                set_is_outline: crate::APPLICATION_STATE.read().installation_type != Some(InstallationType::ChromebookInstall),
                 #[watch]
-                set_is_tint: crate::INSTALLATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
+                set_is_tint: crate::APPLICATION_STATE.read().installation_type != Some(InstallationType::WholeDisk),
                 #[watch]
                 set_label: &t!("page-installationtype-chromebook"),
                 add_css_class: "large-button",
@@ -203,13 +203,13 @@ gtk::Box {
             set_label: Some(&t!("page-installationtype-encrypt")),
             #[watch]
             set_sensitive: model.can_encrypt,
-            connect_toggled => |btn| INSTALLATION_STATE.write().encrypt = btn.is_active(),
+            connect_toggled => |btn| APPLICATION_STATE.write().encrypt = btn.is_active(),
         },
         gtk::CheckButton {
             set_label: Some(&t!("page-installationtype-tpm")),
             #[watch]
-            set_sensitive: INSTALLATION_STATE.read().encrypt && model.can_encrypt && *TPM_SUPPORT,
-            connect_toggled => |btn| INSTALLATION_STATE.write().tpm = btn.is_active(),
+            set_sensitive: APPLICATION_STATE.read().encrypt && model.can_encrypt && *TPM_SUPPORT,
+            connect_toggled => |btn| APPLICATION_STATE.write().tpm = btn.is_active(),
         },
     },
 
@@ -235,7 +235,7 @@ gtk::Box {
             add_css_class: "large-button",
             connect_clicked => InstallationTypePageMsg::Next,
             #[watch]
-            set_sensitive: crate::INSTALLATION_STATE.read().installation_type.is_some(),
+            set_sensitive: crate::APPLICATION_STATE.read().installation_type.is_some(),
         }
     }
 }
@@ -297,7 +297,7 @@ kurage::generate_component!(EncryptPassDialogue {
                 set_placeholder_text: Some(&t!("dialog-installtype-password")),
                 connect_changed[sender, tf_repeat] => move |en| {
                     sender.input(Self::Input::SetBtnSensitive(en.text() == tf_repeat.text() && !en.text().is_empty()));
-                    INSTALLATION_STATE.write().encryption_key = Some(en.text().to_string());
+                    APPLICATION_STATE.write().encryption_key = Some(en.text().to_string());
                     sender.input(Self::Input::UpdateWeakPasswd(en.text().len() < 8 || en.text().to_ascii_lowercase() == en.text()));
                 },
             },
@@ -310,7 +310,7 @@ kurage::generate_component!(EncryptPassDialogue {
                 set_placeholder_text: Some(&t!("dialog-installtype-repeat")),
                 connect_changed[sender] => move |en| {
                     let pass = en.text().to_string();
-                    sender.input(Self::Input::SetBtnSensitive(INSTALLATION_STATE.read().encryption_key.as_ref().is_some_and(|p| p == &pass && !pass.is_empty())));
+                    sender.input(Self::Input::SetBtnSensitive(APPLICATION_STATE.read().encryption_key.as_ref().is_some_and(|p| p == &pass && !pass.is_empty())));
                 },
                 connect_activate => Self::Input::Enter,
             },

@@ -9,7 +9,7 @@ use crate::backend::provisioners::filesystem::FileSystemProvisionerModule;
 use crate::backend::util::sys::check_uefi;
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{cell::RefCell, path::PathBuf, sync::mpsc};
 use sys_mount::MountFlags;
 use tiffin::{Container, MountTarget};
 
@@ -80,19 +80,47 @@ fn mounts_to_container(tempdir: &tempfile::TempDir, mounts: &Mounts) -> Result<C
     Ok(container)
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum PlaybookProgress {
+    /// Start of a stage
+    Stage(String),
+    /// Progress report inside of the stage
+    StageProgress(String), // maybe some kind of map value
+    /// The module, index of current module in playbook, total number of postinstall modules
+    PostModule(String, usize, usize),
+}
+
+thread_local! {
+    pub(crate) static PROGRESS_SENDER: RefCell<Option<mpsc::Sender<PlaybookProgress>>> = RefCell::new(None);
+}
+
 impl Playbook {
-    pub fn play(&self) -> Result<()> {
-        let mounts = self.disk_provisioner.run(self)?;
-        if let Some(filesystem_provisioner) = &self.filesystem_provisioner {
-            filesystem_provisioner.run(self, &mounts)?;
-        }
+    pub fn channel() -> (
+        mpsc::Sender<PlaybookProgress>,
+        mpsc::Receiver<PlaybookProgress>,
+    ) {
+        mpsc::channel()
+    }
 
-        self.setup_system(&mounts)?;
+    /// Execute the playbook
+    pub fn play(&self, progress: mpsc::Sender<PlaybookProgress>) -> Result<()> {
+        PROGRESS_SENDER.with(|tx| *tx.borrow_mut() = Some(progress));
+        // todo: maybe use a guard here
+        let result = (|| {
+            let mounts = self.disk_provisioner.run(self)?;
+            if let Some(filesystem_provisioner) = &self.filesystem_provisioner {
+                filesystem_provisioner.run(self, &mounts)?;
+            }
 
-        if let Some(filesystem_provisioner) = &self.filesystem_provisioner {
-            filesystem_provisioner.cleanup(self, &mounts)?;
-        }
-        Ok(())
+            self.setup_system(&mounts)?;
+
+            if let Some(filesystem_provisioner) = &self.filesystem_provisioner {
+                filesystem_provisioner.cleanup(self, &mounts)?;
+            }
+            Ok(())
+        })();
+        PROGRESS_SENDER.with(|tx| *tx.borrow_mut() = None);
+        result
     }
 
     #[tracing::instrument]
@@ -175,9 +203,22 @@ impl Playbook {
         //         .wrap_err("cannot write to /etc/crypttab")?;
         // }
 
-        (self.postinstall.iter())
-            .inspect(|module| tracing::debug!(?module, "Running module"))
-            .map(|module| module.run(&context))
+        (self.postinstall.iter().enumerate())
+            .inspect(|(_, module)| tracing::debug!(?module, "Running module"))
+            .map(|(i, module)| {
+                PROGRESS_SENDER.with_borrow(|tx| {
+                    tx.as_ref()
+                        .expect("couldn't get progress sender")
+                        .send(PlaybookProgress::PostModule(
+                            module.name().to_owned(),
+                            i,
+                            self.postinstall.len(),
+                        ))
+                        .expect("couldn't send progress");
+                });
+                module.run(&context)?;
+                Ok(())
+            })
             .try_collect()
     }
 }

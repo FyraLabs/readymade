@@ -29,7 +29,6 @@ impl Bootc {
             ["install", "to-filesystem", "--source-imgref", imgref],
             (cryptdata.iter())
                 .flat_map(|data| data.cmdline_opts.iter().flat_map(|opt| ["--karg", opt])),
-            ["--karg=rhgb", "--karg=quiet", "--karg=splash"],
             [target_root],
             (target_imgref.iter()).flat_map(|a| ["--target-imgref", a]),
             args.iter().flat_map(|e| ["--karg", e]),
@@ -70,11 +69,11 @@ impl FileSystemProvisionerModule for Bootc {
                 .encryption
                 .as_ref()
                 .map(|e| e.encryption_key.as_str()),
-        );
+        )?;
 
         self.bootc_copy(bootc_rootfs_mountpoint, generate_cryptdata(mounts)?)?;
 
-        mounts.umount_all(bootc_rootfs_mountpoint);
+        mounts.umount_all(bootc_rootfs_mountpoint)?;
         Ok(())
     }
 
@@ -87,7 +86,7 @@ impl FileSystemProvisionerModule for Bootc {
                 .encryption
                 .as_ref()
                 .map(|e| e.encryption_key.as_str()),
-        );
+        )?;
         Self::bootc_cleanup(bootc_rootfs_mountpoint)?;
         crate::cmd!("sync" => |_| bail!("`sync` failed"));
         crate::cmd!("umount" [["-R"], [bootc_rootfs_mountpoint]] => |_| bail!("umount -R {bootc_rootfs_mountpoint:?} failed"));

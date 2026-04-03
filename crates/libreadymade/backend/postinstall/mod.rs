@@ -44,6 +44,8 @@ pub struct Context {
 
 #[enum_dispatch(Module)]
 pub trait PostInstallModule {
+    #[must_use]
+    fn name(&self) -> &'static str;
     fn run(&self, context: &Context) -> Result<()>;
 }
 

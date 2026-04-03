@@ -2,8 +2,8 @@ mod bootc;
 mod copy;
 
 use crate::prelude::*;
-use bootc::Bootc;
-use copy::Copy;
+pub use bootc::Bootc;
+pub use copy::Copy;
 
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
