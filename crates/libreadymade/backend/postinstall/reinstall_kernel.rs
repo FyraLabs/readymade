@@ -9,6 +9,10 @@ use std::process::Command;
 pub struct ReinstallKernel;
 
 impl PostInstallModule for ReinstallKernel {
+    fn name(&self) -> &'static str {
+        "ReinstallKernel"
+    }
+
     fn run(&self, _context: &Context) -> Result<()> {
         let kernel_vers = std::fs::read_dir("/lib/modules")?
             .map(|entry| entry.unwrap().file_name())

@@ -10,6 +10,10 @@ use super::{Context, PostInstallModule};
 pub struct SELinux;
 
 impl PostInstallModule for SELinux {
+    fn name(&self) -> &'static str {
+        "SELinux"
+    }
+
     fn run(&self, _context: &Context) -> Result<()> {
         stage!(selinux "Setting SELinux labels" {
             let setfiles_cmd_status = Command::new("setfiles")

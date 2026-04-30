@@ -39,6 +39,26 @@ pub struct Mount {
     pub(crate) gpt_type: OnceCell<gpt::partition_types::Type>,
 }
 
+impl Mount {
+    #[must_use]
+    pub fn new(
+        partition: PathBuf,
+        mountpoint: PathBuf,
+        options: String,
+        encryption_type: Option<EncryptionOption>,
+        label: Option<String>,
+    ) -> Self {
+        Self {
+            partition,
+            mountpoint,
+            options,
+            encryption_type,
+            label,
+            gpt_type: OnceCell::default(),
+        }
+    }
+}
+
 pub struct MapperCache {
     cache: std::collections::HashMap<String, PathBuf>,
 }

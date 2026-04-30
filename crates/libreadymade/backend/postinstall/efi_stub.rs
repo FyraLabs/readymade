@@ -17,6 +17,10 @@ pub struct EfiStub {
 }
 
 impl PostInstallModule for EfiStub {
+    fn name(&self) -> &'static str {
+        "EfiStub"
+    }
+
     #[tracing::instrument(skip(self, context))]
     fn run(&self, context: &Context) -> Result<()> {
         // two guard clauses for checking EFI and

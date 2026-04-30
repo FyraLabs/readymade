@@ -9,6 +9,10 @@ use super::{Context, PostInstallModule};
 pub struct Script;
 
 impl PostInstallModule for Script {
+    fn name(&self) -> &'static str {
+        "Script"
+    }
+
     #[allow(clippy::unwrap_in_result)]
     fn run(&self, context: &Context) -> Result<()> {
         if std::fs::exists("/etc/readymade/postinstall.sh").is_ok_and(|x| x) {
