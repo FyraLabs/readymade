@@ -1,7 +1,7 @@
-use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 use color_eyre::Result;
 use libreadymade::playbook::Playbook;
 use std::fs;
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 fn main() -> Result<()> {
     color_eyre::install()?;
