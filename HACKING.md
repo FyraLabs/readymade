@@ -99,6 +99,21 @@ In case you have an alternate root mounted at `/mnt/squash` from an external sou
 sudo REPART_COPY_SOURCE=/mnt/rootfs readymade
 ```
 
+For playbook-driven installs using the filesystem `Copy` provisioner, `copy_source` may also be
+an OCI image reference instead of a path. If the value starts with a Podman transport prefix such
+as `containers-storage:`, `docker://`, `oci:`, or `oci-archive:`, Readymade will create a
+temporary container with Podman, mount it, copy the mounted root filesystem into the target, then
+clean the temporary container up afterwards.
+
+```json
+{
+  "filesystem_provisioner": {
+    "module": "Copy",
+    "copy_source": "containers-storage:registry.example.org/example/os:latest"
+  }
+}
+```
+
 > [!NOTE]
 > If Readymade is built as a debug build, it will dump the installation state and the systemd-repart output to `/tmp/` for debugging purposes.
 
