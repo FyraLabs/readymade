@@ -182,7 +182,14 @@ impl Mount {
 
         sys_mount::Mount::builder()
             .data(&self.options)
-            .mount(&source, target)?;
+            .mount(source, &target)
+            .with_context(|| {
+                format!(
+                    "cannot mount from {:?} to {:?}",
+                    source.display(),
+                    target.display()
+                )
+            })?;
 
         Ok(())
     }
@@ -275,6 +282,18 @@ impl Mounts {
                     Uuid::from_str("bc13c2ff-59e6-4262-a352-b275fd6f7172").unwrap(),
                 )
         })
+    }
+
+    #[must_use]
+    pub fn get_boot_partition(&self) -> std::option::Option<&Mount> {
+        self.0
+            .iter()
+            .find(|part| part.mountpoint == Path::new("/boot"))
+    }
+
+    #[must_use]
+    pub fn get_root_partition(&self) -> std::option::Option<&Mount> {
+        self.0.iter().find(|part| part.mountpoint == Path::new("/"))
     }
 }
 

@@ -5,7 +5,7 @@ use std::{
     time::SystemTime,
 };
 
-use color_eyre::eyre::{Context as _, bail, eyre};
+use color_eyre::eyre::{bail, eyre, Context as _};
 
 /// Ignore errors about nonexisting files.
 pub fn exist_then<T: Default>(r: std::io::Result<T>) -> std::io::Result<T> {
@@ -201,6 +201,12 @@ fn copy_attributes(
 ) -> Result<(), color_eyre::eyre::Error> {
     use std::os::unix::fs::MetadataExt;
 
+    if metadata.is_symlink() {
+        copy_attributes_handle_timestamps(dest_path, metadata)?;
+        copy_attributes_handle_xattr(src_path, dest_path);
+        return Ok(());
+    }
+
     std::fs::set_permissions(dest_path, metadata.permissions())?;
 
     copy_attributes_handle_timestamps(dest_path, metadata)?;
@@ -248,7 +254,7 @@ fn copy_attributes_handle_timestamps(
     dest_path: &Path,
     metadata: &std::fs::Metadata,
 ) -> Result<(), color_eyre::eyre::Error> {
-    use nix::sys::stat::{UtimensatFlags, utimensat};
+    use nix::sys::stat::{utimensat, UtimensatFlags};
     let atime = metadata.accessed()?;
     let mtime = metadata.modified()?;
     let atime_ts = system_time_to_timespec(atime);
@@ -279,7 +285,7 @@ pub fn copy_dir_uutils<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_
         progress_bar: false,
         one_file_system: false,
         attributes_only: false,
-        backup: uu_cp::BackupMode::NoBackup,
+        backup: uu_cp::BackupMode::None,
         copy_contents: true,
         cli_dereference: false,
         copy_mode: uu_cp::CopyMode::Copy,
@@ -291,8 +297,10 @@ pub fn copy_dir_uutils<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_
         reflink_mode: uu_cp::ReflinkMode::Never,
         backup_suffix: "bak".into(),
         target_dir: None,
-        update: uu_cp::UpdateMode::ReplaceAll,
+        update: uu_cp::UpdateMode::All,
         debug: cfg!(debug_assertions),
+        set_selinux_context: true,
+        context: None,
     };
 
     let from = PathBuf::from(format!("{}/.", from.as_ref().display()));

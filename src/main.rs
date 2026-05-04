@@ -13,8 +13,8 @@ use crate::{
 };
 use gtk::glib::translate::FromGlibPtrNone;
 use i18n_embed::LanguageLoader as _;
-use pages::installation::InstallationPageMsg;
 use libreadymade::playbook::Playbook;
+use pages::installation::InstallationPageMsg;
 use relm4::SharedState;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
@@ -190,9 +190,9 @@ impl SimpleComponent for AppModel {
         match message {
             AppMsg::StartInstallation => {
                 let playbook = {
-                    let custom_mounts =
-                        (APPLICATION_STATE.read().installation_type == Some(cfg::InstallationType::Custom))
-                            .then(|| self.install_custom_page.model().mounts());
+                    let custom_mounts = (APPLICATION_STATE.read().installation_type
+                        == Some(cfg::InstallationType::Custom))
+                    .then(|| self.install_custom_page.model().mounts());
                     APPLICATION_STATE
                         .read()
                         .to_playbook(&CONFIG.read(), custom_mounts)

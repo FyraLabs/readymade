@@ -32,8 +32,8 @@ module = "CleanupBoot"
 [[postinstall]]
 module = "ReinstallKernel"
 
-[[postinstall]]
-module = "Dracut"
+# [[postinstall]]
+# module = "Dracut"
 
 [[postinstall]]
 module = "GRUB2"

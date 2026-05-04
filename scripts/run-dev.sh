@@ -11,4 +11,5 @@ export READYMADE_REPART_DIR=$(pwd)/crates/libreadymade/templates
 if [[ -n "${READYMADE_COPY_METHOD}" ]]; then
     export READYMADE_COPY_METHOD="$READYMADE_COPY_METHOD"
 fi
-cargo run
+export READYMADE_COPY_METHOD=uutils
+rust-lldb -- ./target/debug/readymade-playbook ./test.json
