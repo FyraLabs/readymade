@@ -13,6 +13,7 @@ BuildRequires:  mold
 BuildRequires:  cmake
 BuildRequires:  glibc-all-langpacks
 BuildRequires:  openssl-devel
+BuildRequires:  pkgconfig(libacl)
 # We'll need cryptsetup to unlock disks for now
 Requires:       cryptsetup
 Recommends:     readymade-config
