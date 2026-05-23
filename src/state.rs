@@ -9,9 +9,9 @@ use libreadymade::{
     backend::{
         mounts::{Mount, Mounts},
         provisioners::{
+            DiskProvisioner, FileSystemProvisioner,
             disk::{manual::Manual, repart::Repart},
             filesystem::{Bootc, Copy},
-            DiskProvisioner, FileSystemProvisioner,
         },
     },
     consts::{LIVE_BASE, ROOTFS_BASE},
@@ -20,8 +20,8 @@ use libreadymade::{
 };
 use relm4::SharedState;
 
-use crate::prelude::*;
 use crate::cfg::{CopyMode, InstallationType, ReadymadeConfig};
+use crate::prelude::*;
 
 #[derive(Default)]
 pub struct ApplicationState {
@@ -69,7 +69,9 @@ impl ApplicationState {
             InstallationType::Custom => {
                 let mounts = custom_mounts
                     .filter(|mounts| !mounts.0.is_empty())
-                    .ok_or_eyre("Custom installation selected but no mount targets were configured")?;
+                    .ok_or_eyre(
+                        "Custom installation selected but no mount targets were configured",
+                    )?;
                 (
                     DiskProvisioner::Manual(Manual { mounts }),
                     Some(match config.install.copy_mode {
@@ -88,16 +90,19 @@ impl ApplicationState {
                     }),
                 )
             }
-            InstallationType::WholeDisk | InstallationType::ChromebookInstall => match config.install.copy_mode {
+            InstallationType::WholeDisk | InstallationType::ChromebookInstall => match config
+                .install
+                .copy_mode
+            {
                 CopyMode::Bootc => (
                     DiskProvisioner::Repart(Repart {
                         directory: installation_type.cfgdir(true),
                         copy_source: None,
                     }),
                     Some(FileSystemProvisioner::Bootc(Bootc {
-                        imgref: config
-                            .to_bootc_copy_source()
-                            .ok_or_eyre("Bootc copy mode selected but no source image reference is configured")?,
+                        imgref: config.to_bootc_copy_source().ok_or_eyre(
+                            "Bootc copy mode selected but no source image reference is configured",
+                        )?,
                         target_imgref: config.to_bootc_target_copy_source(),
                         enforce_sigpolicy: config.install.bootc_enforce_sigpolicy,
                         kargs: config.install.bootc_kargs.clone().unwrap_or_default(),
@@ -208,7 +213,10 @@ where
         .stderr(Stdio::piped())
         .spawn()?;
 
-    let stdin = child.stdin.as_mut().ok_or_eyre("Failed to open subprocess stdin")?;
+    let stdin = child
+        .stdin
+        .as_mut()
+        .ok_or_eyre("Failed to open subprocess stdin")?;
     stdin.write_all(serde_json::to_string(playbook)?.as_bytes())?;
     stdin.flush()?;
 

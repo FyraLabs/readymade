@@ -289,16 +289,20 @@ impl Component for InstallationPage {
                 let sender2 = sender.clone();
                 let (s, r) = relm4::channel();
                 sender.oneshot_command(async move {
-                    r.forward(sender2.input_sender().clone(), InstallationPageMsg::Progress)
-                        .await;
+                    r.forward(
+                        sender2.input_sender().clone(),
+                        InstallationPageMsg::Progress,
+                    )
+                    .await;
                     InstallationPageCommandMsg::None
                 });
 
                 sender.spawn_oneshot_command(move || {
                     tracing::debug!(?playbook, "Starting installation...");
-                    InstallationPageCommandMsg::FinishInstallation(
-                        state::install_using_subprocess(&playbook, move |msg| s.emit(msg)),
-                    )
+                    InstallationPageCommandMsg::FinishInstallation(state::install_using_subprocess(
+                        &playbook,
+                        move |msg| s.emit(msg),
+                    ))
                 });
             }
             InstallationPageMsg::Navigate(action) => sender
@@ -309,8 +313,12 @@ impl Component for InstallationPage {
                     self.progress_bar.set_text(Some(&status));
                 }
                 PlaybookProgress::PostModule(module, index, total) => {
-                    self.progress_bar
-                        .set_text(Some(&format!("Post-install {} / {}: {}", index + 1, total, module)));
+                    self.progress_bar.set_text(Some(&format!(
+                        "Post-install {} / {}: {}",
+                        index + 1,
+                        total,
+                        module
+                    )));
                 }
             },
             InstallationPageMsg::Update => {}
