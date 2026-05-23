@@ -85,7 +85,7 @@ impl ApplicationState {
                             args: config.install.bootc_args.clone().unwrap_or_default(),
                         }),
                         CopyMode::Repart => FileSystemProvisioner::Copy(Copy {
-                            copy_source: PathBuf::from(determine_copy_source()),
+                            copy_source: determine_copy_source(),
                         }),
                     }),
                 )
@@ -143,32 +143,29 @@ pub fn mount_from_custom_target(partition: &str, mountpoint: &str, options: &str
 pub fn determine_copy_source() -> String {
     const FALLBACK: &str = "/mnt/live-base";
 
-    std::env::var("REPART_COPY_SOURCE").map_or_else(
-        |_| {
-            if std::fs::metadata(ROOTFS_BASE)
-                .map(|m| m.is_dir())
-                .unwrap_or(false)
-            {
-                tracing::info!("Using {ROOTFS_BASE} as copy source");
-                ROOTFS_BASE.to_owned()
-            } else {
-                match mount_live_base(LIVE_BASE) {
-                    Ok(path) => {
-                        let path = path.to_string_lossy().to_string();
-                        tracing::info!("Mounted live-base at {path}");
-                        path
-                    }
-                    Err(err) => {
-                        tracing::warn!(
-                            "Failed to mount `{LIVE_BASE}`, using `{FALLBACK}` as copy source anyway... ({err})"
-                        );
-                        FALLBACK.to_owned()
-                    }
+    std::env::var("REPART_COPY_SOURCE").unwrap_or_else(|_| {
+        if std::fs::metadata(ROOTFS_BASE)
+            .map(|m| m.is_dir())
+            .unwrap_or(false)
+        {
+            tracing::info!("Using {ROOTFS_BASE} as copy source");
+            ROOTFS_BASE.to_owned()
+        } else {
+            match mount_live_base(LIVE_BASE) {
+                Ok(path) => {
+                    let path = path.to_string_lossy().to_string();
+                    tracing::info!("Mounted live-base at {path}");
+                    path
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        "Failed to mount `{LIVE_BASE}`, using `{FALLBACK}` as copy source anyway... ({err})"
+                    );
+                    FALLBACK.to_owned()
                 }
             }
-        },
-        |copy_source| copy_source,
-    )
+        }
+    })
 }
 
 pub fn install_using_subprocess<F>(playbook: &Playbook, mut on_progress: F) -> Result<()>

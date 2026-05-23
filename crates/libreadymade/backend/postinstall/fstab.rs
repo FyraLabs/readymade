@@ -63,7 +63,7 @@ pub fn generate_fstab(mounts: &Mounts) -> color_eyre::Result<String> {
     // BufReader::from(std::fs::File::open("/proc/mounts").wrap_err("cannot open /proc/mounts")?);
     let mut fstypes = HashMap::new();
     for line in bufreader.lines() {
-        let [_, mount, parttype, ..] = line.split(" ").collect::<Vec<_>>()[..] else {
+        let [_, mount, parttype, ..] = line.split(' ').collect::<Vec<_>>()[..] else {
             panic!("I'm not reading /proc/mounts?");
         };
         fstypes.insert(mount, parttype);

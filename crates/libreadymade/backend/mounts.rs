@@ -168,7 +168,7 @@ impl Mount {
         let target = root.join(target);
         create_dir_all(&target)?;
 
-        let source = if let Some(_) = self.encryption_type {
+        let source = if self.encryption_type.is_some() {
             let label =
                 generate_unique_mapper_label(format!("{}", self.mountpoint.display()).as_str());
             &luks_decrypt(
@@ -213,11 +213,10 @@ impl Mount {
                 let partitions = partitions.partitions();
 
                 let partition = partitions
-                    .iter()
-                    .map(|(_, p)| p)
+                    .values()
                     .find(|p| {
                         Some(p.part_guid)
-                            == part.partuuid.as_ref().map(|u| Uuid::from_str(&u).unwrap())
+                            == part.partuuid.as_ref().map(|u| Uuid::from_str(u).unwrap())
                     })
                     .expect("cannot find partition that is supposed to exist");
 

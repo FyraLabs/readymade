@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use crate::prelude::*;
 
 use cleanup_boot::CleanupBoot;
 use color_eyre::Result;

@@ -20,7 +20,7 @@ pub trait DiskProvisionerModule {
 #[serde(tag = "module")]
 pub enum DiskProvisioner {
     /// Uses systemd-repart to partition and provision the disk, this is recommended for most users as it is fast and flexible.
-    /// Refer to: https://www.freedesktop.org/software/systemd/man/latest/repart.d.html
+    /// Refer to: <https://www.freedesktop.org/software/systemd/man/latest/repart.d.html>
     Repart,
     /// Readymade will not partition the disk. Instead, the user provides a list of mountpoints.
     Manual,

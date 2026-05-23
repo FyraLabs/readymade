@@ -4,10 +4,10 @@ macro_rules! stage {
     ($s:ident $msg:literal $body:block) => {{
         let s = tracing::info_span!(concat!("stage-", stringify!($s)));
 
-        crate::playbook::PROGRESS_SENDER.with_borrow(|tx| {
+        $crate::playbook::PROGRESS_SENDER.with_borrow(|tx| {
             tx.as_ref()
                 .expect("couldn't get progress sender")
-                .send(crate::playbook::PlaybookProgress::Stage($msg.to_owned()))
+                .send($crate::playbook::PlaybookProgress::Stage($msg.to_owned()))
                 .expect("couldn't send progress");
         });
 
