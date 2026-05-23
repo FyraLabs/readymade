@@ -42,9 +42,6 @@ module = "GRUB2"
 module = "PrepareFedora"
 
 [[postinstall]]
-module = "SELinux"
-
-[[postinstall]]
 module = "EfiStub"
 distro_name = "Ultramarine Linux"
 
