@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 pub struct CryptSetup;
 
 impl PostInstallModule for CryptSetup {
+    fn name(&self) -> &'static str {
+        "CryptSetup"
+    }
+
     fn run(&self, _: &Context) -> Result<()> {
         let mut f = std::fs::File::create("/etc/crypttab")?;
 

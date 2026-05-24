@@ -1,9 +1,4 @@
-use std::str::FromStr;
-
-use crate::{
-    backend::provisioners::disk::DiskProvisionerModule, backend::util::fs::get_whole_disk,
-    prelude::*,
-};
+use crate::{backend::provisioners::disk::DiskProvisionerModule, prelude::*};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Manual {

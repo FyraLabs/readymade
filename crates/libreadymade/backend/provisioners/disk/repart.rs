@@ -1,9 +1,7 @@
-use gpt::partition_types;
 use repart::{Config, EncryptOption, Output, OutputPartition, Partition};
 
 use file_guard::Lock;
-use std::{collections::BTreeMap, process::Stdio, str::FromStr};
-use uuid::Uuid;
+use std::{collections::BTreeMap, process::Stdio};
 
 use crate::{backend::provisioners::disk::DiskProvisionerModule, prelude::*};
 
@@ -77,9 +75,8 @@ impl DiskProvisionerModule for Repart {
                                 },
                         },
                     )| {
-                        let OutputPartition {
-                            node, part_type, ..
-                        } = repart_out.partitions.get(i).expect("part doesn't exist");
+                        let OutputPartition { node, .. } =
+                            repart_out.partitions.get(i).expect("part doesn't exist");
 
                         mount_point.into_iter().filter_map(move |mount_point| {
                             if mount_point.is_empty() {

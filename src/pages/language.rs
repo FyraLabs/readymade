@@ -112,7 +112,7 @@ page!(Language {
                         .load_languages(&crate::Localizations, &["en-Xowo".parse().unwrap()])
                         .expect("fail to load languages");
                     *crate::LL.write() = loader;
-                    crate::INSTALLATION_STATE.write().langlocale = Some("en-US".to_owned());
+                    crate::APPLICATION_STATE.write().lang = Some("en-US".to_owned());
                 } else {
                     set_lang(lang);
                 }
@@ -157,7 +157,7 @@ page!(Language {
             add_css_class: "large-button",
             connect_clicked => LanguagePageMsg::Navigate(NavigationAction::GoTo(crate::Page::Welcome)),
             #[watch]
-            set_sensitive: crate::INSTALLATION_STATE.read().langlocale.is_some()
+            set_sensitive: crate::APPLICATION_STATE.read().lang.is_some()
         }
     }
 );
@@ -186,6 +186,6 @@ fn set_lang(lang: &LanguageRow) {
             .expect("fail to load languages");
         tracing::debug!(lang=?loader.current_languages(), welcome=loader.get_args_concrete("page-welcome", std::iter::once(("distro", "Ultramarine Linux".into())).collect()), "new loader");
         *crate::LL.write() = loader;
-        crate::INSTALLATION_STATE.write().langlocale = Some(lang.locale.to_owned());
+        crate::APPLICATION_STATE.write().lang = Some(lang.locale.to_owned());
     }
 }

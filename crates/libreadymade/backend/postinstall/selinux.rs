@@ -1,6 +1,5 @@
-use color_eyre::{Result, eyre::bail};
+use crate::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::process::Command;
 
 use crate::stage;
 
@@ -10,20 +9,16 @@ use super::{Context, PostInstallModule};
 pub struct SELinux;
 
 impl PostInstallModule for SELinux {
+    fn name(&self) -> &'static str {
+        "SELinux"
+    }
+
     fn run(&self, _context: &Context) -> Result<()> {
         stage!(selinux "Setting SELinux labels" {
-            let setfiles_cmd_status = Command::new("setfiles")
-                .args(["-e", "/proc", "-e", "/sys"])
-                .arg("/etc/selinux/targeted/contexts/files/file_contexts")
-                .arg("/")
-                .status()?;
-
-            if !setfiles_cmd_status.success() {
-                bail!(
-                    "dracut failed with exit code {:?}",
-                    setfiles_cmd_status.code()
-                );
-            }
+            crate::cmd!("setfiles" [
+                ["-e", "/proc", "-e", "/sys"],
+                ["/etc/selinux/targeted/contexts/files/file_contexts", "/"],
+            ] => |e| bail!("setfiles failed with exit code {:?}", e.code()));
         });
 
         Ok(())

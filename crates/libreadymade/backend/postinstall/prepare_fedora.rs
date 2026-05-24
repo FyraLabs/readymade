@@ -9,6 +9,10 @@ use super::{Context, PostInstallModule};
 pub struct PrepareFedora;
 
 impl PostInstallModule for PrepareFedora {
+    fn name(&self) -> &'static str {
+        "PrepareFedora"
+    }
+
     fn run(&self, _context: &Context) -> Result<()> {
         exist_then(std::fs::remove_file("/var/lib/systemd/random-seed"))?;
         // We're gonna make an empty machine-id file so that systemd can generate a new one

@@ -9,6 +9,10 @@ pub struct Language {
 }
 
 impl PostInstallModule for Language {
+    fn name(&self) -> &'static str {
+        "Language"
+    }
+
     fn run(&self, context: &Context) -> Result<()> {
         // use UTF-8 locale, since the non-UTF-8 ones break stuff
         let lang = format!("{}.UTF-8", self.lang);

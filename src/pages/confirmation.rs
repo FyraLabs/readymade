@@ -1,6 +1,6 @@
 use std::{os::unix::fs::FileTypeExt, path::PathBuf, process::Command, time::Duration};
 
-use crate::prelude::*;
+use crate::{cfg::InstallationType, prelude::*};
 
 page!(Confirmation {
     problem: Option<Problem>,
@@ -76,13 +76,13 @@ page!(Confirmation {
 
             gtk::Label {
                 #[watch]
-                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
+                set_label: &APPLICATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
                 inline_css: "font-size: 16px; font-weight: bold"
             },
 
             gtk::Label {
                 #[watch]
-                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.os_name.unwrap_or_else(|| t!("unknown-os"))).unwrap_or_default(),
+                set_label: &APPLICATION_STATE.read().destination_disk.clone().map(|d| d.os_name.unwrap_or_else(|| t!("unknown-os"))).unwrap_or_default(),
             }
         },
 
@@ -109,7 +109,7 @@ page!(Confirmation {
 
             gtk::Label {
                 #[watch]
-                set_label: &INSTALLATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
+                set_label: &APPLICATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
                 inline_css: "font-size: 16px; font-weight: bold"
             },
 
@@ -207,7 +207,7 @@ enum Problem {
 
 impl Problem {
     fn detect() -> Option<Self> {
-        let Some(disk) = &INSTALLATION_STATE.read().destination_disk else {
+        let Some(disk) = &APPLICATION_STATE.read().destination_disk else {
             return None;
         };
         let disk = &disk.devpath.to_string_lossy();
@@ -273,7 +273,7 @@ impl Warning {
             .arg("-c")
             .arg(format!(
                 "lsblk {} -o parttype | grep 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b'",
-                INSTALLATION_STATE
+                APPLICATION_STATE
                     .read()
                     .destination_disk
                     .as_ref()
@@ -286,8 +286,7 @@ impl Warning {
             .success()
             .then_some(Self::EfiPartFound)
             .filter(|_| {
-                INSTALLATION_STATE.read().installation_type.unwrap()
-                    == libreadymade::backend::install::InstallationType::WholeDisk
+                APPLICATION_STATE.read().installation_type.unwrap() == InstallationType::WholeDisk
             })
     }
 

@@ -9,7 +9,7 @@ mkdir -p dev/install_root && cd dev
 # Step #1 - Pull images for testing
 
 if [ ! -f install.img ]; then
-    wget https://images.fyralabs.com/images/ultramarine/40/base-base-disk-$(arch).img.zst -O install.img.zst
+    wget https://images.fyralabs.com/images/ultramarine/43/base-base-disk-$(arch).img.zst -O install.img.zst
     unzstd install.img.zst
 fi
 

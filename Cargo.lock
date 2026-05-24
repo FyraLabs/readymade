@@ -2444,9 +2444,9 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "libc"
-version = "0.2.180"
+version = "0.2.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcc35a38544a891a5f7c865aca548a982ccb3b8650a5b06d0fd33a10283c56fc"
+checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
 name = "libhelium"
@@ -2539,7 +2539,7 @@ dependencies = [
  "itertools 0.14.0",
  "jwalk",
  "lsblk",
- "nix 0.31.1",
+ "nix 0.31.2",
  "parking_lot",
  "paste",
  "rayon",
@@ -2583,9 +2583,9 @@ checksum = "d26c52dbd32dccf2d10cac7725f8eae5296885fb5703b261f7d0a0739ec807ab"
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.11.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
+checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 
 [[package]]
 name = "litemap"
@@ -2751,9 +2751,9 @@ dependencies = [
 
 [[package]]
 name = "nix"
-version = "0.31.1"
+version = "0.31.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "225e7cfe711e0ba79a68baeddb2982723e4235247aefce1482f2f16c27865b66"
+checksum = "5d6d0705320c1e6ba1d912b5e37cf18071b6c2e9b7fa8215a1e8a7651966f5d3"
 dependencies = [
  "bitflags",
  "cfg-if",
@@ -3324,7 +3324,7 @@ dependencies = [
  "chrono",
  "flate2",
  "procfs-core",
- "rustix 1.1.3",
+ "rustix 1.1.4",
 ]
 
 [[package]]
@@ -3767,14 +3767,14 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "1.1.3"
+version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "146c9e247ccc180c1f61615433868c99f3de3ae256a30a43b49f67c2d9171f34"
+checksum = "b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190"
 dependencies = [
  "bitflags",
  "errno",
  "libc",
- "linux-raw-sys 0.11.0",
+ "linux-raw-sys 0.12.1",
  "windows-sys 0.61.2",
 ]
 
@@ -3878,9 +3878,9 @@ checksum = "b12e76d157a900eb52e81bc6e9f3069344290341720e9178cde2407113ac8d89"
 
 [[package]]
 name = "selinux"
-version = "0.5.2"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ef2ca58174235414aee5465f5d8ef9f5833023b31484eb52ca505f306f4573c"
+checksum = "7f4d7a0c34b924081f7fbdcb93121399f0d4182c0ec4bf9c01bfe4e7e21fcf16"
 dependencies = [
  "bitflags",
  "errno",
@@ -4469,7 +4469,7 @@ dependencies = [
  "fastrand",
  "getrandom 0.4.1",
  "once_cell",
- "rustix 1.1.3",
+ "rustix 1.1.4",
  "windows-sys 0.61.2",
 ]
 
@@ -4479,7 +4479,7 @@ version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60b8cb979cb11c32ce1603f8137b22262a9d131aaa5c37b5678025f22b8becd0"
 dependencies = [
- "rustix 1.1.3",
+ "rustix 1.1.4",
  "windows-sys 0.60.2",
 ]
 
@@ -5058,9 +5058,9 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uu_cp"
-version = "0.6.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19885072900bec2d63f0e94f73467d409bbe7b6644b5ab2475b2c728f725a9cb"
+checksum = "37ee02f3f636a8623ec3ed03c54d615070da244dc0f4651956c01532cce8181b"
 dependencies = [
  "clap",
  "exacl",
@@ -5068,6 +5068,7 @@ dependencies = [
  "fluent",
  "indicatif",
  "libc",
+ "nix 0.31.2",
  "selinux",
  "thiserror 2.0.18",
  "uucore",
@@ -5076,9 +5077,9 @@ dependencies = [
 
 [[package]]
 name = "uucore"
-version = "0.6.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b157ba598d7f7ed06f6dbc62999edb9d730b4d3fb58e503d8ad6d5fbe1e04391"
+checksum = "07d779636d827cde4100f0e65ff3fd23b0b1f1195055475c6e6813d425f30c8e"
 dependencies = [
  "bigdecimal",
  "clap",
@@ -5089,10 +5090,12 @@ dependencies = [
  "glob",
  "itertools 0.14.0",
  "libc",
- "nix 0.30.1",
+ "nix 0.31.2",
  "num-traits",
  "os_display",
  "procfs",
+ "rustc-hash 2.1.1",
+ "rustix 1.1.4",
  "selinux",
  "thiserror 2.0.18",
  "unic-langid",
@@ -5106,9 +5109,9 @@ dependencies = [
 
 [[package]]
 name = "uucore_procs"
-version = "0.6.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "daa291a52608ac5a2f8539e119666e021baa6b8c01f22f02ed201bbae54cbbc0"
+checksum = "da865e8a648b260dbd89fca76d0801995877ab27a4e259b6dec30ba9743b86ab"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5828,7 +5831,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32e45ad4206f6d2479085147f02bc2ef834ac85886624a23575ae137c8aa8156"
 dependencies = [
  "libc",
- "rustix 1.1.3",
+ "rustix 1.1.4",
 ]
 
 [[package]]

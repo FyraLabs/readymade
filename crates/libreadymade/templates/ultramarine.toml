@@ -24,22 +24,22 @@ link = "https://wiki.ultramarine-linux.org/en/contributing/contributorguide/"
 icon = "applications-development-symbolic"
 
 [[postinstall]]
+module = "Fstab"
+
+[[postinstall]]
 module = "CleanupBoot"
 
 [[postinstall]]
 module = "ReinstallKernel"
 
-[[postinstall]]
-module = "Dracut"
+# [[postinstall]]
+# module = "Dracut"
 
 [[postinstall]]
 module = "GRUB2"
 
 [[postinstall]]
 module = "PrepareFedora"
-
-[[postinstall]]
-module = "SELinux"
 
 [[postinstall]]
 module = "EfiStub"
