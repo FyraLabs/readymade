@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use crate::prelude::*;
 
 use cleanup_boot::CleanupBoot;
 use color_eyre::Result;
@@ -44,6 +43,8 @@ pub struct Context {
 
 #[enum_dispatch(Module)]
 pub trait PostInstallModule {
+    #[must_use]
+    fn name(&self) -> &'static str;
     fn run(&self, context: &Context) -> Result<()>;
 }
 

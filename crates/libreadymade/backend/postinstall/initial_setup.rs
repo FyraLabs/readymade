@@ -7,6 +7,10 @@ use super::{Context, PostInstallModule};
 pub struct InitialSetup;
 
 impl PostInstallModule for InitialSetup {
+    fn name(&self) -> &'static str {
+        "InitialSetup"
+    }
+
     fn run(&self, _context: &Context) -> Result<()> {
         // This triggers whatever the heck (e.g. Taidan) during next boot
         std::fs::File::create("/.unconfigured")?;

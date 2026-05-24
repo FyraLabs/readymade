@@ -2,8 +2,8 @@ mod bootc;
 mod copy;
 
 use crate::prelude::*;
-use bootc::Bootc;
-use copy::Copy;
+pub use bootc::Bootc;
+pub use copy::Copy;
 
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
@@ -23,7 +23,7 @@ pub trait FileSystemProvisionerModule {
 #[serde(tag = "module")]
 pub enum FileSystemProvisioner {
     /// Provisions a bootc install.
-    /// Refer to: https://bootc-dev.github.io/bootc/man/bootc-install-to-disk.8.html
+    /// Refer to: <https://bootc-dev.github.io/bootc/man/bootc-install-to-disk.8.html>
     Bootc,
     /// Mounts the partitions specified by the end-user, then copy the files.
     Copy,

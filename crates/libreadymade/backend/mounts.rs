@@ -39,6 +39,26 @@ pub struct Mount {
     pub(crate) gpt_type: OnceCell<gpt::partition_types::Type>,
 }
 
+impl Mount {
+    #[must_use]
+    pub fn new(
+        partition: PathBuf,
+        mountpoint: PathBuf,
+        options: String,
+        encryption_type: Option<EncryptionOption>,
+        label: Option<String>,
+    ) -> Self {
+        Self {
+            partition,
+            mountpoint,
+            options,
+            encryption_type,
+            label,
+            gpt_type: OnceCell::default(),
+        }
+    }
+}
+
 pub struct MapperCache {
     cache: std::collections::HashMap<String, PathBuf>,
 }
@@ -148,7 +168,7 @@ impl Mount {
         let target = root.join(target);
         create_dir_all(&target)?;
 
-        let source = if let Some(_) = self.encryption_type {
+        let source = if self.encryption_type.is_some() {
             let label =
                 generate_unique_mapper_label(format!("{}", self.mountpoint.display()).as_str());
             &luks_decrypt(
@@ -162,7 +182,14 @@ impl Mount {
 
         sys_mount::Mount::builder()
             .data(&self.options)
-            .mount(&source, target)?;
+            .mount(source, &target)
+            .with_context(|| {
+                format!(
+                    "cannot mount from {:?} to {:?}",
+                    source.display(),
+                    target.display()
+                )
+            })?;
 
         Ok(())
     }
@@ -186,11 +213,10 @@ impl Mount {
                 let partitions = partitions.partitions();
 
                 let partition = partitions
-                    .iter()
-                    .map(|(_, p)| p)
+                    .values()
                     .find(|p| {
                         Some(p.part_guid)
-                            == part.partuuid.as_ref().map(|u| Uuid::from_str(&u).unwrap())
+                            == part.partuuid.as_ref().map(|u| Uuid::from_str(u).unwrap())
                     })
                     .expect("cannot find partition that is supposed to exist");
 
@@ -255,6 +281,18 @@ impl Mounts {
                     Uuid::from_str("bc13c2ff-59e6-4262-a352-b275fd6f7172").unwrap(),
                 )
         })
+    }
+
+    #[must_use]
+    pub fn get_boot_partition(&self) -> std::option::Option<&Mount> {
+        self.0
+            .iter()
+            .find(|part| part.mountpoint == Path::new("/boot"))
+    }
+
+    #[must_use]
+    pub fn get_root_partition(&self) -> std::option::Option<&Mount> {
+        self.0.iter().find(|part| part.mountpoint == Path::new("/"))
     }
 }
 

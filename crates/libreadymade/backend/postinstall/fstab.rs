@@ -10,6 +10,10 @@ use std::fmt::Write;
 pub struct Fstab;
 
 impl PostInstallModule for Fstab {
+    fn name(&self) -> &'static str {
+        "Fstab"
+    }
+
     fn run(&self, context: &Context) -> Result<()> {
         tracing::info!("Writing /etc/fstab...");
         let fstab = generate_fstab(&context.mounts).wrap_err("cannot generate fstab")?;
@@ -59,7 +63,7 @@ pub fn generate_fstab(mounts: &Mounts) -> color_eyre::Result<String> {
     // BufReader::from(std::fs::File::open("/proc/mounts").wrap_err("cannot open /proc/mounts")?);
     let mut fstypes = HashMap::new();
     for line in bufreader.lines() {
-        let [_, mount, parttype, ..] = line.split(" ").collect::<Vec<_>>()[..] else {
+        let [_, mount, parttype, ..] = line.split(' ').collect::<Vec<_>>()[..] else {
             panic!("I'm not reading /proc/mounts?");
         };
         fstypes.insert(mount, parttype);

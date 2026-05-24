@@ -9,6 +9,10 @@ use std::process::Command;
 pub struct Dracut;
 
 impl PostInstallModule for Dracut {
+    fn name(&self) -> &'static str {
+        "Dracut"
+    }
+
     fn run(&self, _context: &Context) -> Result<()> {
         stage!(initramfs "Regenerating initramfs" {
             // We assume the installation wouldn't be used on another system (false only if you install

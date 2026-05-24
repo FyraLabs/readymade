@@ -152,7 +152,7 @@ impl Component for DestinationPage {
                         add_css_class: "large-button",
                         connect_clicked => DestinationPageMsg::Navigate(NavigationAction::GoTo(Page::InstallationType)),
                         #[watch]
-                        set_sensitive: INSTALLATION_STATE.read().destination_disk.is_some()
+                        set_sensitive: APPLICATION_STATE.read().destination_disk.is_some()
                     }
                 },
             }
@@ -188,7 +188,7 @@ impl Component for DestinationPage {
         btn.last_child().unwrap().set_visible(false);
         // TODO: we probably should also disable the button for the loading page
 
-        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| DestinationPageMsg::Update);
+        APPLICATION_STATE.subscribe(sender.input_sender(), |_| DestinationPageMsg::Update);
 
         ComponentParts { model, widgets }
     }
@@ -205,7 +205,7 @@ impl Component for DestinationPage {
                     .first()
                     .map(|d| self.disks.get(d.index().try_into().unwrap()).unwrap());
 
-                let mut installation_state_guard = INSTALLATION_STATE.write();
+                let mut installation_state_guard = APPLICATION_STATE.write();
                 installation_state_guard.destination_disk = selected_disk.cloned().map(|d| d.0);
             }
             DestinationPageMsg::Update => {}

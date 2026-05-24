@@ -1,4 +1,5 @@
-use crate::{INSTALLATION_STATE, NavigationAction, prelude::*};
+use crate::{NavigationAction, prelude::*};
+use libreadymade::prelude::{Mount, Mounts};
 use relm4::factory::FactoryVecDeque;
 
 type ChooseMount = MountTarget;
@@ -134,7 +135,7 @@ impl SimpleComponent for InstallCustomPage {
         let mounts = model.choose_mount_factory.widget();
         let widgets = view_output!();
 
-        INSTALLATION_STATE.subscribe(sender.input_sender(), |_| InstallCustomPageMsg::Update);
+        APPLICATION_STATE.subscribe(sender.input_sender(), |_| InstallCustomPageMsg::Update);
 
         ComponentParts { model, widgets }
     }
@@ -172,16 +173,20 @@ impl SimpleComponent for InstallCustomPage {
             }
             InstallCustomPageMsg::RowOutput(action) => match action {
                 ChooseMountOutput::Edit(index) => {
-                    let mnt_target = (self.choose_mount_factory.get(index))
+                    let mnt_target = self
+                        .choose_mount_factory
+                        .get(index)
+                        .map(|mnt_target| AddDialog {
+                            partition: mnt_target.partition.clone(),
+                            mountpoint: mnt_target.mountpoint.clone(),
+                            mountopts: mnt_target.mountopts.clone(),
+                            index,
+                        })
                         .expect("request to edit nonexistent row");
 
                     tracing::trace!(?mnt_target, "Edit MountTarget");
 
-                    AddDialog {
-                        index,
-                        ..mnt_target
-                    }
-                    .make_window(
+                    mnt_target.make_window(
                         self.root.clone(),
                         sender.input_sender(),
                         InstallCustomPageMsg::UpdateRow,
@@ -196,6 +201,17 @@ impl SimpleComponent for InstallCustomPage {
             },
             InstallCustomPageMsg::Update => {}
         }
+    }
+}
+
+impl InstallCustomPage {
+    pub fn mounts(&self) -> Mounts {
+        Mounts(
+            self.choose_mount_factory
+                .iter()
+                .map(AddDialog::to_mount)
+                .collect(),
+        )
     }
 }
 
@@ -231,7 +247,7 @@ impl FactoryComponent for ChooseMount {
             set_spacing: 16,
 
             gtk::Label {
-                set_label: &format!("{} ← {}{}", self.mountpoint.display(), self.partition.display(), if self.options.is_empty() { String::new() } else { format!(" [{}]", self.mountopts) }),
+                set_label: &format!("{} ← {}{}", self.mountpoint, self.partition, if self.mountopts.is_empty() { String::new() } else { format!(" [{}]", self.mountopts) }),
                 add_css_class: "monospace",
             },
 
@@ -593,6 +609,10 @@ kurage::generate_component!(AddDialog {
 );
 
 impl AddDialog {
+    fn to_mount(&self) -> Mount {
+        crate::state::mount_from_custom_target(&self.partition, &self.mountpoint, &self.mountopts)
+    }
+
     fn make_window<X, F>(
         self,
         widget: impl IsA<gtk::Widget>,

@@ -1,9 +1,10 @@
 #![allow(clippy::str_to_string)]
 use crate::prelude::*;
+use crate::state::ApplicationState;
+use libreadymade::consts::repart_dir;
 use serde::{Deserialize, Serialize};
 use serde_valid::{Validate, toml::FromTomlStr};
 
-use libreadymade::backend::install::InstallationType;
 use libreadymade::backend::postinstall::Module;
 
 #[cfg(not(debug_assertions))]
@@ -18,6 +19,15 @@ pub enum CopyMode {
     #[default]
     Repart,
     Bootc,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum InstallationType {
+    WholeDisk,
+    DualBoot(u64),
+    ChromebookInstall,
+    Custom,
 }
 
 #[derive(Deserialize, Serialize, Validate, Default, Debug, Clone, PartialEq, Eq)]
@@ -81,6 +91,19 @@ impl ReadymadeConfig {
     }
 }
 
+impl InstallationType {
+    #[must_use]
+    pub fn cfgdir(&self, is_bootc: bool) -> std::path::PathBuf {
+        match self {
+            Self::ChromebookInstall => repart_dir().join("chromebookinstall"),
+            Self::WholeDisk if is_bootc => repart_dir().join("bootcwholedisk"),
+            Self::WholeDisk => repart_dir().join("wholedisk"),
+            Self::DualBoot(_) => repart_dir().join("dualboot"),
+            Self::Custom => unreachable!("custom installs do not use repart templates"),
+        }
+    }
+}
+
 /// # Errors
 /// - cannot read config file
 #[allow(clippy::module_name_repetitions)]
@@ -103,18 +126,9 @@ pub fn get_cfg() -> Result<ReadymadeConfig> {
     Ok(ReadymadeConfig::from_toml_str(&toml)?)
 }
 
-impl From<&ReadymadeConfig> for libreadymade::backend::install::InstallationState {
-    fn from(value: &crate::cfg::ReadymadeConfig) -> Self {
-        Self {
-            postinstall: value.postinstall.clone(),
-            distro_name: value.distro.name.clone(),
-            bootc_imgref: value.to_bootc_copy_source(),
-            bootc_target_imgref: value.to_bootc_target_copy_source(),
-            bootc_enforce_sigpolicy: value.install.bootc_enforce_sigpolicy,
-            bootc_kargs: value.install.bootc_kargs.clone(),
-            bootc_args: value.install.bootc_args.clone(),
-            ..Self::default()
-        }
+impl From<&ReadymadeConfig> for ApplicationState {
+    fn from(_value: &crate::cfg::ReadymadeConfig) -> Self {
+        Self::default()
     }
 }
 

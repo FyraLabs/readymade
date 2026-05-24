@@ -43,7 +43,7 @@ toml = "1.0.1"
 tracing = { workspace = true }
 tracing-journald = "0.3.2"
 tracing-test = { workspace = true }
-uu_cp = { version = "0.6.0", features = [
+uu_cp = { version = "0.8.0", features = [
     "exacl",
     "feat_acl",
     "feat_selinux",
@@ -53,6 +53,7 @@ uuid = { workspace = true }
 xattr = "1.6.1"
 
 [features]
+default = ["uutils"]
 uutils = ["dep:uu_cp"]
 
 [lib]
