@@ -20,7 +20,7 @@ use libreadymade::{
 };
 use relm4::SharedState;
 
-use crate::cfg::{CopyMode, InstallationType, ReadymadeConfig};
+use crate::cfg::{CopyMode, ImageMode, InstallationType, ReadymadeConfig};
 use crate::prelude::*;
 
 #[derive(Default)]
@@ -31,9 +31,39 @@ pub struct ApplicationState {
     pub tpm: bool,
     pub lang: Option<String>,
     pub installation_type: Option<InstallationType>,
+    /// Install the NVIDIA variant of the image.
+    pub nvidia: bool,
+    pub image_mode: ImageMode,
 }
 
 impl ApplicationState {
+    /// Initial state for `config`. The NVIDIA option starts checked when an NVIDIA display device
+    /// was detected and the config offers an NVIDIA image.
+    #[must_use]
+    pub fn new(config: &ReadymadeConfig, nvidia_detected: bool) -> Self {
+        let nvidia = nvidia_detected && !config.image_modes(true).is_empty();
+        Self {
+            nvidia,
+            image_mode: config
+                .image_modes(nvidia)
+                .first()
+                .copied()
+                .unwrap_or_default(),
+            ..Self::default()
+        }
+    }
+
+    /// Toggle the NVIDIA option, switching install mode if the current one has no matching image.
+    pub fn set_nvidia(&mut self, config: &ReadymadeConfig, nvidia: bool) {
+        self.nvidia = nvidia;
+        let modes = config.image_modes(nvidia);
+        if !modes.contains(&self.image_mode)
+            && let Some(&mode) = modes.first()
+        {
+            self.image_mode = mode;
+        }
+    }
+
     pub fn to_playbook(
         &self,
         config: &ReadymadeConfig,
@@ -65,58 +95,64 @@ impl ApplicationState {
             None
         };
 
-        let (disk_provisioner, filesystem_provisioner) = match installation_type {
-            InstallationType::Custom => {
-                let mounts = custom_mounts
-                    .filter(|mounts| !mounts.0.is_empty())
-                    .ok_or_eyre(
-                        "Custom installation selected but no mount targets were configured",
-                    )?;
-                (
-                    DiskProvisioner::Manual(Manual { mounts }),
-                    Some(match config.install.copy_mode {
-                        CopyMode::Bootc => FileSystemProvisioner::Bootc(Bootc {
-                            imgref: config
-                                .to_bootc_copy_source()
-                                .ok_or_eyre("Bootc copy mode selected but no source image reference is configured")?,
-                            target_imgref: config.to_bootc_target_copy_source(),
-                            enforce_sigpolicy: config.install.bootc_enforce_sigpolicy,
-                            kargs: config.install.bootc_kargs.clone().unwrap_or_default(),
-                            args: config.install.bootc_args.clone().unwrap_or_default(),
-                        }),
-                        CopyMode::Repart => FileSystemProvisioner::Copy(Copy {
-                            copy_source: determine_copy_source(),
-                        }),
-                    }),
-                )
+        if config.install.copy_mode == CopyMode::Bootc {
+            if config.images().is_empty() {
+                bail!("Bootc copy mode selected but no source image reference is configured");
             }
-            InstallationType::WholeDisk | InstallationType::ChromebookInstall => match config
-                .install
-                .copy_mode
+            let image = config
+                .select_image(self.nvidia, self.image_mode)
+                .ok_or_eyre("No configured image matches the selected NVIDIA and install mode")?;
+            if self.image_mode == ImageMode::Mutable
+                && installation_type == InstallationType::ChromebookInstall
             {
-                CopyMode::Bootc => (
-                    DiskProvisioner::Repart(Repart {
-                        directory: installation_type.cfgdir(true),
-                        copy_source: None,
-                    }),
-                    Some(FileSystemProvisioner::Bootc(Bootc {
-                        imgref: config.to_bootc_copy_source().ok_or_eyre(
-                            "Bootc copy mode selected but no source image reference is configured",
-                        )?,
-                        target_imgref: config.to_bootc_target_copy_source(),
+                bail!("Mutable installs are not supported for Chromebook installs");
+            }
+            let disk_provisioner = Self::image_disk_provisioner(installation_type, custom_mounts)?;
+            let (filesystem_provisioner, postinstall) = match self.image_mode {
+                ImageMode::Bootc => (
+                    FileSystemProvisioner::Bootc(Bootc {
+                        imgref: image.imgref,
+                        target_imgref: image.target_imgref,
                         enforce_sigpolicy: config.install.bootc_enforce_sigpolicy,
                         kargs: config.install.bootc_kargs.clone().unwrap_or_default(),
                         args: config.install.bootc_args.clone().unwrap_or_default(),
-                    })),
-                ),
-                CopyMode::Repart => (
-                    DiskProvisioner::Repart(Repart {
-                        directory: installation_type.cfgdir(false),
-                        copy_source: Some(PathBuf::from(determine_copy_source())),
                     }),
-                    None,
+                    config.postinstall.clone(),
                 ),
-            },
+                // The Copy provisioner mounts the image with podman and copies its root
+                // filesystem; the mutable postinstall modules make it bootable without ostree.
+                ImageMode::Mutable => (
+                    FileSystemProvisioner::Copy(Copy {
+                        copy_source: image.imgref,
+                    }),
+                    config.mutable_postinstall(),
+                ),
+            };
+            return Ok(Playbook {
+                destination_disk,
+                encryption,
+                disk_provisioner,
+                filesystem_provisioner: Some(filesystem_provisioner),
+                postinstall,
+            });
+        }
+
+        let (disk_provisioner, filesystem_provisioner) = match installation_type {
+            InstallationType::Custom => (
+                DiskProvisioner::Manual(Manual {
+                    mounts: Self::custom_mounts(custom_mounts)?,
+                }),
+                Some(FileSystemProvisioner::Copy(Copy {
+                    copy_source: determine_copy_source(),
+                })),
+            ),
+            InstallationType::WholeDisk | InstallationType::ChromebookInstall => (
+                DiskProvisioner::Repart(Repart {
+                    directory: installation_type.cfgdir(false),
+                    copy_source: Some(PathBuf::from(determine_copy_source())),
+                }),
+                None,
+            ),
             InstallationType::DualBoot(_) => unreachable!(),
         };
 
@@ -127,6 +163,32 @@ impl ApplicationState {
             filesystem_provisioner,
             postinstall: config.postinstall.clone(),
         })
+    }
+
+    /// Disk provisioner for image installs. Whole-disk installs use the bootc repart templates,
+    /// which only partition and leave copying files to the filesystem provisioner.
+    fn image_disk_provisioner(
+        installation_type: InstallationType,
+        custom_mounts: Option<Mounts>,
+    ) -> Result<DiskProvisioner> {
+        Ok(match installation_type {
+            InstallationType::Custom => DiskProvisioner::Manual(Manual {
+                mounts: Self::custom_mounts(custom_mounts)?,
+            }),
+            InstallationType::WholeDisk | InstallationType::ChromebookInstall => {
+                DiskProvisioner::Repart(Repart {
+                    directory: installation_type.cfgdir(true),
+                    copy_source: None,
+                })
+            }
+            InstallationType::DualBoot(_) => unreachable!(),
+        })
+    }
+
+    fn custom_mounts(custom_mounts: Option<Mounts>) -> Result<Mounts> {
+        custom_mounts
+            .filter(|mounts| !mounts.0.is_empty())
+            .ok_or_eyre("Custom installation selected but no mount targets were configured")
     }
 }
 
@@ -245,3 +307,152 @@ fn mount_live_base(dev: &str) -> std::io::Result<PathBuf> {
 
 /// State related to the user's installation configuration
 pub static APPLICATION_STATE: SharedState<ApplicationState> = SharedState::new();
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use libreadymade::disks::Disk;
+    use serde_valid::toml::FromTomlStr;
+
+    const CONFIG: &str = r#"
+        postinstall = [{ module = "Script" }]
+
+        [distro]
+        name = "Test"
+
+        [install]
+        allowed_installtypes = ["wholedisk", "custom"]
+        copy_mode = "bootc"
+
+        [[install.images]]
+        imgref = "containers-storage:example/server:44"
+        target_imgref = "docker://example/server:44"
+
+        [[install.images]]
+        imgref = "containers-storage:example/server-nvidia:44"
+        target_imgref = "docker://example/server-nvidia:44"
+        nvidia = true
+
+        [[bento]]
+        title = "a"
+        desc = "a"
+        link = "a"
+        icon = "a"
+
+        [[bento]]
+        title = "b"
+        desc = "b"
+        link = "b"
+        icon = "b"
+
+        [[bento]]
+        title = "c"
+        desc = "c"
+        link = "c"
+        icon = "c"
+    "#;
+
+    fn config() -> ReadymadeConfig {
+        ReadymadeConfig::from_toml_str(CONFIG).unwrap()
+    }
+
+    fn state(nvidia: bool, image_mode: ImageMode) -> ApplicationState {
+        ApplicationState {
+            destination_disk: Some(Disk {
+                disk_name: "vda".into(),
+                os_name: None,
+                devpath: PathBuf::from("/dev/vda"),
+                size: Default::default(),
+            }),
+            installation_type: Some(InstallationType::WholeDisk),
+            nvidia,
+            image_mode,
+            ..ApplicationState::default()
+        }
+    }
+
+    #[test]
+    fn nvidia_preselected_only_when_detected_and_available() {
+        let cfg = config();
+        assert!(ApplicationState::new(&cfg, true).nvidia);
+        assert!(!ApplicationState::new(&cfg, false).nvidia);
+
+        let mut no_nvidia = cfg;
+        no_nvidia.install.images.retain(|img| !img.nvidia);
+        assert!(!ApplicationState::new(&no_nvidia, true).nvidia);
+    }
+
+    #[test]
+    fn set_nvidia_falls_back_to_available_mode() {
+        let mut cfg = config();
+        cfg.install.images[1].modes = vec![ImageMode::Bootc];
+        let mut state = state(false, ImageMode::Mutable);
+        state.set_nvidia(&cfg, true);
+        assert_eq!(state.image_mode, ImageMode::Bootc);
+    }
+
+    #[test]
+    fn bootc_playbook_uses_selected_image() {
+        let cfg = config();
+        let playbook = state(true, ImageMode::Bootc)
+            .to_playbook(&cfg, None)
+            .unwrap();
+        let Some(FileSystemProvisioner::Bootc(bootc)) = playbook.filesystem_provisioner else {
+            panic!("expected bootc provisioner");
+        };
+        assert_eq!(bootc.imgref, "containers-storage:example/server-nvidia:44");
+        assert_eq!(
+            bootc.target_imgref.as_deref(),
+            Some("docker://example/server-nvidia:44")
+        );
+        assert_eq!(playbook.postinstall, cfg.postinstall);
+    }
+
+    #[test]
+    fn mutable_playbook_copies_image_without_repart_copy() {
+        let cfg = config();
+        let playbook = state(false, ImageMode::Mutable)
+            .to_playbook(&cfg, None)
+            .unwrap();
+        let DiskProvisioner::Repart(repart) = &playbook.disk_provisioner else {
+            panic!("expected repart");
+        };
+        assert_eq!(repart.copy_source, None);
+        assert_eq!(repart.directory, InstallationType::WholeDisk.cfgdir(true));
+        assert_eq!(
+            playbook.filesystem_provisioner,
+            Some(FileSystemProvisioner::Copy(Copy {
+                copy_source: "containers-storage:example/server:44".into()
+            }))
+        );
+        assert_eq!(playbook.postinstall, cfg.mutable_postinstall());
+    }
+
+    #[test]
+    fn mutable_chromebook_is_rejected() {
+        let mut state = state(false, ImageMode::Mutable);
+        state.installation_type = Some(InstallationType::ChromebookInstall);
+        assert!(state.to_playbook(&config(), None).is_err());
+    }
+
+    #[test]
+    fn legacy_bootc_config_still_works() {
+        let mut cfg = config();
+        cfg.install.images.clear();
+        cfg.install.bootc_imgref = Some("containers-storage:example/legacy:44".into());
+        let state = ApplicationState::new(&cfg, true);
+        assert!(!state.nvidia);
+        assert_eq!(state.image_mode, ImageMode::Bootc);
+        let playbook = ApplicationState {
+            destination_disk: self::state(false, ImageMode::Bootc).destination_disk,
+            installation_type: Some(InstallationType::WholeDisk),
+            ..state
+        }
+        .to_playbook(&cfg, None)
+        .unwrap();
+        let Some(FileSystemProvisioner::Bootc(bootc)) = playbook.filesystem_provisioner else {
+            panic!("expected bootc provisioner");
+        };
+        assert_eq!(bootc.imgref, "containers-storage:example/legacy:44");
+    }
+}

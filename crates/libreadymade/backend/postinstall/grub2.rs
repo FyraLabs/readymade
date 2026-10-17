@@ -129,6 +129,14 @@ impl PostInstallModule for GRUB2 {
                 defaults.cmdline_linux = format!("{joined_cmdline} {current_value}");
             }
 
+            // bootc applies these itself; mutable installs from a bootc image need them here
+            let image_kargs = super::bootc_to_mutable::image_kargs(Path::new("/"))?;
+            if !image_kargs.is_empty() {
+                tracing::info!(?image_kargs, "Adding kernel arguments from bootc kargs.d");
+                defaults.cmdline_linux =
+                    format!("{} {}", defaults.cmdline_linux, image_kargs.join(" "));
+            }
+
             let defaults_str = defaults.generate();
             std::fs::write("/etc/default/grub", defaults_str)?;
         });

@@ -174,6 +174,17 @@ pub fn copy_dir_rdm<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyr
                 return Ok(());
             }
 
+            // Don't replace an existing directory, usually a mountpoint such as a separate /home,
+            // with a symlink. bootc images symlink several top-level directories into /var.
+            if metadata.is_symlink() && dest_path.symlink_metadata().is_ok_and(|m| m.is_dir()) {
+                tracing::warn!(
+                    ?src_path,
+                    ?dest_path,
+                    "Keeping existing directory over symlink"
+                );
+                return Ok(());
+            }
+
             // Handle files and symlinks
             copy(&src_path, &dest_path, &metadata)?;
             copy_attributes(&src_path, &dest_path, &metadata)?;
@@ -456,5 +467,21 @@ mod tests {
     #[cfg(feature = "uutils")]
     fn test_copy_uucp() -> color_eyre::Result<()> {
         test_copy_impl("uutils", |from, to| copy_dir_uutils(from, to))
+    }
+
+    #[test]
+    fn test_copy_recurse_keeps_dir_over_symlink() -> color_eyre::Result<()> {
+        let src = tempfile::tempdir()?;
+        let dest = tempfile::tempdir()?;
+        std::os::unix::fs::symlink("var/home", src.path().join("home"))?;
+        std::os::unix::fs::symlink("var/opt", src.path().join("opt"))?;
+        // e.g. a mounted /home subvolume
+        std::fs::create_dir(dest.path().join("home"))?;
+
+        copy_dir_rdm(src.path(), dest.path())?;
+
+        assert!(dest.path().join("home").symlink_metadata()?.is_dir());
+        assert!(dest.path().join("opt").symlink_metadata()?.is_symlink());
+        Ok(())
     }
 }
