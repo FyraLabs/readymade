@@ -3,10 +3,7 @@ pub use color_eyre::eyre::{Context, ContextCompat, OptionExt, WrapErr, bail, eyr
 pub use color_eyre::{Result, Section};
 pub use itertools::Itertools;
 pub use libhelium::{glib::prelude::*, prelude::*};
-pub use relm4::{
-    gtk::{self, prelude::*},
-    prelude::*,
-};
+pub use relm4::{gtk, prelude::*};
 
 kurage::kurage_gen_macros!();
 kurage::generate_generator! { page => [<$name Page>]
@@ -56,4 +53,8 @@ macro_rules! t_expr {
     };
 }
 
+#[expect(
+    clippy::single_component_path_imports,
+    reason = "re-exports the kurage-generated `page!` macro through the prelude"
+)]
 pub(crate) use {page, t, t_expr};

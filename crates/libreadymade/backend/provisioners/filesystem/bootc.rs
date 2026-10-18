@@ -16,6 +16,10 @@ impl Bootc {
     /// Call bootc to copy the contents of the container into the target.
     ///
     /// The caller must verify that `self.copy_mode.is_bootc()`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `bootc install to-filesystem` fails to run or exits unsuccessfully.
     #[allow(clippy::unwrap_in_result, clippy::needless_pass_by_value)]
     pub fn bootc_copy(&self, target_root: &Path, cryptdata: Option<CryptData>) -> Result<()> {
         let imgref = &self.imgref;
