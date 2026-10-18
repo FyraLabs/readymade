@@ -8,6 +8,10 @@ use std::{
 use color_eyre::eyre::{Context as _, bail, eyre};
 
 /// Ignore errors about nonexisting files.
+///
+/// # Errors
+///
+/// Returns `r`'s error unless it is [`std::io::ErrorKind::NotFound`].
 pub fn exist_then<T: Default>(r: std::io::Result<T>) -> std::io::Result<T> {
     match r {
         Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
@@ -17,6 +21,10 @@ pub fn exist_then<T: Default>(r: std::io::Result<T>) -> std::io::Result<T> {
 }
 
 /// Ignore errors about nonexisting files.
+///
+/// # Errors
+///
+/// Returns an error if the directory exists but cannot be read.
 pub fn exist_then_read_dir<A: AsRef<Path>>(
     p: A,
 ) -> std::io::Result<Box<dyn Iterator<Item = std::fs::DirEntry>>> {
@@ -46,6 +54,10 @@ fn remove_if_exists(path: &Path) -> std::io::Result<()> {
 /// - cp: Uses the `cp -a` command to copy the directory tree
 /// - recurse: Native Rust implementation that uses `std::fs` and `jwalk` to copy the directory tree.
 /// - uutils: Uses uutil's implementation of `cp` to copy the directory tree, programmatically
+///
+/// # Errors
+///
+/// Returns an error if `READYMADE_COPY_METHOD` names an unknown method, or if the copy fails.
 pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     let env = std::env::var("READYMADE_COPY_METHOD").unwrap_or_else(|_| "rdm".to_owned());
     match env.as_str() {
@@ -60,6 +72,10 @@ pub fn copy_dir<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::R
 /// Copy directory tree from one location to another using the `cp` command provided by coreutils.
 ///
 /// This function uses the `cp -a` command to copy the directory tree.
+///
+/// # Errors
+///
+/// Returns an error if the destination cannot be created, or `cp` fails to run or exits unsuccessfully.
 pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     let to = to.as_ref();
     let from = from.as_ref();
@@ -91,6 +107,10 @@ pub fn copy_dir_cp<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre
 ///
 /// This implementation uses Rust's `std::fs` and `jwalk` to copy the directory tree.
 ///
+/// # Errors
+///
+/// Returns an error if the source tree cannot be walked, or any file, directory, symlink or
+/// attribute cannot be copied.
 pub fn copy_dir_rdm<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     use rayon::iter::ParallelIterator;
     use rayon::prelude::*;
@@ -165,7 +185,7 @@ pub fn copy_dir_rdm<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyr
             let entry = entry?;
             let src_path = entry.path();
             let dest_path = to.join(src_path.strip_prefix(from)?);
-            let metadata = entry.metadata().expect("Cached metadata");
+            let metadata = entry.metadata()?;
 
             // Pre-create all directories first
             if metadata.is_dir() {
@@ -287,6 +307,10 @@ fn copy_attributes_handle_timestamps(
 /// uutils' `cp` implementation to copy the directory tree.
 ///
 /// May not be as stable as the other implementations, but is useful for testing.
+///
+/// # Errors
+///
+/// Returns an error if uutils' `cp` fails.
 pub fn copy_dir_uutils<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_eyre::Result<()> {
     let opts = uu_cp::Options {
         recursive: true,
@@ -364,7 +388,7 @@ pub fn partition_number(partition_path: &Path) -> color_eyre::Result<usize> {
 
     let sys_path = format!(
         "/sys/class/block/{}",
-        partition_path.to_str().unwrap().trim_start_matches("/dev/")
+        partition_path.to_string_lossy().trim_start_matches("/dev/")
     );
     let partition_number_path = format!("{sys_path}/partition");
 
@@ -377,11 +401,16 @@ pub fn partition_number(partition_path: &Path) -> color_eyre::Result<usize> {
     Ok(partition_number)
 }
 
+/// Get the `major:minor` device number of a block device, e.g. `8:1` for `/dev/sda1`.
+///
+/// # Errors
+///
+/// Returns an error if the device's entry in `/sys/class/block` cannot be read.
 #[tracing::instrument]
 pub fn get_maj_min(dev: &Path) -> color_eyre::Result<String> {
     let sys_path = format!(
         "/sys/class/block/{}",
-        dev.to_str().unwrap().trim_start_matches("/dev/")
+        dev.to_string_lossy().trim_start_matches("/dev/")
     );
 
     let maj_min = std::fs::read_to_string(format!("{sys_path}/dev"))
@@ -393,6 +422,10 @@ pub fn get_maj_min(dev: &Path) -> color_eyre::Result<String> {
 }
 
 /// Get the whole disk from a partition path. i.e. /dev/sda1 -> /dev/sda, /dev/nvme0n1p2 -> /dev/nvme0n1
+///
+/// # Errors
+///
+/// Returns an error if the partition's device number or parent device cannot be resolved via sysfs.
 #[tracing::instrument]
 pub fn get_whole_disk(partition_path: &Path) -> color_eyre::Result<String> {
     let majmin = get_maj_min(partition_path)?;
@@ -407,7 +440,7 @@ pub fn get_whole_disk(partition_path: &Path) -> color_eyre::Result<String> {
     // so we can replace the /sys/devices with /dev
     let path = path
         .rsplit_once('/')
-        .map_or(path.clone(), |(_, tail)| format!("/dev/{tail}"));
+        .map_or_else(|| path.clone(), |(_, tail)| format!("/dev/{tail}"));
 
     Ok(path)
 }

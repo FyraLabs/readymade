@@ -36,7 +36,7 @@ pub struct Mount {
     /// GPT Partition type (assume we only support GPT)
     // TODO: make this a method? / private
     #[serde(skip)]
-    pub(crate) gpt_type: OnceCell<gpt::partition_types::Type>,
+    gpt_type: OnceCell<gpt::partition_types::Type>,
 }
 
 impl Mount {
@@ -56,6 +56,83 @@ impl Mount {
             label,
             gpt_type: OnceCell::default(),
         }
+    }
+
+    fn mount(&self, root: &Path, passphrase: Option<&str>) -> Result<()> {
+        create_dir_all(root)?;
+
+        let target = (self.mountpoint.strip_prefix("/")).unwrap_or(&self.mountpoint);
+
+        tracing::info!(?root, "Mounting {:?} to {target:?}", self.partition);
+
+        let target = root.join(target);
+        create_dir_all(&target)?;
+
+        let source = if self.encryption_type.is_some() {
+            let label =
+                generate_unique_mapper_label(format!("{}", self.mountpoint.display()).as_str());
+            &luks_decrypt(
+                format!("{}", self.partition.display()).as_str(),
+                passphrase.unwrap(),
+                &label,
+            )?
+        } else {
+            &self.partition
+        };
+
+        sys_mount::Mount::builder()
+            .data(&self.options)
+            .mount(source, &target)
+            .with_context(|| {
+                format!(
+                    "cannot mount from {:?} to {:?}",
+                    source.display(),
+                    target.display()
+                )
+            })?;
+
+        Ok(())
+    }
+
+    /// Unmount this target from under `root`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the unmount fails.
+    pub fn umount(&self, root: &Path) -> std::io::Result<()> {
+        // sanitize target path
+        let target = (self.mountpoint.strip_prefix("/")).unwrap_or(&self.mountpoint);
+        let target = root.join(target);
+
+        umount(&target)?;
+        Ok(())
+    }
+
+    /// Get the GPT partition type of this mount's partition, reading it from disk on first use.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the partition, its parent disk or its GPT entry cannot be found or read.
+    pub fn get_gpt_type(&self) -> gpt::partition_types::Type {
+        self.gpt_type
+            .get_or_init(|| {
+                let part = lsblk::BlockDevice::from_path(&self.partition).unwrap();
+                let parent = format!("/dev/{}", part.disk_name().unwrap());
+
+                let partitions = gpt::disk::read_disk(&parent).unwrap();
+                let partitions = partitions.partitions();
+
+                let partition = partitions
+                    .values()
+                    .find(|p| {
+                        Some(p.part_guid)
+                            == part.partuuid.as_ref().map(|u| Uuid::from_str(u).unwrap())
+                    })
+                    .expect("cannot find partition that is supposed to exist");
+
+                partition.part_type_guid.clone()
+            })
+            .clone()
     }
 }
 
@@ -77,15 +154,12 @@ impl MapperCache {
     pub(crate) fn insert(&mut self, node: String, path: PathBuf) {
         self.cache.insert(node, path);
     }
-
-    pub(crate) fn clear(&mut self) {
-        for (node, path) in self.cache.drain() {
-            if let Err(e) = cryptsetup_close(&path.to_string_lossy()) {
-                tracing::error!(?node, ?e, "Failed to close mapper device");
-            }
-        }
-    }
 }
+/// Close the LUKS mapper device `mapper`.
+///
+/// # Errors
+///
+/// Returns an error if `cryptsetup close` fails to run or exits unsuccessfully.
 pub fn cryptsetup_close(mapper: &str) -> Result<(), color_eyre::eyre::Error> {
     let cmd = std::process::Command::new("cryptsetup")
         .arg("close")
@@ -104,6 +178,18 @@ pub fn cryptsetup_close(mapper: &str) -> Result<(), color_eyre::eyre::Error> {
 pub static MAPPER_CACHE: std::sync::LazyLock<parking_lot::RwLock<Arc<MapperCache>>> =
     std::sync::LazyLock::new(|| parking_lot::RwLock::new(Arc::new(MapperCache::new())));
 
+/// Open the LUKS partition `node` as `/dev/mapper/{label}` and return the mapper path.
+///
+/// Opened devices are cached in [`MAPPER_CACHE`], so decrypting the same node again returns the
+/// existing mapper path.
+///
+/// # Errors
+///
+/// Returns an error if the key file cannot be written, or `cryptsetup open` fails.
+///
+/// # Panics
+///
+/// Panics if the [`MAPPER_CACHE`] `Arc` has been cloned, as it can then not be mutated.
 pub fn luks_decrypt(node: &str, passphrase: &str, label: &str) -> color_eyre::Result<PathBuf> {
     // Check cache first
     if let Some(path) = MAPPER_CACHE.read().get(node) {
@@ -157,75 +243,6 @@ pub fn generate_unique_mapper_label(mntpoint: &str) -> String {
     label
 }
 
-impl Mount {
-    fn mount(&self, root: &Path, passphrase: Option<&str>) -> Result<()> {
-        create_dir_all(root)?;
-
-        let target = (self.mountpoint.strip_prefix("/")).unwrap_or(&self.mountpoint);
-
-        tracing::info!(?root, "Mounting {:?} to {target:?}", self.partition);
-
-        let target = root.join(target);
-        create_dir_all(&target)?;
-
-        let source = if self.encryption_type.is_some() {
-            let label =
-                generate_unique_mapper_label(format!("{}", self.mountpoint.display()).as_str());
-            &luks_decrypt(
-                format!("{}", self.partition.display()).as_str(),
-                passphrase.unwrap(),
-                &label,
-            )?
-        } else {
-            &self.partition
-        };
-
-        sys_mount::Mount::builder()
-            .data(&self.options)
-            .mount(source, &target)
-            .with_context(|| {
-                format!(
-                    "cannot mount from {:?} to {:?}",
-                    source.display(),
-                    target.display()
-                )
-            })?;
-
-        Ok(())
-    }
-
-    pub fn umount(&self, root: &Path) -> std::io::Result<()> {
-        // sanitize target path
-        let target = (self.mountpoint.strip_prefix("/")).unwrap_or(&self.mountpoint);
-        let target = root.join(target);
-
-        umount(&target)?;
-        Ok(())
-    }
-
-    pub fn get_gpt_type(&self) -> gpt::partition_types::Type {
-        self.gpt_type
-            .get_or_init(|| {
-                let part = lsblk::BlockDevice::from_path(&self.partition).unwrap();
-                let parent = format!("/dev/{}", part.disk_name().unwrap());
-
-                let partitions = gpt::disk::read_disk(&parent).unwrap();
-                let partitions = partitions.partitions();
-
-                let partition = partitions
-                    .values()
-                    .find(|p| {
-                        Some(p.part_guid)
-                            == part.partuuid.as_ref().map(|u| Uuid::from_str(u).unwrap())
-                    })
-                    .expect("cannot find partition that is supposed to exist");
-
-                partition.part_type_guid.clone()
-            })
-            .clone()
-    }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Mounts(pub Vec<Mount>);
 
@@ -253,11 +270,19 @@ impl Mounts {
     }
 
     /// Mount all the targets in the specified order.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any target fails to be created, decrypted or mounted.
     pub fn mount_all(&self, root: &Path, passphrase: Option<&str>) -> Result<()> {
         self.0.iter().try_for_each(|m| m.mount(root, passphrase))
     }
 
     /// Unmount all the targets in reverse.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any target fails to unmount.
     pub fn umount_all(&self, root: &Path) -> std::io::Result<()> {
         self.0.iter().rev().try_for_each(|m| m.umount(root))
     }
@@ -266,6 +291,10 @@ impl Mounts {
     ///
     /// This is a convenience function for getting the ESP partition, which we can then use for creating
     /// the boot stub later on
+    ///
+    /// # Panics
+    ///
+    /// See [`Mount::get_gpt_type`].
     #[must_use]
     pub fn get_esp_partition(&self) -> std::option::Option<&Mount> {
         self.0
@@ -273,6 +302,11 @@ impl Mounts {
             .find(|part| part.get_gpt_type() == partition_types::EFI)
     }
 
+    /// Get the XBOOTLDR partition if it exists
+    ///
+    /// # Panics
+    ///
+    /// See [`Mount::get_gpt_type`].
     #[must_use]
     pub fn get_xbootldr_partition(&self) -> std::option::Option<&Mount> {
         self.0.iter().find(|part| {
@@ -308,6 +342,11 @@ pub struct CryptData {
     pub tpm: bool,
 }
 
+/// Check whether `node` is a LUKS device.
+///
+/// # Panics
+///
+/// Panics if `cryptsetup` cannot be run.
 #[must_use]
 pub fn is_luks(node: &Path) -> bool {
     Command::new("cryptsetup")
@@ -332,8 +371,16 @@ fn cryptsetup_luks_uuid(node: &Path) -> Result<String, color_eyre::eyre::Error> 
 }
 
 #[allow(clippy::unwrap_in_result)]
+/// Generate the crypttab and kernel cmdline options for the LUKS partitions in `mounts`, or
+/// `None` if there are none.
+///
+/// # Errors
+///
+/// Returns an error if writing the crypttab entries fails.
+///
 /// # Panics
-/// if LUKS UUID cannot be obtained.
+///
+/// Panics if a LUKS partition's UUID cannot be obtained, or it has no label.
 pub fn generate_cryptdata(mounts: &Mounts) -> Result<Option<CryptData>, color_eyre::eyre::Error> {
     // NOTE: https://www.man7.org/linux/man-pages/man5/crypttab.5.html
     let mut crypttab = String::new();

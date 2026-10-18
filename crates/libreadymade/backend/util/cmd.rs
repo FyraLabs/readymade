@@ -3,6 +3,12 @@ use std::{
     process::{Child, Output},
 };
 
+/// Wait for `cmd` while streaming its stdout and stderr to the terminal, running each closure in
+/// `f` on its own thread in the meantime. Returns the command's output and the captured logs.
+///
+/// # Panics
+///
+/// Panics if `cmd` was not spawned with piped stdout and stderr, or if its output is not valid UTF-8.
 pub fn pipe_cmd<const N: usize, F: FnOnce() + Send>(
     msg: &str,
     mut cmd: Child,
@@ -62,7 +68,7 @@ macro_rules! cmd {
                 $(.args($args))+
             )?
             .status()
-            .context(const_format::concatcp!("fail to execute ", $process))?;
+            .context(concat!("fail to execute ", $process))?;
         if !cmd.success() {
             #[allow(clippy::let_underscore_untyped)]
             let $cmd = cmd;

@@ -9,10 +9,16 @@ pub mod repart;
 
 #[enum_dispatch(DiskProvisioner)]
 pub trait DiskProvisionerModule {
+    /// Partition the disk, returning the resulting mounts.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the disk cannot be provisioned.
     fn run(&self, playbook: &crate::playbook::Playbook) -> Result<Mounts>;
 }
 
 /// The disk provisioner is responsible for partitioning the disk, before the filesystem provisioner sets up the install files on the partitions.
+///
 /// Provisioners may also use context from the playbook to determine how to provision the installation, such as the destination disk and encryption settings.
 /// Some disk provisioners support copying files to the installation disk, making a filesystem provisioner optional.
 #[enum_dispatch]

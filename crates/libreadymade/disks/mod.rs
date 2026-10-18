@@ -18,6 +18,10 @@ pub struct Disk {
 }
 
 /// Try and scan the system for disks and their installed OS
+///
+/// # Panics
+///
+/// Panics if block devices cannot be listed.
 pub fn detect_os() -> Vec<Disk> {
     let disks = lsblk::BlockDevice::list().unwrap();
     let live_device = find_live_device();

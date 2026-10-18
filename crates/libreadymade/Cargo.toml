@@ -11,7 +11,6 @@ publish = false
 backhand = "0.24.1"
 bytesize = { workspace = true }
 color-eyre = { workspace = true }
-const_format = { workspace = true }
 educe = "0.6.0"
 enum_dispatch = "0.3.13"
 file-guard = "0.2.0"

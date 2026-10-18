@@ -13,7 +13,7 @@ impl PostInstallModule for Language {
         "Language"
     }
 
-    fn run(&self, context: &Context) -> Result<()> {
+    fn run(&self, _context: &Context) -> Result<()> {
         // use UTF-8 locale, since the non-UTF-8 ones break stuff
         let lang = format!("{}.UTF-8", self.lang);
         // shadowing here because format!() has shit lifetime

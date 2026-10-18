@@ -16,6 +16,12 @@ impl SystemdRepartData {
         Self { configs }
     }
 
+    /// Read and parse every systemd-repart config file in `cfg_path`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory or a file in it cannot be read, or a file is not a valid
+    /// repart config.
     pub fn get_configs(cfg_path: &Path) -> Result<Self> {
         let mut configs = BTreeMap::new();
         // Read path
@@ -31,10 +37,7 @@ impl SystemdRepartData {
             let config: Config = serde_systemd_unit::from_str(&file_config)?;
 
             // Add to the list
-            configs.insert(
-                path.file_name().unwrap().to_string_lossy().to_string(),
-                config,
-            );
+            configs.insert(entry.file_name().to_string_lossy().into_owned(), config);
         }
         Ok(Self::new(configs))
     }
@@ -87,12 +90,11 @@ impl DiskProvisionerModule for Repart {
                             let mut parts = mount_point.splitn(2, ':');
                             let fst = parts.next()?.to_owned();
                             let snd = parts.next().map(std::borrow::ToOwned::to_owned);
-                            Some(std::io::Result::Ok(Mount {
-                                label: label.clone(),
-                                partition: PathBuf::from(node),
-                                mountpoint: PathBuf::from(fst),
-                                options: snd.unwrap_or_default(),
-                                encryption_type: match encrypt {
+                            Some(std::io::Result::Ok(Mount::new(
+                                PathBuf::from(node),
+                                PathBuf::from(fst),
+                                snd.unwrap_or_default(),
+                                match encrypt {
                                     EncryptOption::Off => None,
                                     EncryptOption::KeyFile => Some(EncryptionOption::KeyFile),
                                     EncryptOption::Tpm2 => Some(EncryptionOption::Tpm2),
@@ -100,11 +102,8 @@ impl DiskProvisionerModule for Repart {
                                         Some(EncryptionOption::KeyFileTpm2)
                                     }
                                 },
-                                gpt_type: std::cell::OnceCell::default(),
-                                // gpt_type: Some(partition_types::Type::from(
-                                //     Uuid::from_str(part_type).unwrap(),
-                                // )),
-                            }))
+                                label.clone(),
+                            )))
                         })
                     },
                 )

@@ -2527,7 +2527,6 @@ dependencies = [
  "backhand",
  "bytesize",
  "color-eyre",
- "const_format",
  "educe",
  "enum_dispatch",
  "file-guard",

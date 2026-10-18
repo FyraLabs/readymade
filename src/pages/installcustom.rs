@@ -162,7 +162,7 @@ impl SimpleComponent for InstallCustomPage {
             }
             InstallCustomPageMsg::UpdateRow(msg) => {
                 let mut guard = self.choose_mount_factory.guard();
-                let (i, obj) = (msg.index, msg.into());
+                let (i, obj) = (msg.index, msg);
                 if guard.len() > i {
                     guard.insert(i, obj);
                     guard.remove(i.wrapping_add(1));

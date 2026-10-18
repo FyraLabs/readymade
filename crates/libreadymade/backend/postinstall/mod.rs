@@ -49,6 +49,11 @@ pub struct Context {
 pub trait PostInstallModule {
     #[must_use]
     fn name(&self) -> &'static str;
+    /// Run the module inside the installed system.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the module fails to configure the system.
     fn run(&self, context: &Context) -> Result<()>;
 }
 
