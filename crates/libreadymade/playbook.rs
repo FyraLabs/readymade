@@ -44,7 +44,7 @@ pub struct Playbook {
 }
 
 // TODO: handle luks lol
-fn mounts_to_container(tempdir: &tempfile::TempDir, mounts: &Mounts) -> Result<Container> {
+fn mounts_to_container(tempdir: &tempfile::TempDir, mounts: &Mounts) -> Container {
     let mut container = Container::new(tempdir.path().to_owned());
 
     for mount in &mounts.0 {
@@ -74,7 +74,7 @@ fn mounts_to_container(tempdir: &tempfile::TempDir, mounts: &Mounts) -> Result<C
 
     container.host_bind_mount();
 
-    Ok(container)
+    container
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -101,6 +101,10 @@ impl Playbook {
     }
 
     /// Execute the playbook
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if provisioning, system setup or cleanup fails.
     pub fn play(&self, progress: mpsc::Sender<PlaybookProgress>) -> Result<()> {
         PROGRESS_SENDER.with(|tx| *tx.borrow_mut() = Some(progress));
         // todo: maybe use a guard here
@@ -133,7 +137,7 @@ impl Playbook {
         // the fstab generator to be correct, IF we're using encryption
         //
         // todo: Unfuck this
-        let mut container = mounts_to_container(&tempdir, mounts)?;
+        let mut container = mounts_to_container(&tempdir, mounts);
         // let fstab = mounts.generate_fstab()?;
         // tiffin will run `nix::unistd::chdir("/")` when entering the container, so we can use `sysroot as above`
         container.run(|| self.inner_sys_setup(mounts))??;
@@ -145,6 +149,16 @@ impl Playbook {
         Ok(())
     }
 
+    /// Run the post-installation modules. Must be called inside the installed system's chroot.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if called outside the chroot (the setup lock file exists), or if a
+    /// post-installation module fails.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called outside [`Self::play`], or if progress cannot be reported.
     #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     pub fn inner_sys_setup(&self, mounts: &Mounts) -> Result<()> {

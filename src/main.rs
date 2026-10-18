@@ -271,11 +271,8 @@ fn main() -> Result<()> {
             let sender = ipc_channel::ipc::IpcSender::connect(channel_id)?;
             let (tx, rx) = Playbook::channel();
             std::thread::spawn(move || {
-                for msg in rx {
-                    if let Err(err) = sender.send(msg) {
-                        tracing::error!("Failed to send progress to parent process: {err:?}");
-                        break;
-                    }
+                if let Err(err) = rx.into_iter().try_for_each(|msg| sender.send(msg)) {
+                    tracing::error!("Failed to send progress to parent process: {err:?}");
                 }
             });
             tx

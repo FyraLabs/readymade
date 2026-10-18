@@ -124,8 +124,6 @@ pub enum InstallationPageMsg {
     Open(String),
     StartInstallation(Playbook),
     #[doc(hidden)]
-    Navigate(NavigationAction),
-    #[doc(hidden)]
     Progress(PlaybookProgress),
     Update,
     #[doc(hidden)]
@@ -305,9 +303,6 @@ impl Component for InstallationPage {
                     ))
                 });
             }
-            InstallationPageMsg::Navigate(action) => sender
-                .output(InstallationPageOutput::Navigate(action))
-                .unwrap(),
             InstallationPageMsg::Progress(progress) => match progress {
                 PlaybookProgress::Stage(status) | PlaybookProgress::StageProgress(status) => {
                     self.progress_bar.set_text(Some(&status));
