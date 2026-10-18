@@ -476,7 +476,7 @@ mod tests {
         std::os::unix::fs::symlink("var/home", src.path().join("home"))?;
         std::os::unix::fs::symlink("var/opt", src.path().join("opt"))?;
         // e.g. a mounted /home subvolume
-        std::fs::create_dir(dest.path().join("home"))?;
+        std::fs::create_dir_all(dest.path().join("home"))?;
 
         copy_dir_rdm(src.path(), dest.path())?;
 

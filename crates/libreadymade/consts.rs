@@ -6,7 +6,7 @@ pub const ROOTFS_BASE: &str = "/run/rootfsbase";
 pub const LUKS_KEYFILE_PATH: &str = "/run/readymade-luks.key";
 const REPART_DIR: &str = "/usr/share/readymade/repart-cfgs/";
 pub const READYMADE_STATE_PATH: &str = "/var/lib/readymade/state.json";
-/// Password the user types in MokManager on first boot to confirm enrolling the akmods key
+/// Password the user types in `MokManager` on first boot to confirm enrolling the akmods key
 /// for NVIDIA installs.
 pub const NVIDIA_MOK_PASSWORD: &str = "ultramarine";
 

@@ -520,10 +520,9 @@ match-architectures = ["not-an-arch"]"#,
             image_kargs(root.path()).unwrap(),
             vec!["rd.driver.blacklist=nouveau", "nvidia-drm.modeset=1"]
         );
-        assert!(
-            image_kargs(&root.path().join("missing"))
-                .unwrap()
-                .is_empty()
+        assert_eq!(
+            image_kargs(&root.path().join("missing")).unwrap(),
+            Vec::<String>::new()
         );
     }
 }

@@ -262,7 +262,7 @@ gtk::Box {
             #[watch]
             set_label: Some(&t!("page-installationtype-nvidia")),
             set_visible: crate::CONFIG.read().has_nvidia_image(),
-            set_active: { let nvidia = APPLICATION_STATE.read().nvidia; nvidia },
+            set_active: { let state = APPLICATION_STATE.read(); state.nvidia },
             connect_toggled => |btn| {
                 let config = crate::CONFIG.read();
                 APPLICATION_STATE.write().set_nvidia(&config, btn.is_active());
