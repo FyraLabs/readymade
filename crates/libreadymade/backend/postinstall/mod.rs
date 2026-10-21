@@ -17,6 +17,7 @@ use reinstall_kernel::ReinstallKernel;
 use script::Script;
 use selinux::SELinux;
 use serde::{Deserialize, Serialize};
+use snapper::Snapper;
 use std::path::PathBuf;
 
 pub mod bootc_to_mutable;
@@ -33,6 +34,7 @@ pub mod prepare_fedora;
 pub mod reinstall_kernel;
 pub mod script;
 pub mod selinux;
+pub mod snapper;
 
 #[derive(serde::Serialize)]
 pub struct Context {
@@ -75,4 +77,5 @@ pub enum Module {
     Fstab,
     BootcToMutable,
     NvidiaAkmods,
+    Snapper,
 }

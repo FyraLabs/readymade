@@ -80,16 +80,22 @@ impl Mount {
             &self.partition
         };
 
-        sys_mount::Mount::builder()
-            .data(&self.options)
-            .mount(source, &target)
-            .with_context(|| {
-                format!(
-                    "cannot mount from {:?} to {:?}",
-                    source.display(),
-                    target.display()
-                )
-            })?;
+        let data = kernel_mount_data(&self.options);
+        let fstype = probe_fstype(source);
+        let mut builder = sys_mount::Mount::builder();
+        if let Some(data) = &data {
+            builder = builder.data(data);
+        }
+        if let Some(fstype) = &fstype {
+            builder = builder.fstype(fstype.as_str());
+        }
+        builder.mount(source, &target).with_context(|| {
+            format!(
+                "cannot mount from {:?} to {:?}",
+                source.display(),
+                target.display()
+            )
+        })?;
 
         Ok(())
     }
@@ -221,6 +227,34 @@ pub fn luks_decrypt(node: &str, passphrase: &str, label: &str) -> color_eyre::Re
         .insert(node.to_owned(), mapper.clone());
 
     Ok(mapper)
+}
+
+/// The part of fstab-style mount options that's passed to the kernel as filesystem data.
+///
+/// `defaults` only means something to mount(8) and fstab, and filesystems reject it as an
+/// unknown parameter, so it's dropped. Returns `None` when nothing is left.
+#[must_use]
+pub fn kernel_mount_data(options: &str) -> Option<String> {
+    let data = options
+        .split(',')
+        .filter(|opt| !opt.is_empty() && *opt != "defaults")
+        .join(",");
+    (!data.is_empty()).then_some(data)
+}
+
+/// The filesystem type on `device`, as blkid reports it.
+///
+/// Mounting with an explicit type lets the kernel load the filesystem's module. Without one,
+/// sys-mount only tries the filesystems already listed in `/proc/filesystems`, so for example a
+/// fresh ESP fails to mount on a live system that hasn't loaded vfat yet.
+fn probe_fstype(device: &Path) -> Option<String> {
+    let output = Command::new("blkid")
+        .args(["-p", "-o", "value", "-s", "TYPE"])
+        .arg(device)
+        .output()
+        .ok()?;
+    let fstype = String::from_utf8(output.stdout).ok()?.trim().to_owned();
+    (output.status.success() && !fstype.is_empty()).then_some(fstype)
 }
 
 #[must_use]
@@ -429,4 +463,27 @@ pub fn generate_cryptdata(mounts: &Mounts) -> Result<Option<CryptData>, color_ey
         cmdline_opts,
         tpm: is_tpm,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::kernel_mount_data;
+
+    #[test]
+    fn drops_defaults_from_kernel_mount_data() {
+        assert_eq!(kernel_mount_data("defaults"), None);
+        assert_eq!(kernel_mount_data(""), None);
+        assert_eq!(
+            kernel_mount_data("defaults,compress=zstd:1"),
+            Some("compress=zstd:1".to_owned())
+        );
+        assert_eq!(
+            kernel_mount_data("subvol=/,compress=zstd:1"),
+            Some("subvol=/,compress=zstd:1".to_owned())
+        );
+        assert_eq!(
+            kernel_mount_data("umask=0077,shortname=winnt"),
+            Some("umask=0077,shortname=winnt".to_owned())
+        );
+    }
 }

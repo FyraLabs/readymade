@@ -17,12 +17,15 @@ static SECURE_BOOT: LazyLock<bool> =
     LazyLock::new(libreadymade::backend::util::sys::secure_boot_enabled);
 
 fn nvidia_secureboot_markup() -> String {
-    format!(
-        "{} <a href=\"{}\">{}</a>",
-        gtk::glib::markup_escape_text(&t!("page-installationtype-nvidia-secureboot")),
-        gtk::glib::markup_escape_text(&crate::CONFIG.read().install.nvidia_secureboot_docs),
-        gtk::glib::markup_escape_text(&t!("page-installationtype-nvidia-docs")),
-    )
+    let warning = gtk::glib::markup_escape_text(&t!("page-installationtype-nvidia-secureboot"));
+    match &crate::CONFIG.read().install.nvidia_secureboot_docs {
+        Some(docs) => format!(
+            "{warning} <a href=\"{}\">{}</a>",
+            gtk::glib::markup_escape_text(docs),
+            gtk::glib::markup_escape_text(&t!("page-installationtype-nvidia-docs")),
+        ),
+        None => warning.to_string(),
+    }
 }
 
 page!(InstallationType {

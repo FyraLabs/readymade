@@ -77,14 +77,9 @@ pub struct Install {
     /// image, for bootc installs only.
     #[serde(default)]
     pub images: Vec<Image>,
-    /// Documentation shown when installing NVIDIA drivers with Secure Boot enabled.
-    #[serde(default = "_default_nvidia_secureboot_docs")]
-    pub nvidia_secureboot_docs: String,
-}
-
-// TODO: placeholder, replace once the page exists
-fn _default_nvidia_secureboot_docs() -> String {
-    "https://wiki.ultramarine-linux.org/en/usage/nvidia-secure-boot/".into()
+    /// Documentation linked from the warning shown when installing NVIDIA drivers with Secure
+    /// Boot enabled. The warning has no link when unset.
+    pub nvidia_secureboot_docs: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone, PartialEq, Eq)]
@@ -207,7 +202,7 @@ impl ReadymadeConfig {
 pub fn default_mutable_postinstall() -> Vec<Module> {
     use libreadymade::backend::postinstall::{
         bootc_to_mutable::BootcToMutable, fstab::Fstab, grub2::GRUB2, nvidia_akmods::NvidiaAkmods,
-        prepare_fedora::PrepareFedora, script::Script, selinux::SELinux,
+        prepare_fedora::PrepareFedora, script::Script, selinux::SELinux, snapper::Snapper,
     };
     vec![
         Fstab.into(),
@@ -215,6 +210,7 @@ pub fn default_mutable_postinstall() -> Vec<Module> {
         GRUB2.into(),
         NvidiaAkmods.into(),
         PrepareFedora.into(),
+        Snapper.into(),
         SELinux.into(),
         Script.into(),
     ]
@@ -229,6 +225,16 @@ impl InstallationType {
             Self::WholeDisk => repart_dir().join("wholedisk"),
             Self::DualBoot(_) => repart_dir().join("dualboot"),
             Self::Custom => unreachable!("custom installs do not use repart templates"),
+        }
+    }
+
+    /// Repart templates for installing a bootc image in `mode`. Mutable whole-disk installs put
+    /// `/var` and `/home` on their own subvolumes so root snapshots leave them out.
+    #[must_use]
+    pub fn image_cfgdir(&self, mode: ImageMode) -> std::path::PathBuf {
+        match (self, mode) {
+            (Self::WholeDisk, ImageMode::Mutable) => repart_dir().join("mutablewholedisk"),
+            _ => self.cfgdir(true),
         }
     }
 }
@@ -334,7 +340,7 @@ mod tests {
                     bootc_kargs: None,
                     bootc_args: None,
                     images: vec![],
-                    nvidia_secureboot_docs: _default_nvidia_secureboot_docs(),
+                    nvidia_secureboot_docs: None,
                 },
                 postinstall: vec![
                     libreadymade::backend::postinstall::grub2::GRUB2.into(),
@@ -502,6 +508,18 @@ mod tests {
             "#,
         );
         assert!(cfg.check().is_err());
+    }
+
+    #[test]
+    fn nvidia_secureboot_docs_is_optional() {
+        assert_eq!(parse("").install.nvidia_secureboot_docs, None);
+        assert_eq!(
+            parse(r#"nvidia_secureboot_docs = "https://example.org/nvidia""#)
+                .install
+                .nvidia_secureboot_docs
+                .as_deref(),
+            Some("https://example.org/nvidia")
+        );
     }
 
     #[test]
