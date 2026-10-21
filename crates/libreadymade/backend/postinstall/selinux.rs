@@ -14,7 +14,7 @@
 //! A dry run afterwards checks nothing is left to relabel, so a relabel that quietly did nothing
 //! fails the install instead of leaving a system that can't boot enforcing.
 
-use std::os::unix::fs::MetadataExt;
+use std::{cell::Cell, os::unix::fs::MetadataExt, rc::Rc};
 
 use crate::{backend::util::sys::mount_fstype, prelude::*};
 use nix::mount::{MntFlags, MsFlags};
@@ -62,14 +62,9 @@ impl PostInstallModule for SELinux {
             scopeguard::defer! {
                 _ = std::fs::remove_dir_all(SETFILES_COPY_DIR);
             }
-            let views_dir = tempfile::tempdir()?;
-            let views = targets
-                .iter()
-                .enumerate()
-                .map(|(i, target)| View::new(target, &views_dir.path().join(i.to_string())))
-                .collect::<Result<Vec<_>>>()?;
+            let views = Views::new(&targets)?;
 
-            for view in &views {
+            for view in &views.list {
                 let status = Command::new(&setfiles)
                     .args(view.setfiles_args(false))
                     .status()
@@ -84,7 +79,7 @@ impl PostInstallModule for SELinux {
             }
 
             let mut mislabeled = vec![];
-            for view in &views {
+            for view in &views.list {
                 let check = Command::new(&setfiles)
                     .args(view.setfiles_args(true))
                     .output()
@@ -161,16 +156,60 @@ fn is_unmounted_subvolume(meta: &std::fs::Metadata, parent_dev: u64, mounted: bo
     meta.is_dir() && meta.ino() == BTRFS_SUBVOLUME_INO && meta.dev() != parent_dev && !mounted
 }
 
+/// The views of every target, in a temporary directory that is only removed once all of them
+/// are unmounted. Removing it with a view still mounted would delete the installed system.
+struct Views {
+    list: Vec<View>,
+    dir: Option<tempfile::TempDir>,
+    unmount_failed: Rc<Cell<bool>>,
+}
+
+impl Views {
+    fn new(targets: &[String]) -> Result<Self> {
+        let dir = tempfile::tempdir()?;
+        let base = dir.path().to_owned();
+        // Owns the directory before any view is mounted, so a failure below still cleans up safely.
+        let mut views = Self {
+            list: vec![],
+            dir: Some(dir),
+            unmount_failed: Rc::default(),
+        };
+        for (i, target) in targets.iter().enumerate() {
+            let root = base.join(i.to_string());
+            let view = View::new(target, &root, Rc::clone(&views.unmount_failed))?;
+            views.list.push(view);
+        }
+        Ok(views)
+    }
+}
+
+impl Drop for Views {
+    fn drop(&mut self) {
+        self.list.clear();
+        if self.unmount_failed.get()
+            && let Some(dir) = self.dir.take()
+        {
+            let path = dir.keep();
+            tracing::warn!(
+                ?path,
+                "Keeping relabel views directory, a view is still mounted"
+            );
+        }
+    }
+}
+
 /// A private, non-recursive bind mount of one target at `<root>/<target>`, so setfiles can
 /// relabel it with `-r <root>` and still match paths as they are on the installed system.
 struct View {
     target: String,
     root: PathBuf,
     path: PathBuf,
+    /// Set when unmounting fails, so the views directory is kept.
+    unmount_failed: Rc<Cell<bool>>,
 }
 
 impl View {
-    fn new(target: &str, root: &Path) -> Result<Self> {
+    fn new(target: &str, root: &Path, unmount_failed: Rc<Cell<bool>>) -> Result<Self> {
         let path = root.join(target.trim_start_matches('/'));
         std::fs::create_dir_all(&path)?;
         nix::mount::mount(
@@ -185,6 +224,7 @@ impl View {
             target: target.to_owned(),
             root: root.to_owned(),
             path,
+            unmount_failed,
         };
         // Keep mounts made later, including the other views, from propagating into this one.
         nix::mount::mount(
@@ -207,6 +247,7 @@ impl Drop for View {
     fn drop(&mut self) {
         if let Err(err) = nix::mount::umount2(&self.path, MntFlags::MNT_DETACH) {
             tracing::warn!(?err, path = ?self.path, "Cannot unmount relabel view");
+            self.unmount_failed.set(true);
         }
     }
 }
