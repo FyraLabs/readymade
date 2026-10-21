@@ -207,7 +207,7 @@ impl ReadymadeConfig {
 pub fn default_mutable_postinstall() -> Vec<Module> {
     use libreadymade::backend::postinstall::{
         bootc_to_mutable::BootcToMutable, fstab::Fstab, grub2::GRUB2, nvidia_akmods::NvidiaAkmods,
-        prepare_fedora::PrepareFedora, script::Script, selinux::SELinux,
+        prepare_fedora::PrepareFedora, script::Script, selinux::SELinux, snapper::Snapper,
     };
     vec![
         Fstab.into(),
@@ -215,6 +215,7 @@ pub fn default_mutable_postinstall() -> Vec<Module> {
         GRUB2.into(),
         NvidiaAkmods.into(),
         PrepareFedora.into(),
+        Snapper.into(),
         SELinux.into(),
         Script.into(),
     ]

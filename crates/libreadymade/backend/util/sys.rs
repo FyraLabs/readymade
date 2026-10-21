@@ -50,9 +50,43 @@ fn secure_boot_enabled_in(efivar: &Path) -> bool {
     std::fs::read(efivar).is_ok_and(|data| data.get(4) == Some(&1))
 }
 
+/// The filesystem type mounted at `target` in a `/proc/mounts`-style table. Later entries
+/// shadow earlier ones, like stacked mounts do.
+#[must_use]
+pub fn mount_fstype<'a>(mounts: &'a str, target: &str) -> Option<&'a str> {
+    mounts
+        .lines()
+        .filter_map(|line| {
+            let mut fields = line.split(' ').skip(1);
+            Some((fields.next()?, fields.next()?))
+        })
+        .rfind(|&(mountpoint, _)| mountpoint == target)
+        .map(|(_, fstype)| fstype)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const MOUNTS: &str = "\
+/dev/vda3 / btrfs rw,relatime,compress=zstd:1,subvol=/ 0 0
+proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
+/dev/vda3 /var btrfs rw,relatime,compress=zstd:1,subvol=/var 0 0
+/dev/vda2 /boot ext4 rw,relatime 0 0
+";
+
+    #[test]
+    fn finds_mount_fstype() {
+        assert_eq!(mount_fstype(MOUNTS, "/"), Some("btrfs"));
+        assert_eq!(mount_fstype(MOUNTS, "/boot"), Some("ext4"));
+        assert_eq!(mount_fstype(MOUNTS, "/home"), None);
+    }
+
+    #[test]
+    fn last_mount_wins() {
+        let mounts = format!("{MOUNTS}overlay / overlay rw 0 0\n");
+        assert_eq!(mount_fstype(&mounts, "/"), Some("overlay"));
+    }
 
     fn pci_device(root: &Path, name: &str, vendor: &str, class: &str) {
         let dev = root.join(name);
