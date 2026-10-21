@@ -34,8 +34,9 @@ omit_dracutmodules+=\" ostree bootc \"
 /// images move `/boot` to `/usr/lib/ostree-boot` and ship an empty one.
 const GRUB_DIR: &str = "boot/grub2";
 
-/// Regenerates the `SELinux` home directory contexts (`file_contexts.homedirs`).
-const GENHOMEDIRCON: &str = "usr/bin/genhomedircon";
+/// Where genhomedircon, which regenerates the `SELinux` home directory contexts
+/// (`file_contexts.homedirs`), may live: `/usr/sbin` is only merged into `/usr/bin` on some images.
+const GENHOMEDIRCON: [&str; 2] = ["usr/bin/genhomedircon", "usr/sbin/genhomedircon"];
 
 /// Things in the image that only make sense on an ostree/bootc deployment.
 const OSTREE_ONLY_FILES: [&str; 2] = [
@@ -66,7 +67,7 @@ impl PostInstallModule for BootcToMutable {
         // The image's policy generated its home directory contexts while useradd's HOME was
         // /var/home, which semanage skips (/var is in its ignoredirs). That leaves no rules for
         // /home, so it and every home directory would be labeled default_t.
-        if root.join(GENHOMEDIRCON).exists() {
+        if GENHOMEDIRCON.iter().any(|path| root.join(path).exists()) {
             stage!(homedirs "Updating SELinux home directory contexts" {
                 crate::cmd!("genhomedircon"
                     => |r| bail!("genhomedircon failed with exit code {:?}", r.code()));
