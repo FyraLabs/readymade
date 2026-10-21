@@ -31,6 +31,11 @@ impl PostInstallModule for Fstab {
 /// # XXX: This will read the config files in the ***CURRENT*** root context
 /// So you must have the same config files in the chroot, or exit the chroot,
 /// run this, then re-enter the chroot.
+///
+/// # Errors
+///
+/// Returns an error if `/proc/mounts` cannot be read or parsed, a partition is not mounted, or
+/// an entry cannot be generated.
 pub fn generate_fstab(mounts: &Mounts) -> color_eyre::Result<String> {
     let mut fstab = String::new();
 
@@ -64,7 +69,7 @@ pub fn generate_fstab(mounts: &Mounts) -> color_eyre::Result<String> {
     let mut fstypes = HashMap::new();
     for line in bufreader.lines() {
         let [_, mount, parttype, ..] = line.split(' ').collect::<Vec<_>>()[..] else {
-            panic!("I'm not reading /proc/mounts?");
+            bail!("Unexpected line in /proc/mounts: {line:?}");
         };
         fstypes.insert(mount, parttype);
     }
@@ -74,10 +79,11 @@ pub fn generate_fstab(mounts: &Mounts) -> color_eyre::Result<String> {
         // if let Some(_mntpnt) = part.ddi_mountpoint() {
         tracing::trace!(?part, "Processing partition");
 
-        let entry = fstab_entry(
-            mountobj.clone(),
-            fstypes[&format!("{}", mnt.display()).as_str()],
-        )?;
+        let mnt = format!("{}", mnt.display());
+        let fstype = fstypes
+            .get(mnt.as_str())
+            .ok_or_else(|| eyre!("{mnt} is not mounted, cannot determine its filesystem type"))?;
+        let entry = fstab_entry(mountobj, fstype)?;
         writeln!(&mut fstab, "{entry}").unwrap();
     }
 
@@ -89,8 +95,12 @@ pub fn generate_fstab(mounts: &Mounts) -> color_eyre::Result<String> {
 ///
 /// This will refer to the config file systemd-repart refers to.
 ///
+/// # Errors
+///
+/// Returns an error if the UUID of the partition (or, for LUKS partitions, its decrypted mapper
+/// device) cannot be found.
 #[tracing::instrument]
-pub fn fstab_entry(mount: Mount, fstype: &str) -> color_eyre::Result<String> {
+pub fn fstab_entry(mount: &Mount, fstype: &str) -> color_eyre::Result<String> {
     const FALLBACK_FS: &str = "auto";
     const FALLBACK_OPTS: &str = "defaults";
     const FALLBACK_DUMP: i32 = 0;
@@ -106,17 +116,12 @@ pub fn fstab_entry(mount: Mount, fstype: &str) -> color_eyre::Result<String> {
         .unwrap_or_else(|_| FALLBACK_FS.to_owned())
         .replace('"', "");
 
-    let mut mount_opts = String::new();
-
-    if let opts = &mount.options {
-        write!(&mut mount_opts, "{opts}")?;
-    }
-
-    // if we still have no mount options, use the fallback
-
-    if mount_opts.is_empty() {
-        FALLBACK_OPTS.clone_into(&mut mount_opts);
-    }
+    // if we have no mount options, use the fallback
+    let mount_opts = if mount.options.is_empty() {
+        FALLBACK_OPTS
+    } else {
+        mount.options.as_str()
+    };
 
     // let's get the UUID
 
@@ -136,7 +141,7 @@ pub fn fstab_entry(mount: Mount, fstype: &str) -> color_eyre::Result<String> {
         let mapper_cache = crate::backend::mounts::MAPPER_CACHE.read();
         let mapper_path = mapper_cache
             .get(&format!("{}", mount.partition.display()))
-            .unwrap();
+            .ok_or_else(|| eyre!("{} has not been decrypted", mount.partition.display()))?;
 
         tracing::trace!(?mapper_path, "Guessed mapper path as this");
 
@@ -189,7 +194,7 @@ pub fn fstab_entry(mount: Mount, fstype: &str) -> color_eyre::Result<String> {
     // If the root file system is btrfs or XFS, the fsck order should be set to 0 instead of 1.
     let pass = match fs_fmt {
         "btrfs" | "xfs" => 0,
-        _ if mount.mountpoint.to_str().unwrap() == "/" => 1,
+        _ if mount.mountpoint == std::path::Path::new("/") => 1,
         _ => FALLBACK_PASS,
     };
 

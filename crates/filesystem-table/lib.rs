@@ -131,33 +131,47 @@ pub struct FsEntry {
 
 impl FsEntry {
     /// Parse a `FsEntry` from a line in the fstab file.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`FsTableError::InvalidEntry`] if the line has fewer than 6 fields or the dump
+    /// frequency is not a valid number, or an error if the fsck pass is invalid.
     pub fn from_line_str(line: &str) -> std::result::Result<Self, FsTableError> {
         // split by whitespace
         let parts: Vec<&str> = line.split_whitespace().collect();
 
-        if parts.len() < 6 {
+        let &[
+            device_spec,
+            mountpoint,
+            fs_type,
+            options,
+            dump_freq,
+            pass,
+            ..,
+        ] = parts.as_slice()
+        else {
             return Err(FsTableError::InvalidEntry(line.to_owned()));
-        }
-
-        let device_spec = parts[0].to_owned();
-
-        let mountpoint = if parts[1] == "none" {
-            None
-        } else {
-            Some(parts[1].to_owned())
         };
 
-        let fs_type = parts[2].to_owned();
+        let device_spec = device_spec.to_owned();
 
-        let options = parts[3]
+        let mountpoint = if mountpoint == "none" {
+            None
+        } else {
+            Some(mountpoint.to_owned())
+        };
+
+        let fs_type = fs_type.to_owned();
+
+        let options = options
             .split(',')
             .map(std::borrow::ToOwned::to_owned)
             .collect();
 
-        let dump_freq = parts[4]
+        let dump_freq = dump_freq
             .parse::<u8>()
             .map_err(|_| FsTableError::InvalidEntry(line.to_owned()))?;
-        let pass = FsckOrder::try_from(parts[5])?;
+        let pass = FsckOrder::try_from(pass)?;
 
         Ok(Self {
             device_spec,
@@ -250,12 +264,22 @@ impl TryFrom<&str> for FsTable {
     }
 }
 
+/// Read and parse `/etc/mtab`.
+///
+/// # Errors
+///
+/// Returns an error if `/etc/mtab` cannot be read or contains an invalid entry.
 pub fn read_mtab() -> Result<FsTable> {
     let mtab = std::fs::read_to_string("/etc/mtab")
         .map_err(|e| FsTableError::InvalidEntry(e.to_string()))?;
     FsTable::from_str(&mtab)
 }
 
+/// Read and parse `/etc/fstab`.
+///
+/// # Errors
+///
+/// Returns an error if `/etc/fstab` cannot be read or contains an invalid entry.
 pub fn read_fstab() -> Result<FsTable> {
     let fstab = std::fs::read_to_string("/etc/fstab")
         .map_err(|e| FsTableError::InvalidEntry(e.to_string()))?;
@@ -276,6 +300,16 @@ pub fn read_fstab() -> Result<FsTable> {
 /// ```
 ///
 /// This will generate a new fstab for the `/mnt/custom` chroot.
+///
+/// # Errors
+///
+/// Returns an error if `/etc/mtab` cannot be read or parsed, block devices cannot be listed,
+/// or a mounted device under `prefix` has no UUID.
+///
+/// # Panics
+///
+/// Does not panic in practice: entries are filtered to those with a mountpoint under `prefix`
+/// before the prefix is stripped.
 pub fn generate_fstab(prefix: &str) -> Result<FsTable> {
     let mtab = read_mtab()?;
 
@@ -328,7 +362,7 @@ mod tests {
         let entry = FsEntry::from_line_str(line).unwrap();
 
         assert_eq!(entry.device_spec, "/dev/sda1");
-        assert_eq!(entry.mountpoint, Some("/".to_string()));
+        assert_eq!(entry.mountpoint, Some("/".to_owned()));
         assert_eq!(entry.fs_type, "ext4");
         assert_eq!(entry.options, vec!["rw", "relatime"]);
         assert_eq!(entry.dump_freq, 0);
@@ -338,10 +372,10 @@ mod tests {
     #[test]
     fn test_fstab_serialize() {
         let entry = FsEntry {
-            device_spec: "/dev/sda1".to_string(),
-            mountpoint: Some("/".to_string()),
-            fs_type: "ext4".to_string(),
-            options: vec!["rw".to_string(), "relatime".to_string()],
+            device_spec: "/dev/sda1".to_owned(),
+            mountpoint: Some("/".to_owned()),
+            fs_type: "ext4".to_owned(),
+            options: vec!["rw".to_owned(), "relatime".to_owned()],
             dump_freq: 0,
             pass: FsckOrder::Boot,
         };
@@ -354,7 +388,7 @@ mod tests {
         assert_eq!(FsckOrder::try_from(&0u8).unwrap() as u8, 0);
         assert_eq!(FsckOrder::try_from(&1u8).unwrap() as u8, 1);
         assert_eq!(FsckOrder::try_from(&2u8).unwrap() as u8, 2);
-        assert!(FsckOrder::try_from(&3u8).is_err());
+        FsckOrder::try_from(&3u8).unwrap_err();
     }
 
     #[test]
@@ -362,9 +396,11 @@ mod tests {
         let table = "/dev/sda1\t/\text4\trw,relatime\t0\t1\n/dev/sda2\tnone\tswap\tsw\t0\t0";
         let fstab = FsTable::from_str(table).unwrap();
 
-        assert_eq!(fstab.entries.len(), 2);
-        assert_eq!(fstab.entries[0].device_spec, "/dev/sda1");
-        assert_eq!(fstab.entries[1].device_spec, "/dev/sda2");
+        let [first, second] = fstab.entries.as_slice() else {
+            panic!("expected 2 entries, got {}", fstab.entries.len());
+        };
+        assert_eq!(first.device_spec, "/dev/sda1");
+        assert_eq!(second.device_spec, "/dev/sda2");
 
         let serialized = fstab.to_string();
         assert_eq!(serialized, table);
@@ -383,7 +419,7 @@ mod tests {
     fn test_generate_fstab() {
         let fstab = generate_fstab("/mnt/custom").unwrap();
 
-        println!("{}", fstab);
+        println!("{fstab}");
 
         // check if theres newlines
         assert!(fstab.to_string().contains('\n'));
