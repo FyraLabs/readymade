@@ -107,7 +107,8 @@ impl ApplicationState {
             {
                 bail!("Mutable installs are not supported for Chromebook installs");
             }
-            let disk_provisioner = Self::image_disk_provisioner(installation_type, custom_mounts)?;
+            let disk_provisioner =
+                Self::image_disk_provisioner(installation_type, self.image_mode, custom_mounts)?;
             let (filesystem_provisioner, postinstall) = match self.image_mode {
                 ImageMode::Bootc => (
                     FileSystemProvisioner::Bootc(Bootc {
@@ -165,10 +166,11 @@ impl ApplicationState {
         })
     }
 
-    /// Disk provisioner for image installs. Whole-disk installs use the bootc repart templates,
+    /// Disk provisioner for image installs. Whole-disk installs use the image repart templates,
     /// which only partition and leave copying files to the filesystem provisioner.
     fn image_disk_provisioner(
         installation_type: InstallationType,
+        image_mode: ImageMode,
         custom_mounts: Option<Mounts>,
     ) -> Result<DiskProvisioner> {
         Ok(match installation_type {
@@ -177,7 +179,7 @@ impl ApplicationState {
             }),
             InstallationType::WholeDisk | InstallationType::ChromebookInstall => {
                 DiskProvisioner::Repart(Repart {
-                    directory: installation_type.cfgdir(true),
+                    directory: installation_type.image_cfgdir(image_mode),
                     copy_source: None,
                 })
             }
@@ -397,6 +399,10 @@ mod tests {
         let playbook = state(true, ImageMode::Bootc)
             .to_playbook(&cfg, None)
             .unwrap();
+        let DiskProvisioner::Repart(repart) = &playbook.disk_provisioner else {
+            panic!("expected repart");
+        };
+        assert_eq!(repart.directory, InstallationType::WholeDisk.cfgdir(true));
         let Some(FileSystemProvisioner::Bootc(bootc)) = playbook.filesystem_provisioner else {
             panic!("expected bootc provisioner");
         };
@@ -418,7 +424,10 @@ mod tests {
             panic!("expected repart");
         };
         assert_eq!(repart.copy_source, None);
-        assert_eq!(repart.directory, InstallationType::WholeDisk.cfgdir(true));
+        assert_eq!(
+            repart.directory,
+            libreadymade::consts::repart_dir().join("mutablewholedisk")
+        );
         assert_eq!(
             playbook.filesystem_provisioner,
             Some(FileSystemProvisioner::Copy(Copy {

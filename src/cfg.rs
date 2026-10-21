@@ -232,6 +232,16 @@ impl InstallationType {
             Self::Custom => unreachable!("custom installs do not use repart templates"),
         }
     }
+
+    /// Repart templates for installing a bootc image in `mode`. Mutable whole-disk installs put
+    /// `/var` and `/home` on their own subvolumes so root snapshots leave them out.
+    #[must_use]
+    pub fn image_cfgdir(&self, mode: ImageMode) -> std::path::PathBuf {
+        match (self, mode) {
+            (Self::WholeDisk, ImageMode::Mutable) => repart_dir().join("mutablewholedisk"),
+            _ => self.cfgdir(true),
+        }
+    }
 }
 
 /// # Errors
