@@ -60,8 +60,37 @@ pub fn mount_fstype<'a>(mounts: &'a str, target: &str) -> Option<&'a str> {
             let mut fields = line.split(' ').skip(1);
             Some((fields.next()?, fields.next()?))
         })
-        .rfind(|&(mountpoint, _)| mountpoint == target)
+        .rfind(|&(mountpoint, _)| unescape_mount_field(mountpoint) == target)
         .map(|(_, fstype)| fstype)
+}
+
+/// Decodes the octal escapes (`\040` for a space, `\011`, `\012`, `\134`) the kernel writes
+/// in `/proc/mounts` fields for characters that would break the table.
+#[must_use]
+pub fn unescape_mount_field(field: &str) -> std::borrow::Cow<'_, str> {
+    if !field.contains('\\') {
+        return field.into();
+    }
+    let mut out = Vec::with_capacity(field.len());
+    let mut rest = field.as_bytes();
+    while let Some((&byte, tail)) = rest.split_first() {
+        if byte == b'\\'
+            && let Some((digits, after)) = tail.split_first_chunk::<3>()
+            && digits.iter().all(|d| (b'0'..=b'7').contains(d))
+            && let Ok(decoded) = u8::try_from(
+                digits
+                    .iter()
+                    .fold(0u32, |acc, d| acc * 8 + u32::from(d - b'0')),
+            )
+        {
+            out.push(decoded);
+            rest = after;
+            continue;
+        }
+        out.push(byte);
+        rest = tail;
+    }
+    String::from_utf8_lossy(&out).into_owned().into()
 }
 
 #[cfg(test)]
@@ -86,6 +115,15 @@ proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
     fn last_mount_wins() {
         let mounts = format!("{MOUNTS}overlay / overlay rw 0 0\n");
         assert_eq!(mount_fstype(&mounts, "/"), Some("overlay"));
+    }
+
+    #[test]
+    fn decodes_escaped_mountpoints() {
+        let mounts = format!("{MOUNTS}/dev/vdb1 /mnt/my\\040disk ext4 rw 0 0\n");
+        assert_eq!(mount_fstype(&mounts, "/mnt/my disk"), Some("ext4"));
+        assert_eq!(mount_fstype(&mounts, "/mnt/my\\040disk"), None);
+        assert_eq!(unescape_mount_field(r"a\011b\012c\134d"), "a\tb\nc\\d");
+        assert_eq!(unescape_mount_field(r"/plain"), "/plain");
     }
 
     fn pci_device(root: &Path, name: &str, vendor: &str, class: &str) {
