@@ -53,7 +53,7 @@ fn mounts_to_container(tempdir: &tempfile::TempDir, mounts: &Mounts) -> Containe
             MountTarget {
                 target: mount.mountpoint.clone(),
                 flags: MountFlags::empty(),
-                data: (mount.options != "defaults").then(|| mount.options.clone()),
+                data: crate::backend::mounts::kernel_mount_data(&mount.options),
                 fstype: None,
             },
             mount.partition.clone(),
