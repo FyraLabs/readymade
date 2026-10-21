@@ -30,6 +30,13 @@ const DRACUT_CONF_CONTENTS: &str = "\
 omit_dracutmodules+=\" ostree bootc \"
 ";
 
+/// Where GRUB2 writes `grub.cfg`. grub2-common owns it on package-based installs, but bootc
+/// images move `/boot` to `/usr/lib/ostree-boot` and ship an empty one.
+const GRUB_DIR: &str = "boot/grub2";
+
+/// Regenerates the `SELinux` home directory contexts (`file_contexts.homedirs`).
+const GENHOMEDIRCON: &str = "usr/bin/genhomedircon";
+
 /// Things in the image that only make sense on an ostree/bootc deployment.
 const OSTREE_ONLY_FILES: [&str; 2] = [
     // Prepares the image for rechunking during container builds
@@ -51,9 +58,20 @@ impl PostInstallModule for BootcToMutable {
 
         stage!(mutable "Converting the image to a mutable system" {
             restore_filesystem_layout(root)?;
+            create_grub_dir(root)?;
             override_ostree_config(root)?;
             disable_bootupd(root)?;
         });
+
+        // The image's policy generated its home directory contexts while useradd's HOME was
+        // /var/home, which semanage skips (/var is in its ignoredirs). That leaves no rules for
+        // /home, so it and every home directory would be labeled default_t.
+        if root.join(GENHOMEDIRCON).exists() {
+            stage!(homedirs "Updating SELinux home directory contexts" {
+                crate::cmd!("genhomedircon"
+                    => |r| bail!("genhomedircon failed with exit code {:?}", r.code()));
+            });
+        }
 
         if context.uefi {
             stage!(esp "Installing EFI bootloader files" {
@@ -128,6 +146,16 @@ fn restore_filesystem_layout(root: &Path) -> Result<()> {
         if fixed != contents {
             std::fs::write(&useradd, fixed)?;
         }
+    }
+    Ok(())
+}
+
+/// Create [`GRUB_DIR`] with grub2-common's mode, so the GRUB2 module can write `grub.cfg`.
+fn create_grub_dir(root: &Path) -> Result<()> {
+    let dir = root.join(GRUB_DIR);
+    if !dir.exists() {
+        std::fs::create_dir_all(&dir)?;
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700))?;
     }
     Ok(())
 }
@@ -395,6 +423,25 @@ mod tests {
             std::fs::read_to_string(root.join("etc/default/useradd")).unwrap(),
             "GROUP=100\nHOME=/home\nSHELL=/bin/bash\n"
         );
+    }
+
+    #[test]
+    fn creates_grub_dir() {
+        let root = tempfile::tempdir().unwrap();
+        let root = root.path();
+        // bootc images ship an empty /boot
+        std::fs::create_dir(root.join("boot")).unwrap();
+
+        create_grub_dir(root).unwrap();
+
+        let meta = root.join(GRUB_DIR).metadata().unwrap();
+        assert!(meta.is_dir());
+        assert_eq!(meta.permissions().mode() & 0o777, 0o700);
+
+        // an existing directory is left alone
+        std::fs::write(root.join(GRUB_DIR).join("grubenv"), "").unwrap();
+        create_grub_dir(root).unwrap();
+        assert!(root.join(GRUB_DIR).join("grubenv").exists());
     }
 
     #[test]
