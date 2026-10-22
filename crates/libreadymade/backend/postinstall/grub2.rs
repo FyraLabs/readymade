@@ -59,6 +59,20 @@ GRUB_ENABLE_BLSCFG={enable_blsconfig}
     }
 }
 
+/// Escape a kernel argument for `GRUB_CMDLINE_LINUX="..."` in the shell-sourced
+/// `/etc/default/grub`, or `None` if it has control characters (e.g. newlines).
+fn escape_karg(karg: &str) -> Option<String> {
+    (!karg.contains(char::is_control)).then(|| {
+        karg.chars().fold(String::new(), |mut s, c| {
+            if matches!(c, '\\' | '"' | '$' | '`') {
+                s.push('\\');
+            }
+            s.push(c);
+            s
+        })
+    })
+}
+
 /// Helper function to install GRUB2 on a legacy BIOS system.
 ///
 /// You should run this inside a [`tiffin::Container`].
@@ -129,6 +143,26 @@ impl PostInstallModule for GRUB2 {
                 defaults.cmdline_linux = format!("{joined_cmdline} {current_value}");
             }
 
+            // bootc applies these itself; mutable installs from a bootc image need them here
+            let image_kargs = super::bootc_to_mutable::image_kargs(Path::new("/"))
+                .unwrap_or_else(|err| {
+                    warn!(?err, "Ignoring bootc kargs.d");
+                    vec![]
+                });
+            // Arguments so far are plain words, so their escaped form is themselves.
+            let mut cmdline = defaults.cmdline_linux.split_whitespace().map(str::to_owned).collect_vec();
+            for karg in image_kargs {
+                match escape_karg(&karg) {
+                    None => warn!(karg, "Skipping kernel argument with control characters"),
+                    Some(escaped) if !cmdline.contains(&escaped) => {
+                        info!(karg, "Adding kernel argument from bootc kargs.d");
+                        cmdline.push(escaped);
+                    }
+                    Some(_) => {}
+                }
+            }
+            defaults.cmdline_linux = cmdline.join(" ");
+
             let defaults_str = defaults.generate();
             std::fs::write("/etc/default/grub", defaults_str)?;
         });
@@ -189,5 +223,18 @@ impl PostInstallModule for GRUB2 {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::escape_karg;
+
+    #[test]
+    fn escapes_kargs() {
+        assert_eq!(escape_karg("quiet").unwrap(), "quiet");
+        assert_eq!(escape_karg(r#"foo="a b""#).unwrap(), r#"foo=\"a b\""#);
+        assert_eq!(escape_karg(r"a=$x`y`\").unwrap(), r"a=\$x\`y\`\\");
+        assert_eq!(escape_karg("a\nb"), None);
     }
 }

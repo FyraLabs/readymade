@@ -3,7 +3,7 @@ mod copy;
 
 use crate::prelude::*;
 pub use bootc::Bootc;
-pub use copy::Copy;
+pub use copy::{Copy, is_oci_copy_source};
 
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};

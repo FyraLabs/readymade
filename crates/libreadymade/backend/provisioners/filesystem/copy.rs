@@ -13,7 +13,9 @@ pub struct Copy {
 const OCI_COPY_SOURCE_PREFIXES: [&str; 4] =
     ["containers-storage:", "docker://", "oci:", "oci-archive:"];
 
-fn is_oci_copy_source(copy_source: &str) -> bool {
+/// Whether `copy_source` is an OCI image reference rather than a path.
+#[must_use]
+pub fn is_oci_copy_source(copy_source: &str) -> bool {
     OCI_COPY_SOURCE_PREFIXES
         .iter()
         .any(|prefix| copy_source.starts_with(prefix))

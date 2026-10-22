@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+use bootc_to_mutable::BootcToMutable;
 use cleanup_boot::CleanupBoot;
 use color_eyre::Result;
 use cryptsetup::CryptSetup;
@@ -10,6 +11,7 @@ use fstab::Fstab;
 use grub2::GRUB2;
 use initial_setup::InitialSetup;
 use language::Language;
+use nvidia_akmods::NvidiaAkmods;
 use prepare_fedora::PrepareFedora;
 use reinstall_kernel::ReinstallKernel;
 use script::Script;
@@ -17,6 +19,7 @@ use selinux::SELinux;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+pub mod bootc_to_mutable;
 pub mod cleanup_boot;
 pub mod cryptsetup;
 pub mod dracut;
@@ -25,6 +28,7 @@ pub mod fstab;
 pub mod grub2;
 pub mod initial_setup;
 pub mod language;
+pub mod nvidia_akmods;
 pub mod prepare_fedora;
 pub mod reinstall_kernel;
 pub mod script;
@@ -69,4 +73,6 @@ pub enum Module {
     CryptSetup,
     Script,
     Fstab,
+    BootcToMutable,
+    NvidiaAkmods,
 }

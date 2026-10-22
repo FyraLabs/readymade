@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 
 use crate::prelude::*;
 
-use crate::cfg::InstallationType;
+use crate::cfg::{ImageMode, InstallationType};
 use crate::{APPLICATION_STATE, NavigationAction, Page};
 use relm4::RelmWidgetExt;
 
@@ -12,6 +12,21 @@ static TPM_SUPPORT: LazyLock<bool> = LazyLock::new(|| {
         .and_then(|s: String| s.trim().parse::<usize>().ok())
         .is_some_and(|ver| ver >= 2)
 });
+
+static SECURE_BOOT: LazyLock<bool> =
+    LazyLock::new(libreadymade::backend::util::sys::secure_boot_enabled);
+
+fn nvidia_secureboot_markup() -> String {
+    let text = gtk::glib::markup_escape_text(&t!("page-installationtype-nvidia-secureboot"));
+    match &crate::CONFIG.read().install.nvidia_secureboot_docs {
+        Some(docs) => format!(
+            "{text} <a href=\"{}\">{}</a>",
+            gtk::glib::markup_escape_text(docs),
+            gtk::glib::markup_escape_text(&t!("page-installationtype-nvidia-docs")),
+        ),
+        None => text.into(),
+    }
+}
 
 page!(InstallationType {
     can_encrypt: bool,
@@ -32,23 +47,13 @@ page!(InstallationType {
         model.root = Some(root);
     }
     update(self, message, sender) {
-        InstallationTypeSelected(i: InstallationType) => match i {
-            InstallationType::WholeDisk => {
-                APPLICATION_STATE.write().installation_type = Some(InstallationType::WholeDisk);
-                self.can_encrypt = true;
-            },
-            InstallationType::DualBoot(_) => {
-                self.can_encrypt = true;
-            },
-            InstallationType::Custom => {
-                APPLICATION_STATE.write().installation_type = Some(InstallationType::Custom);
-                self.can_encrypt = false;
-            },
-            InstallationType::ChromebookInstall => {
-                APPLICATION_STATE.write().installation_type =
-                    Some(InstallationType::ChromebookInstall);
-                self.can_encrypt = true;
-            },
+        InstallationTypeSelected(i: InstallationType) => {
+            // Dual boot isn't wired into the playbook flow yet, so it isn't selectable.
+            if !matches!(i, InstallationType::DualBoot(_)) {
+                let config = crate::CONFIG.read();
+                APPLICATION_STATE.write().set_installation_type(&config, i);
+            }
+            self.can_encrypt = i != InstallationType::Custom;
         },
         EncryptDialogue(b: bool) => {
             APPLICATION_STATE.write().encrypt = b;
@@ -210,6 +215,82 @@ gtk::Box {
             #[watch]
             set_sensitive: APPLICATION_STATE.read().encrypt && model.can_encrypt && *TPM_SUPPORT,
             connect_toggled => |btn| APPLICATION_STATE.write().tpm = btn.is_active(),
+        },
+    },
+
+    gtk::Box {
+        set_orientation: gtk::Orientation::Vertical,
+        set_halign: gtk::Align::Center,
+        set_spacing: 4,
+        set_margin_top: 8,
+        set_visible: !crate::CONFIG.read().images().is_empty(),
+
+        // Read state into locals before setting widgets: their toggled handlers take a write lock.
+        #[name = "bootc_btn"]
+        gtk::CheckButton {
+            #[watch]
+            set_label: Some(&t!("page-installationtype-image-bootc")),
+            #[watch]
+            set_visible: { let config = crate::CONFIG.read(); let modes = APPLICATION_STATE.read().image_modes(&config); modes.len() > 1 },
+            #[watch]
+            set_active: { let mode = APPLICATION_STATE.read().image_mode; mode == ImageMode::Bootc },
+            connect_toggled => |btn| if btn.is_active() {
+                APPLICATION_STATE.write().image_mode = ImageMode::Bootc;
+            },
+        },
+        gtk::CheckButton {
+            set_group: Some(&bootc_btn),
+            #[watch]
+            set_label: Some(&t!("page-installationtype-image-mutable")),
+            #[watch]
+            set_visible: { let config = crate::CONFIG.read(); let modes = APPLICATION_STATE.read().image_modes(&config); modes.len() > 1 },
+            #[watch]
+            set_active: { let mode = APPLICATION_STATE.read().image_mode; mode == ImageMode::Mutable },
+            connect_toggled => |btn| if btn.is_active() {
+                APPLICATION_STATE.write().image_mode = ImageMode::Mutable;
+            },
+        },
+
+        gtk::CheckButton {
+            #[watch]
+            set_label: Some(&t!("page-installationtype-nvidia")),
+            set_visible: crate::CONFIG.read().has_nvidia_image(),
+            #[watch]
+            set_active: { let state = APPLICATION_STATE.read(); state.nvidia },
+            connect_toggled => |btn| {
+                let config = crate::CONFIG.read();
+                APPLICATION_STATE.write().set_nvidia(&config, btn.is_active());
+            },
+        },
+        gtk::Label {
+            #[watch]
+            set_markup: &nvidia_secureboot_markup(),
+            set_wrap: true,
+            set_max_width_chars: 60,
+            add_css_class: "warning",
+            #[watch]
+            set_visible: APPLICATION_STATE.read().nvidia && *SECURE_BOOT,
+        },
+        gtk::Label {
+            #[watch]
+            // Fluent wraps the password in bidi isolation marks, which would be copied along with it.
+            set_label: &{
+                let password = crate::CONFIG.read().install.nvidia_mok_password.clone();
+                t!("page-installationtype-nvidia-mok", password = password)
+                    .replace(['\u{2068}', '\u{2069}'], "")
+            },
+            set_wrap: true,
+            set_max_width_chars: 60,
+            #[watch]
+            set_visible: {
+                let state = APPLICATION_STATE.read();
+                // NvidiaAkmods only queues MOK enrollment under Secure Boot.
+                state.nvidia && state.image_mode == ImageMode::Mutable && *SECURE_BOOT
+                    && libreadymade::backend::util::sys::check_uefi()
+                    && crate::CONFIG.read().mutable_postinstall().iter().any(|m| {
+                        matches!(m, libreadymade::backend::postinstall::Module::NvidiaAkmods(_))
+                    })
+            },
         },
     },
 

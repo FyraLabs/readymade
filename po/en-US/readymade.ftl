@@ -72,6 +72,12 @@ page-installationtype-encrypt = Enable disk encryption
 page-installationtype-chromebook = Chromebook
 page-installationtype-dual = Dual Boot
 page-installationtype-custom = Custom
+page-installationtype-image-bootc = Image-based (atomic updates with bootc)
+page-installationtype-image-mutable = Traditional (package updates with dnf)
+page-installationtype-nvidia = Install NVIDIA drivers
+page-installationtype-nvidia-secureboot = Secure Boot is enabled. NVIDIA drivers need extra setup to work with Secure Boot.
+page-installationtype-nvidia-docs = Learn more
+page-installationtype-nvidia-mok = On the first reboot, choose “Enroll MOK” and enter the password “{ $password }” to trust the NVIDIA driver signing key.
 
 dialog-installtype-encrypt = Disk Encryption
 dialog-installtype-encrypt-desc = Please set the disk encryption password.
