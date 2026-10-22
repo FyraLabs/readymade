@@ -184,12 +184,15 @@ impl ReadymadeConfig {
     pub fn mutable_postinstall(&self) -> Vec<Module> {
         self.mutable_postinstall
             .clone()
-            .unwrap_or_else(default_mutable_postinstall)
+            .unwrap_or_else(|| default_mutable_postinstall(&self.postinstall))
     }
 
     /// # Errors
     /// - `install.images` is set but `copy_mode` is not `bootc`
     /// - an image lists no install modes
+    /// - a mutable image's `imgref` has no transport prefix the copy provisioner recognizes
+    /// - every image is an NVIDIA image
+    /// - Chromebook installs are allowed but no non-NVIDIA image supports bootc installs
     pub fn check(&self) -> Result<()> {
         if !self.install.images.is_empty() && self.install.copy_mode != CopyMode::Bootc {
             bail!("install.images requires install.copy_mode = \"bootc\"");
@@ -197,27 +200,58 @@ impl ReadymadeConfig {
         if let Some(img) = self.install.images.iter().find(|img| img.modes.is_empty()) {
             bail!("image {:?} must list at least one install mode", img.imgref);
         }
+        if let Some(img) = self.install.images.iter().find(|img| {
+            img.modes.contains(&ImageMode::Mutable)
+                && !libreadymade::backend::provisioners::filesystem::is_oci_copy_source(&img.imgref)
+        }) {
+            bail!(
+                "image {:?} supports mutable installs, which need a containers-storage:, docker://, oci: or oci-archive: imgref",
+                img.imgref
+            );
+        }
+        // The NVIDIA checkbox starts unchecked, so a non-NVIDIA image must exist.
+        if !self.install.images.is_empty() && self.install.images.iter().all(|img| img.nvidia) {
+            bail!("install.images must include at least one image with nvidia = false");
+        }
+        // Chromebook installs are bootc-only (see `ApplicationState::image_modes`)
+        if !self.install.images.is_empty()
+            && (self.install.allowed_installtypes).contains(&InstallationType::ChromebookInstall)
+            && self.select_image(false, ImageMode::Bootc).is_none()
+        {
+            bail!(
+                "chromebookinstall requires an image with nvidia = false that supports bootc installs"
+            );
+        }
         Ok(())
     }
 }
 
 /// Post-install modules used for mutable installs when the config doesn't set
-/// `mutable_postinstall`.
+/// `mutable_postinstall`. The `Language` module is taken from the regular `postinstall`
+/// list, if configured there.
 #[must_use]
-pub fn default_mutable_postinstall() -> Vec<Module> {
+pub fn default_mutable_postinstall(postinstall: &[Module]) -> Vec<Module> {
     use libreadymade::backend::postinstall::{
-        bootc_to_mutable::BootcToMutable, fstab::Fstab, grub2::GRUB2, nvidia_akmods::NvidiaAkmods,
-        prepare_fedora::PrepareFedora, script::Script, selinux::SELinux,
+        bootc_to_mutable::BootcToMutable, fstab::Fstab, grub2::GRUB2, initial_setup::InitialSetup,
+        nvidia_akmods::NvidiaAkmods, prepare_fedora::PrepareFedora, script::Script,
+        selinux::SELinux,
     };
-    vec![
+    let language = postinstall
+        .iter()
+        .find(|m| matches!(m, Module::Language(_)))
+        .cloned();
+    [
         Fstab.into(),
-        BootcToMutable.into(),
+        BootcToMutable::default().into(),
         GRUB2.into(),
         NvidiaAkmods.into(),
         PrepareFedora.into(),
-        SELinux.into(),
-        Script.into(),
+        InitialSetup.into(),
     ]
+    .into_iter()
+    .chain(language)
+    .chain([Script.into(), SELinux.into()])
+    .collect()
 }
 
 impl InstallationType {
@@ -505,8 +539,62 @@ mod tests {
     }
 
     #[test]
+    fn rejects_mutable_image_without_transport() {
+        let cfg = parse(
+            r#"
+            copy_mode = "bootc"
+            [[install.images]]
+            imgref = "registry:example/os:44"
+            "#,
+        );
+        assert!(cfg.check().is_err());
+        let cfg = parse(
+            r#"
+            copy_mode = "bootc"
+            [[install.images]]
+            imgref = "registry:example/os:44"
+            modes = ["bootc"]
+            "#,
+        );
+        cfg.check().unwrap();
+    }
+
+    #[test]
+    fn rejects_nvidia_only_images() {
+        let cfg = parse(
+            r#"
+            copy_mode = "bootc"
+            [[install.images]]
+            imgref = "containers-storage:example/os-nvidia:44"
+            nvidia = true
+            "#,
+        );
+        assert!(cfg.check().is_err());
+    }
+
+    #[test]
+    fn rejects_chromebook_without_bootc_image() {
+        let images = r#"
+            copy_mode = "bootc"
+            [[install.images]]
+            imgref = "containers-storage:example/os:44"
+            modes = ["mutable"]
+            [[install.images]]
+            imgref = "containers-storage:example/os-nvidia:44"
+            nvidia = true
+            modes = ["bootc"]
+            "#;
+        parse(images).check().unwrap();
+        let mut cfg = parse(images);
+        cfg.install
+            .allowed_installtypes
+            .push(InstallationType::ChromebookInstall);
+        assert!(cfg.check().is_err());
+    }
+
+    #[test]
     fn mutable_postinstall_defaults() {
         let cfg = parse("");
-        assert_eq!(cfg.mutable_postinstall(), default_mutable_postinstall());
+        assert_eq!(cfg.mutable_postinstall(), default_mutable_postinstall(&[]));
     }
 }

@@ -38,8 +38,16 @@ const OSTREE_ONLY_FILES: [&str; 2] = [
     "ostree",
 ];
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct BootcToMutable;
+/// kargs.d file holding [`BootcToMutable::kargs`], so [`super::grub2::GRUB2`] adds them along
+/// with the image's own.
+const READYMADE_KARGS: &str = "usr/lib/bootc/kargs.d/99-readymade.toml";
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
+pub struct BootcToMutable {
+    /// Extra kernel arguments, e.g. `install.bootc_kargs` (bootc passes them to `bootc install`).
+    #[serde(default)]
+    pub kargs: Vec<String>,
+}
 
 impl PostInstallModule for BootcToMutable {
     fn name(&self) -> &'static str {
@@ -53,6 +61,7 @@ impl PostInstallModule for BootcToMutable {
             restore_filesystem_layout(root)?;
             override_ostree_config(root)?;
             disable_bootupd(root)?;
+            write_kargs(root, &self.kargs)?;
         });
 
         if context.uefi {
@@ -96,7 +105,26 @@ fn restore_filesystem_layout(root: &Path) -> Result<()> {
         let path = root.join(dir);
         let is_symlink = path.symlink_metadata().is_ok_and(|m| m.is_symlink());
         if is_symlink {
+            // Resolve within `root`, not the host, e.g. `/root -> var/roothome`.
+            let target = std::fs::read_link(&path)?;
+            let target = target.strip_prefix("/").map_or_else(
+                |_| path.parent().expect("has parent").join(&target),
+                |abs| root.join(abs),
+            );
             std::fs::remove_file(&path)?;
+            // Move the image's content (e.g. `/var/roothome/.ssh`) into place.
+            if target.symlink_metadata().is_ok_and(|m| m.is_dir()) {
+                tracing::debug!(?target, ?path, "Moving symlinked directory into place");
+                match std::fs::rename(&target, &path) {
+                    Err(e) if e.kind() == std::io::ErrorKind::CrossesDevices => {
+                        crate::cmd!("mv" [["-T"], [&target, &path]]
+                            => |r| bail!("mv {target:?} failed with exit code {:?}", r.code()));
+                    }
+                    r => r.wrap_err_with(|| format!("cannot move {}", target.display()))?,
+                }
+                std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode))?;
+                continue;
+            }
         }
         if is_symlink || !path.exists() {
             tracing::debug!(?path, "Restoring directory");
@@ -168,6 +196,8 @@ fn override_ostree_config(root: &Path) -> Result<()> {
                 .join(entry.file_name());
             (entry.path(), dest)
         })
+        // An /etc drop-in overrides /usr/lib one of the same name; it's handled on its own.
+        .filter_ok(|(src, dest)| src == dest || !dest.exists())
         .collect::<std::io::Result<Vec<_>>>()?;
     for (src, dest) in std::iter::once((install_conf, etc_install_conf)).chain(dropins) {
         let Ok(contents) = std::fs::read_to_string(&src) else {
@@ -209,11 +239,35 @@ fn drop_ostree_layout(contents: &str) -> Option<String> {
 }
 
 /// bootupd manages the ESP on image-based systems only; GRUB is installed directly here.
+/// Image-mode auto-update units are masked too: they'd fail or fight with dnf.
 fn disable_bootupd(root: &Path) -> Result<()> {
-    const UNIT: &str = "bootloader-update.service";
-    if root.join("usr/lib/systemd/system").join(UNIT).exists() {
-        crate::cmd!("systemctl" [["mask", UNIT]]
-            => |r| bail!("systemctl mask {UNIT} failed with exit code {:?}", r.code()));
+    const UNITS: [&str; 5] = [
+        "bootloader-update.service",
+        "bootc-fetch-apply-updates.timer",
+        "bootc-fetch-apply-updates.service",
+        "rpm-ostreed-automatic.timer",
+        "rpm-ostreed-automatic.service",
+    ];
+    let units = UNITS
+        .into_iter()
+        .filter(|unit| {
+            ["usr/lib/systemd/system", "etc/systemd/system"]
+                .iter()
+                .any(|dir| root.join(dir).join(unit).exists())
+        })
+        .collect_vec();
+    if !units.is_empty() {
+        // mask refuses to replace an existing unit in /etc: --force handles symlinks, but
+        // regular files have to go first (they're being masked anyway)
+        for unit in &units {
+            let path = root.join("etc/systemd/system").join(unit);
+            if path.symlink_metadata().is_ok_and(|m| m.is_file()) {
+                std::fs::remove_file(&path)
+                    .wrap_err_with(|| format!("cannot remove {}", path.display()))?;
+            }
+        }
+        crate::cmd!("systemctl" [["mask", "--force"], &units]
+            => |r| bail!("systemctl mask {units:?} failed with exit code {:?}", r.code()));
     }
     Ok(())
 }
@@ -222,12 +276,15 @@ fn disable_bootupd(root: &Path) -> Result<()> {
 /// their RPMs lay them out under `/boot/efi` on a package-based install.
 fn install_efi_payload(root: &Path) -> Result<()> {
     let esp = root.join("boot/efi/EFI");
-    // /usr/lib/efi/<package>/<version>/EFI
+    // /usr/lib/efi/<package>/<version>/EFI, newest version of each package only
     let mut payloads = crate::backend::util::fs::exist_then_read_dir(root.join("usr/lib/efi"))?
-        .filter_map(|pkg| crate::backend::util::fs::exist_then_read_dir(pkg.path()).ok())
-        .flatten()
-        .map(|ver| ver.path().join("EFI"))
-        .filter(|dir| dir.is_dir())
+        .filter_map(|pkg| {
+            crate::backend::util::fs::exist_then_read_dir(pkg.path())
+                .ok()?
+                .map(|ver| ver.path().join("EFI"))
+                .filter(|dir| dir.is_dir())
+                .max_by(|a, b| natural_cmp(&a.to_string_lossy(), &b.to_string_lossy()))
+        })
         .collect_vec();
     payloads.sort_by(|a, b| natural_cmp(&a.to_string_lossy(), &b.to_string_lossy()));
 
@@ -236,8 +293,37 @@ fn install_efi_payload(root: &Path) -> Result<()> {
         copy_tree_plain(payload, &esp)?;
     }
 
-    if !esp.join("BOOT").is_dir() && payloads.is_empty() {
-        bail!("No EFI bootloader files found in /usr/lib/efi or on the ESP");
+    // FAT is case-insensitive, so match names the same way.
+    let has = |dir: &Path, pred: &dyn Fn(&str) -> bool| {
+        crate::backend::util::fs::exist_then_read_dir(dir).is_ok_and(|mut entries| {
+            entries.any(|e| pred(&e.file_name().to_string_lossy().to_ascii_lowercase()))
+        })
+    };
+    let subdirs = crate::backend::util::fs::exist_then_read_dir(&esp)?
+        .filter(|e| e.path().is_dir())
+        .map(|e| {
+            (
+                e.file_name().to_string_lossy().to_ascii_lowercase(),
+                e.path(),
+            )
+        })
+        .collect_vec();
+    let is_efi = |f: &str| {
+        Path::new(f)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("efi"))
+    };
+    let fallback = subdirs
+        .iter()
+        .any(|(name, dir)| name == "boot" && has(dir, &|f| f.starts_with("boot") && is_efi(f)));
+    let loader = subdirs.iter().any(|(name, dir)| {
+        name != "boot"
+            && has(dir, &|f| {
+                (f.starts_with("shim") || f.starts_with("grub")) && is_efi(f)
+            })
+    });
+    if !fallback || !loader {
+        bail!("No shim/GRUB EFI binaries found in /usr/lib/efi or on the ESP");
     }
     Ok(())
 }
@@ -281,7 +367,12 @@ fn newest_kernel(root: &Path) -> Result<String> {
         .filter_map(std::result::Result::ok)
         .filter(|entry| entry.path().join("vmlinuz").is_file())
         .map(|entry| entry.file_name().to_string_lossy().into_owned())
-        .max_by(|a, b| natural_cmp(a, b))
+        // Prefer regular kernels over `+debug` variants of the same or older version.
+        .max_by(|a, b| {
+            (!a.ends_with("+debug"))
+                .cmp(&!b.ends_with("+debug"))
+                .then_with(|| natural_cmp(a, b))
+        })
         .ok_or_else(|| eyre!("No kernel found in {modules:?}"))
 }
 
@@ -309,6 +400,22 @@ fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
         }
     }
     ca.len().cmp(&cb.len())
+}
+
+/// Save `kargs` in kargs.d for [`image_kargs`] to pick up.
+fn write_kargs(root: &Path, kargs: &[String]) -> Result<()> {
+    #[derive(Serialize)]
+    struct KargsFile<'a> {
+        kargs: &'a [String],
+    }
+
+    if kargs.is_empty() {
+        return Ok(());
+    }
+    let path = root.join(READYMADE_KARGS);
+    std::fs::create_dir_all(path.parent().expect("has parent"))?;
+    std::fs::write(path, toml::to_string(&KargsFile { kargs })?)?;
+    Ok(())
 }
 
 /// Kernel arguments a bootc image declares in `/usr/lib/bootc/kargs.d`. bootc applies these
@@ -362,6 +469,12 @@ mod tests {
         symlink("var/roothome", root.join("root")).unwrap();
         symlink("sysroot/ostree", root.join("ostree")).unwrap();
         symlink("../var/usrlocal", root.join("usr/local")).unwrap();
+        symlink("/var/opt", root.join("opt")).unwrap();
+        std::fs::create_dir_all(root.join("var/roothome/.ssh")).unwrap();
+        std::fs::write(root.join("var/roothome/.ssh/authorized_keys"), "key").unwrap();
+        std::fs::create_dir_all(root.join("var/opt/app")).unwrap();
+        std::fs::create_dir_all(root.join("var/usrlocal/bin")).unwrap();
+        std::fs::write(root.join("var/usrlocal/bin/tool"), "").unwrap();
         // a real directory (e.g. a mounted /srv) is left alone
         std::fs::create_dir_all(root.join("srv")).unwrap();
         std::fs::write(root.join("srv/keep"), "").unwrap();
@@ -390,6 +503,10 @@ mod tests {
             0o700
         );
         assert!(root.join("srv/keep").exists());
+        assert!(root.join("root/.ssh/authorized_keys").is_file());
+        assert!(root.join("opt/app").is_dir());
+        assert!(root.join("usr/local/bin/tool").is_file());
+        assert!(!root.join("var/roothome").exists());
         root.join("ostree").symlink_metadata().unwrap_err();
         assert_eq!(
             std::fs::read_to_string(root.join("etc/default/useradd")).unwrap(),
@@ -417,6 +534,14 @@ mod tests {
             "initrd_generator=dracut\n",
         )
         .unwrap();
+        std::fs::write(
+            kernel.join("install.conf.d/60-layout.conf"),
+            "layout=ostree\n",
+        )
+        .unwrap();
+        let etc_dropins = root.join("etc/kernel/install.conf.d");
+        std::fs::create_dir_all(&etc_dropins).unwrap();
+        std::fs::write(etc_dropins.join("60-layout.conf"), "layout=bls\n").unwrap();
 
         override_ostree_config(root).unwrap();
 
@@ -426,6 +551,10 @@ mod tests {
         let install_conf = std::fs::read_to_string(root.join("etc/kernel/install.conf")).unwrap();
         assert!(install_conf.starts_with("# layout=ostree"));
         assert!(!root.join("etc/kernel/install.conf.d/50-gen.conf").exists());
+        assert_eq!(
+            std::fs::read_to_string(etc_dropins.join("60-layout.conf")).unwrap(),
+            "layout=bls\n"
+        );
         assert_eq!(
             std::fs::read_to_string(root.join(DRACUT_CONF)).unwrap(),
             DRACUT_CONF_CONTENTS
@@ -453,18 +582,29 @@ mod tests {
         let grub = root.join("usr/lib/efi/grub2/1:2.12-66.fc44/EFI/fedora");
         std::fs::create_dir_all(&grub).unwrap();
         std::fs::write(grub.join("grubx64.efi"), "grub").unwrap();
+        let old_grub = root.join("usr/lib/efi/grub2/1:2.12-7.fc44/EFI/fedora");
+        std::fs::create_dir_all(&old_grub).unwrap();
+        std::fs::write(old_grub.join("grubx64.efi"), "old").unwrap();
 
         install_efi_payload(root).unwrap();
 
         let esp = root.join("boot/efi/EFI");
         assert!(esp.join("BOOT/BOOTX64.EFI").is_file());
         assert!(esp.join("fedora/shimx64.efi").is_file());
-        assert!(esp.join("fedora/grubx64.efi").is_file());
+        assert_eq!(
+            std::fs::read_to_string(esp.join("fedora/grubx64.efi")).unwrap(),
+            "grub"
+        );
     }
 
     #[test]
     fn errors_without_efi_payload() {
         let root = tempfile::tempdir().unwrap();
+        assert!(install_efi_payload(root.path()).is_err());
+        // e.g. Windows' fallback loader only
+        let boot = root.path().join("boot/efi/EFI/Boot");
+        std::fs::create_dir_all(&boot).unwrap();
+        std::fs::write(boot.join("bootx64.efi"), "").unwrap();
         assert!(install_efi_payload(root.path()).is_err());
     }
 
@@ -476,6 +616,7 @@ mod tests {
             "6.9.12-200.fc44.x86_64",
             "6.10.3-200.fc44.x86_64",
             "6.11.0-1.fc44.x86_64",
+            "6.10.3-200.fc44.x86_64+debug",
         ] {
             std::fs::create_dir_all(modules.join(kver)).unwrap();
             if kver != "6.11.0-1.fc44.x86_64" {
@@ -523,6 +664,17 @@ match-architectures = ["not-an-arch"]"#,
         assert_eq!(
             image_kargs(&root.path().join("missing")).unwrap(),
             Vec::<String>::new()
+        );
+
+        write_kargs(root.path(), &["console=ttyS0".into(), "a=\"b c\"".into()]).unwrap();
+        assert_eq!(
+            image_kargs(root.path()).unwrap(),
+            vec![
+                "rd.driver.blacklist=nouveau",
+                "nvidia-drm.modeset=1",
+                "console=ttyS0",
+                "a=\"b c\""
+            ]
         );
     }
 }

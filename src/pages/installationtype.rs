@@ -57,8 +57,10 @@ page!(InstallationType {
                 self.can_encrypt = false;
             },
             InstallationType::ChromebookInstall => {
-                APPLICATION_STATE.write().installation_type =
-                    Some(InstallationType::ChromebookInstall);
+                let config = crate::CONFIG.read();
+                APPLICATION_STATE
+                    .write()
+                    .set_installation_type(&config, InstallationType::ChromebookInstall);
                 self.can_encrypt = true;
             },
         },
@@ -238,7 +240,7 @@ gtk::Box {
             #[watch]
             set_label: Some(&t!("page-installationtype-image-bootc")),
             #[watch]
-            set_visible: { let nvidia = APPLICATION_STATE.read().nvidia; crate::CONFIG.read().image_modes(nvidia).len() > 1 },
+            set_visible: { let config = crate::CONFIG.read(); let modes = APPLICATION_STATE.read().image_modes(&config); modes.len() > 1 },
             #[watch]
             set_active: { let mode = APPLICATION_STATE.read().image_mode; mode == ImageMode::Bootc },
             connect_toggled => |btn| if btn.is_active() {
@@ -250,7 +252,7 @@ gtk::Box {
             #[watch]
             set_label: Some(&t!("page-installationtype-image-mutable")),
             #[watch]
-            set_visible: { let nvidia = APPLICATION_STATE.read().nvidia; crate::CONFIG.read().image_modes(nvidia).len() > 1 },
+            set_visible: { let config = crate::CONFIG.read(); let modes = APPLICATION_STATE.read().image_modes(&config); modes.len() > 1 },
             #[watch]
             set_active: { let mode = APPLICATION_STATE.read().image_mode; mode == ImageMode::Mutable },
             connect_toggled => |btn| if btn.is_active() {
@@ -262,6 +264,7 @@ gtk::Box {
             #[watch]
             set_label: Some(&t!("page-installationtype-nvidia")),
             set_visible: crate::CONFIG.read().has_nvidia_image(),
+            #[watch]
             set_active: { let state = APPLICATION_STATE.read(); state.nvidia },
             connect_toggled => |btn| {
                 let config = crate::CONFIG.read();
@@ -279,13 +282,20 @@ gtk::Box {
         },
         gtk::Label {
             #[watch]
-            set_label: &t!("page-installationtype-nvidia-mok", password = libreadymade::consts::NVIDIA_MOK_PASSWORD),
+            // Fluent wraps the password in bidi isolation marks, which would be copied along with it.
+            set_label: &t!("page-installationtype-nvidia-mok", password = libreadymade::consts::NVIDIA_MOK_PASSWORD)
+                .replace(['\u{2068}', '\u{2069}'], ""),
             set_wrap: true,
             set_max_width_chars: 60,
             #[watch]
             set_visible: {
                 let state = APPLICATION_STATE.read();
-                state.nvidia && state.image_mode == ImageMode::Mutable && libreadymade::backend::util::sys::check_uefi()
+                // NvidiaAkmods only queues MOK enrollment under Secure Boot.
+                state.nvidia && state.image_mode == ImageMode::Mutable && *SECURE_BOOT
+                    && libreadymade::backend::util::sys::check_uefi()
+                    && crate::CONFIG.read().mutable_postinstall().iter().any(|m| {
+                        matches!(m, libreadymade::backend::postinstall::Module::NvidiaAkmods(_))
+                    })
             },
         },
     },

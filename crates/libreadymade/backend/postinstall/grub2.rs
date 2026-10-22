@@ -130,11 +130,23 @@ impl PostInstallModule for GRUB2 {
             }
 
             // bootc applies these itself; mutable installs from a bootc image need them here
-            let image_kargs = super::bootc_to_mutable::image_kargs(Path::new("/"))?;
-            if !image_kargs.is_empty() {
-                tracing::info!(?image_kargs, "Adding kernel arguments from bootc kargs.d");
-                defaults.cmdline_linux =
-                    format!("{} {}", defaults.cmdline_linux, image_kargs.join(" "));
+            let image_kargs = super::bootc_to_mutable::image_kargs(Path::new("/"))
+                .unwrap_or_else(|err| {
+                    warn!(?err, "Ignoring bootc kargs.d");
+                    vec![]
+                });
+            let mut added = vec![];
+            for karg in image_kargs {
+                // GRUB_CMDLINE_LINUX is double-quoted in a shell-sourced file
+                if karg.contains(['"', '$', '`', '\\']) || karg.contains(char::is_whitespace) {
+                    warn!(karg, "Skipping kernel argument with shell metacharacters or whitespace");
+                } else if !defaults.cmdline_linux.split_whitespace().any(|a| a == karg) {
+                    defaults.cmdline_linux = format!("{} {karg}", defaults.cmdline_linux);
+                    added.push(karg);
+                }
+            }
+            if !added.is_empty() {
+                info!(?added, "Added kernel arguments from bootc kargs.d");
             }
 
             let defaults_str = defaults.generate();

@@ -6,8 +6,11 @@
 //! that the firmware trusts, so this module:
 //!
 //! - checks `akmod-nvidia` is installed (it does nothing for images without it)
-//! - unmasks `akmods-keygen` and generates the signing key
-//! - queues enrollment of the key with `mokutil`, confirmed in `MokManager` on first reboot
+//! - unmasks `akmods-keygen` and generates the signing key (always a fresh one on Secure Boot
+//!   systems, so a key shipped in the image is never enrolled)
+//! - on Secure Boot systems, rebuilds the module with that key (the image's module was signed
+//!   with a throwaway build key) and queues enrollment of the key with `mokutil`, confirmed in
+//!   `MokManager` on first reboot
 //!
 //! Run this after the kernel and bootloader are installed, and before [`super::selinux::SELinux`]
 //! so the generated keys get labeled.
@@ -17,6 +20,7 @@ use crate::{consts::NVIDIA_MOK_PASSWORD, prelude::*, stage};
 use super::{Context, PostInstallModule};
 
 const AKMODS_PUBLIC_KEY: &str = "/etc/pki/akmods/certs/public_key.der";
+const AKMODS_PRIVATE_KEY: &str = "/etc/pki/akmods/private/private_key.priv";
 const AKMODS_KEYGEN_UNITS: [&str; 2] = [
     "akmods-keygen.target",
     "akmods-keygen@akmods-keygen.service",
@@ -41,6 +45,7 @@ impl PostInstallModule for NvidiaAkmods {
             return Ok(());
         }
 
+        let enroll = context.uefi && crate::backend::util::sys::secure_boot_enabled();
         stage!(nvidia "Setting up NVIDIA driver updates" {
             crate::cmd!("systemctl" [["unmask"], AKMODS_KEYGEN_UNITS]
                 => |r| bail!("systemctl unmask akmods-keygen failed with exit code {:?}", r.code()));
@@ -49,14 +54,23 @@ impl PostInstallModule for NvidiaAkmods {
                 => |r| bail!("systemctl enable akmods.service failed with exit code {:?}", r.code()));
 
             // akmods-keygen would create the key on first boot, but it has to exist now to be
-            // queued for enrollment.
-            if !Path::new(AKMODS_PUBLIC_KEY).exists() {
+            // queued for enrollment. A key shipped in the image is shared by everyone who pulled
+            // it, so never enroll that one: force a fresh, machine-owned key instead.
+            if enroll {
+                crate::cmd!("kmodgenca" [["-a", "-f"]]
+                    => |r| bail!("kmodgenca failed with exit code {:?}", r.code()));
+            } else if !Path::new(AKMODS_PUBLIC_KEY).exists()
+                || !Path::new(AKMODS_PRIVATE_KEY).exists()
+            {
                 crate::cmd!("kmodgenca" [["-a"]]
                     => |r| bail!("kmodgenca failed with exit code {:?}", r.code()));
             }
         });
 
-        if context.uefi {
+        if enroll {
+            stage!(nvidia "Rebuilding NVIDIA driver with the new signing key" {
+                rebuild_kmods()?;
+            });
             stage!(mok "Queueing Secure Boot key enrollment" {
                 queue_mok_enrollment(Path::new(AKMODS_PUBLIC_KEY))?;
             });
@@ -64,6 +78,58 @@ impl PostInstallModule for NvidiaAkmods {
 
         Ok(())
     }
+}
+
+/// Rebuild the kmod for every installed kernel, since akmods won't rebuild a kmod that already
+/// exists. Failures only warn: the system still boots, and akmods rebuilds and signs the module
+/// with the enrolled key on the next kernel update.
+fn rebuild_kmods() -> Result<()> {
+    let modules = Path::new("/usr/lib/modules");
+    let kernels = std::fs::read_dir(modules)
+        .wrap_err_with(|| format!("cannot read {}", modules.display()))?
+        .filter_map(std::result::Result::ok)
+        .filter(|entry| entry.path().join("vmlinuz").is_file())
+        .map(|entry| entry.file_name());
+    for kver in kernels {
+        let status = Command::new("akmods")
+            .args(["--force", "--kernels"])
+            .arg(&kver)
+            .status();
+        match status {
+            Ok(status) if status.success() => {}
+            Ok(status) => {
+                tracing::warn!(
+                    ?kver,
+                    code = ?status.code(),
+                    "akmods failed, NVIDIA module won't load under Secure Boot until the next kernel update"
+                );
+                continue;
+            }
+            Err(err) => {
+                tracing::warn!(?kver, ?err, "cannot run akmods");
+                continue;
+            }
+        }
+        // The initramfs may carry an early-loaded copy of the module with the old signature.
+        // Only regenerate existing ones: kernels without a boot entry don't get one.
+        let mut initramfs = std::ffi::OsString::from("/boot/initramfs-");
+        initramfs.push(&kver);
+        initramfs.push(".img");
+        if !Path::new(&initramfs).exists() {
+            continue;
+        }
+        let status = Command::new("dracut")
+            .args(["--force", "--kver"])
+            .arg(&kver)
+            .arg(&initramfs)
+            .status();
+        match status {
+            Ok(status) if status.success() => {}
+            Ok(status) => tracing::warn!(?kver, code = ?status.code(), "dracut failed"),
+            Err(err) => tracing::warn!(?kver, ?err, "cannot run dracut"),
+        }
+    }
+    Ok(())
 }
 
 /// Ask shim to enroll `key` on next boot. The user confirms it in `MokManager` with

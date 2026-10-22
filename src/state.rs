@@ -8,6 +8,7 @@ use ipc_channel::{IpcError, ipc::IpcOneShotServer};
 use libreadymade::{
     backend::{
         mounts::{Mount, Mounts},
+        postinstall::Module,
         provisioners::{
             DiskProvisioner, FileSystemProvisioner,
             disk::{manual::Manual, repart::Repart},
@@ -53,15 +54,48 @@ impl ApplicationState {
         }
     }
 
-    /// Toggle the NVIDIA option, switching install mode if the current one has no matching image.
-    pub fn set_nvidia(&mut self, config: &ReadymadeConfig, nvidia: bool) {
-        self.nvidia = nvidia;
-        let modes = config.image_modes(nvidia);
+    /// Install modes offered for the NVIDIA choice and installation type.
+    #[must_use]
+    pub fn image_modes(&self, config: &ReadymadeConfig) -> Vec<ImageMode> {
+        let mut modes = config.image_modes(self.nvidia);
+        if self.installation_type == Some(InstallationType::ChromebookInstall) {
+            modes.retain(|&mode| mode != ImageMode::Mutable);
+        }
+        modes
+    }
+
+    /// Switch install mode if the current one isn't offered.
+    fn fix_image_mode(&mut self, config: &ReadymadeConfig) {
+        let modes = self.image_modes(config);
         if !modes.contains(&self.image_mode)
             && let Some(&mode) = modes.first()
         {
             self.image_mode = mode;
         }
+    }
+
+    /// Toggle the NVIDIA option, switching install mode if the current one has no matching image.
+    /// The toggle is ignored if no install mode would be left.
+    pub fn set_nvidia(&mut self, config: &ReadymadeConfig, nvidia: bool) {
+        let prev = self.nvidia;
+        self.nvidia = nvidia;
+        if self.image_modes(config).is_empty() {
+            self.nvidia = prev;
+        }
+        self.fix_image_mode(config);
+    }
+
+    /// Select the installation type, switching install mode if the current one isn't supported.
+    pub fn set_installation_type(
+        &mut self,
+        config: &ReadymadeConfig,
+        installation_type: InstallationType,
+    ) {
+        self.installation_type = Some(installation_type);
+        if self.nvidia && self.image_modes(config).is_empty() {
+            self.nvidia = false;
+        }
+        self.fix_image_mode(config);
     }
 
     pub fn to_playbook(
@@ -125,7 +159,7 @@ impl ApplicationState {
                     FileSystemProvisioner::Copy(Copy {
                         copy_source: image.imgref,
                     }),
-                    config.mutable_postinstall(),
+                    Self::mutable_postinstall(config),
                 ),
             };
             return Ok(Playbook {
@@ -183,6 +217,22 @@ impl ApplicationState {
             }
             InstallationType::DualBoot(_) => unreachable!(),
         })
+    }
+
+    /// The mutable post-install modules, with `install.bootc_kargs` handed to `BootcToMutable`.
+    fn mutable_postinstall(config: &ReadymadeConfig) -> Vec<Module> {
+        let kargs = config.install.bootc_kargs.as_deref().unwrap_or_default();
+        config
+            .mutable_postinstall()
+            .into_iter()
+            .map(|module| match module {
+                Module::BootcToMutable(mut m) => {
+                    m.kargs.extend_from_slice(kargs);
+                    m.into()
+                }
+                module => module,
+            })
+            .collect()
     }
 
     fn custom_mounts(custom_mounts: Option<Mounts>) -> Result<Mounts> {
@@ -392,6 +442,25 @@ mod tests {
     }
 
     #[test]
+    fn chromebook_never_leaves_no_install_mode() {
+        let mut cfg = config();
+        cfg.install.images[1].modes = vec![ImageMode::Mutable];
+
+        let mut state = state(false, ImageMode::Bootc);
+        state.set_installation_type(&cfg, InstallationType::ChromebookInstall);
+        state.set_nvidia(&cfg, true);
+        assert!(!state.nvidia);
+        assert_eq!(state.image_modes(&cfg), [ImageMode::Bootc]);
+
+        state.installation_type = Some(InstallationType::WholeDisk);
+        state.set_nvidia(&cfg, true);
+        assert_eq!(state.image_mode, ImageMode::Mutable);
+        state.set_installation_type(&cfg, InstallationType::ChromebookInstall);
+        assert!(!state.nvidia);
+        assert_eq!(state.image_mode, ImageMode::Bootc);
+    }
+
+    #[test]
     fn bootc_playbook_uses_selected_image() {
         let cfg = config();
         let playbook = state(true, ImageMode::Bootc)
@@ -426,6 +495,32 @@ mod tests {
             }))
         );
         assert_eq!(playbook.postinstall, cfg.mutable_postinstall());
+    }
+
+    #[test]
+    fn mutable_playbook_passes_kargs() {
+        let mut cfg = config();
+        cfg.install.bootc_kargs = Some(vec!["console=ttyS0".into()]);
+        let playbook = state(false, ImageMode::Mutable)
+            .to_playbook(&cfg, None)
+            .unwrap();
+        assert!(
+            playbook.postinstall.contains(
+                &libreadymade::backend::postinstall::bootc_to_mutable::BootcToMutable {
+                    kargs: vec!["console=ttyS0".into()],
+                }
+                .into()
+            )
+        );
+    }
+
+    #[test]
+    fn chromebook_falls_back_from_mutable() {
+        let cfg = config();
+        let mut state = state(false, ImageMode::Mutable);
+        state.set_installation_type(&cfg, InstallationType::ChromebookInstall);
+        assert_eq!(state.image_mode, ImageMode::Bootc);
+        assert_eq!(state.image_modes(&cfg), vec![ImageMode::Bootc]);
     }
 
     #[test]
