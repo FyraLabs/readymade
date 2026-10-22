@@ -1,5 +1,8 @@
 [install]
 allowed_installtypes = ["wholedisk", "custom"]
+# TODO: placeholder, replace once the page exists
+nvidia_secureboot_docs = "https://wiki.ultramarine-linux.org/en/usage/nvidia-secure-boot/"
+nvidia_mok_password = "ultramarine"
 
 [distro]
 name = "Ultramarine Linux"

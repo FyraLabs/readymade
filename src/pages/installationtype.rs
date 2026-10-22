@@ -17,12 +17,15 @@ static SECURE_BOOT: LazyLock<bool> =
     LazyLock::new(libreadymade::backend::util::sys::secure_boot_enabled);
 
 fn nvidia_secureboot_markup() -> String {
-    format!(
-        "{} <a href=\"{}\">{}</a>",
-        gtk::glib::markup_escape_text(&t!("page-installationtype-nvidia-secureboot")),
-        gtk::glib::markup_escape_text(&crate::CONFIG.read().install.nvidia_secureboot_docs),
-        gtk::glib::markup_escape_text(&t!("page-installationtype-nvidia-docs")),
-    )
+    let text = gtk::glib::markup_escape_text(&t!("page-installationtype-nvidia-secureboot"));
+    match &crate::CONFIG.read().install.nvidia_secureboot_docs {
+        Some(docs) => format!(
+            "{text} <a href=\"{}\">{}</a>",
+            gtk::glib::markup_escape_text(docs),
+            gtk::glib::markup_escape_text(&t!("page-installationtype-nvidia-docs")),
+        ),
+        None => text.into(),
+    }
 }
 
 page!(InstallationType {
@@ -44,25 +47,13 @@ page!(InstallationType {
         model.root = Some(root);
     }
     update(self, message, sender) {
-        InstallationTypeSelected(i: InstallationType) => match i {
-            InstallationType::WholeDisk => {
-                APPLICATION_STATE.write().installation_type = Some(InstallationType::WholeDisk);
-                self.can_encrypt = true;
-            },
-            InstallationType::DualBoot(_) => {
-                self.can_encrypt = true;
-            },
-            InstallationType::Custom => {
-                APPLICATION_STATE.write().installation_type = Some(InstallationType::Custom);
-                self.can_encrypt = false;
-            },
-            InstallationType::ChromebookInstall => {
+        InstallationTypeSelected(i: InstallationType) => {
+            // Dual boot isn't wired into the playbook flow yet, so it isn't selectable.
+            if !matches!(i, InstallationType::DualBoot(_)) {
                 let config = crate::CONFIG.read();
-                APPLICATION_STATE
-                    .write()
-                    .set_installation_type(&config, InstallationType::ChromebookInstall);
-                self.can_encrypt = true;
-            },
+                APPLICATION_STATE.write().set_installation_type(&config, i);
+            }
+            self.can_encrypt = i != InstallationType::Custom;
         },
         EncryptDialogue(b: bool) => {
             APPLICATION_STATE.write().encrypt = b;
@@ -283,8 +274,11 @@ gtk::Box {
         gtk::Label {
             #[watch]
             // Fluent wraps the password in bidi isolation marks, which would be copied along with it.
-            set_label: &t!("page-installationtype-nvidia-mok", password = libreadymade::consts::NVIDIA_MOK_PASSWORD)
-                .replace(['\u{2068}', '\u{2069}'], ""),
+            set_label: &{
+                let password = crate::CONFIG.read().install.nvidia_mok_password.clone();
+                t!("page-installationtype-nvidia-mok", password = password)
+                    .replace(['\u{2068}', '\u{2069}'], "")
+            },
             set_wrap: true,
             set_max_width_chars: 60,
             #[watch]

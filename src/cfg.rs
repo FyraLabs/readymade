@@ -1,6 +1,7 @@
 #![allow(clippy::str_to_string)]
 use crate::prelude::*;
 use crate::state::ApplicationState;
+use color_eyre::eyre::ensure;
 use libreadymade::consts::repart_dir;
 use serde::{Deserialize, Serialize};
 use serde_valid::{Validate, toml::FromTomlStr};
@@ -77,14 +78,16 @@ pub struct Install {
     /// image, for bootc installs only.
     #[serde(default)]
     pub images: Vec<Image>,
-    /// Documentation shown when installing NVIDIA drivers with Secure Boot enabled.
-    #[serde(default = "_default_nvidia_secureboot_docs")]
-    pub nvidia_secureboot_docs: String,
+    /// Documentation linked when installing NVIDIA drivers with Secure Boot enabled.
+    pub nvidia_secureboot_docs: Option<String>,
+    /// Password to confirm enrolling the NVIDIA driver signing key in `MokManager` on first boot,
+    /// for mutable installs with Secure Boot enabled. Shown to the user before installing.
+    #[serde(default = "_default_nvidia_mok_password")]
+    pub nvidia_mok_password: String,
 }
 
-// TODO: placeholder, replace once the page exists
-fn _default_nvidia_secureboot_docs() -> String {
-    "https://wiki.ultramarine-linux.org/en/usage/nvidia-secure-boot/".into()
+fn _default_nvidia_mok_password() -> String {
+    libreadymade::backend::postinstall::nvidia_akmods::DEFAULT_MOK_PASSWORD.into()
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone, PartialEq, Eq)]
@@ -188,40 +191,50 @@ impl ReadymadeConfig {
     }
 
     /// # Errors
+    /// - `nvidia_mok_password` is empty
     /// - `install.images` is set but `copy_mode` is not `bootc`
     /// - an image lists no install modes
     /// - a mutable image's `imgref` has no transport prefix the copy provisioner recognizes
     /// - every image is an NVIDIA image
     /// - Chromebook installs are allowed but no non-NVIDIA image supports bootc installs
     pub fn check(&self) -> Result<()> {
-        if !self.install.images.is_empty() && self.install.copy_mode != CopyMode::Bootc {
-            bail!("install.images requires install.copy_mode = \"bootc\"");
+        use libreadymade::backend::provisioners::filesystem::is_oci_copy_source;
+        let images = &self.install.images;
+        // mokutil can only queue the key non-interactively with a password.
+        ensure!(
+            !self.install.nvidia_mok_password.is_empty(),
+            "install.nvidia_mok_password must not be empty"
+        );
+        if images.is_empty() {
+            return Ok(());
         }
-        if let Some(img) = self.install.images.iter().find(|img| img.modes.is_empty()) {
+        ensure!(
+            self.install.copy_mode == CopyMode::Bootc,
+            "install.images requires install.copy_mode = \"bootc\""
+        );
+        if let Some(img) = images.iter().find(|img| img.modes.is_empty()) {
             bail!("image {:?} must list at least one install mode", img.imgref);
         }
-        if let Some(img) = self.install.images.iter().find(|img| {
-            img.modes.contains(&ImageMode::Mutable)
-                && !libreadymade::backend::provisioners::filesystem::is_oci_copy_source(&img.imgref)
-        }) {
+        if let Some(img) = images
+            .iter()
+            .find(|img| img.modes.contains(&ImageMode::Mutable) && !is_oci_copy_source(&img.imgref))
+        {
             bail!(
                 "image {:?} supports mutable installs, which need a containers-storage:, docker://, oci: or oci-archive: imgref",
                 img.imgref
             );
         }
         // The NVIDIA checkbox starts unchecked, so a non-NVIDIA image must exist.
-        if !self.install.images.is_empty() && self.install.images.iter().all(|img| img.nvidia) {
-            bail!("install.images must include at least one image with nvidia = false");
-        }
+        ensure!(
+            images.iter().any(|img| !img.nvidia),
+            "install.images must include at least one image with nvidia = false"
+        );
         // Chromebook installs are bootc-only (see `ApplicationState::image_modes`)
-        if !self.install.images.is_empty()
-            && (self.install.allowed_installtypes).contains(&InstallationType::ChromebookInstall)
-            && self.select_image(false, ImageMode::Bootc).is_none()
-        {
-            bail!(
-                "chromebookinstall requires an image with nvidia = false that supports bootc installs"
-            );
-        }
+        ensure!(
+            !(self.install.allowed_installtypes).contains(&InstallationType::ChromebookInstall)
+                || self.select_image(false, ImageMode::Bootc).is_some(),
+            "chromebookinstall requires an image with nvidia = false that supports bootc installs"
+        );
         Ok(())
     }
 }
@@ -244,7 +257,7 @@ pub fn default_mutable_postinstall(postinstall: &[Module]) -> Vec<Module> {
         Fstab.into(),
         BootcToMutable::default().into(),
         GRUB2.into(),
-        NvidiaAkmods.into(),
+        NvidiaAkmods::default().into(),
         PrepareFedora.into(),
         InitialSetup.into(),
     ]
@@ -300,7 +313,7 @@ impl From<&ReadymadeConfig> for ApplicationState {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     #[test]
     fn test_cfg() {
@@ -368,7 +381,8 @@ mod tests {
                     bootc_kargs: None,
                     bootc_args: None,
                     images: vec![],
-                    nvidia_secureboot_docs: _default_nvidia_secureboot_docs(),
+                    nvidia_secureboot_docs: None,
+                    nvidia_mok_password: "readymade".into(),
                 },
                 postinstall: vec![
                     libreadymade::backend::postinstall::grub2::GRUB2.into(),
@@ -406,29 +420,12 @@ mod tests {
         );
     }
 
-    const BENTOS: &str = r#"
-        [[bento]]
-        title = "a"
-        desc = "a"
-        link = "a"
-        icon = "a"
-
-        [[bento]]
-        title = "b"
-        desc = "b"
-        link = "b"
-        icon = "b"
-
-        [[bento]]
-        title = "c"
-        desc = "c"
-        link = "c"
-        icon = "c"
-    "#;
-
-    fn parse(install: &str) -> ReadymadeConfig {
+    /// A minimal valid config with `install` appended to its `[install]` table.
+    pub(crate) fn parse(install: &str) -> ReadymadeConfig {
+        let bento = "[[bento]]\ntitle = \"a\"\ndesc = \"a\"\nlink = \"a\"\nicon = \"a\"\n";
         ReadymadeConfig::from_toml_str(&format!(
-            "postinstall = []\n[distro]\nname = \"Test\"\n[install]\nallowed_installtypes = [\"wholedisk\"]\n{install}\n{BENTOS}"
+            "postinstall = []\n[distro]\nname = \"Test\"\n[install]\nallowed_installtypes = [\"wholedisk\"]\n{install}\n{}",
+            bento.repeat(3)
         ))
         .unwrap()
     }
@@ -463,6 +460,7 @@ mod tests {
         cfg.check().unwrap();
         assert!(cfg.images().is_empty());
         assert!(cfg.select_image(false, ImageMode::Bootc).is_none());
+        assert_eq!(cfg.mutable_postinstall(), default_mutable_postinstall(&[]));
     }
 
     #[test]
@@ -515,61 +513,46 @@ mod tests {
     }
 
     #[test]
-    fn rejects_images_without_bootc_copy_mode() {
-        let cfg = parse(
+    fn check_rejects_invalid_configs() {
+        for install in [
+            r#"nvidia_mok_password = """#,
+            // images without copy_mode = "bootc"
             r#"
             [[install.images]]
             imgref = "containers-storage:example/os:44"
             "#,
-        );
-        assert!(cfg.check().is_err());
-    }
-
-    #[test]
-    fn rejects_image_without_modes() {
-        let cfg = parse(
             r#"
             copy_mode = "bootc"
             [[install.images]]
             imgref = "containers-storage:example/os:44"
             modes = []
             "#,
-        );
-        assert!(cfg.check().is_err());
-    }
-
-    #[test]
-    fn rejects_mutable_image_without_transport() {
-        let cfg = parse(
+            // mutable installs need a transport prefix
             r#"
             copy_mode = "bootc"
             [[install.images]]
             imgref = "registry:example/os:44"
             "#,
-        );
-        assert!(cfg.check().is_err());
-        let cfg = parse(
-            r#"
-            copy_mode = "bootc"
-            [[install.images]]
-            imgref = "registry:example/os:44"
-            modes = ["bootc"]
-            "#,
-        );
-        cfg.check().unwrap();
-    }
-
-    #[test]
-    fn rejects_nvidia_only_images() {
-        let cfg = parse(
             r#"
             copy_mode = "bootc"
             [[install.images]]
             imgref = "containers-storage:example/os-nvidia:44"
             nvidia = true
             "#,
-        );
-        assert!(cfg.check().is_err());
+        ] {
+            assert!(parse(install).check().is_err(), "accepted {install}");
+        }
+        // bootc installs don't
+        parse(
+            r#"
+            copy_mode = "bootc"
+            [[install.images]]
+            imgref = "registry:example/os:44"
+            modes = ["bootc"]
+            "#,
+        )
+        .check()
+        .unwrap();
     }
 
     #[test]
@@ -593,8 +576,13 @@ mod tests {
     }
 
     #[test]
-    fn mutable_postinstall_defaults() {
-        let cfg = parse("");
-        assert_eq!(cfg.mutable_postinstall(), default_mutable_postinstall(&[]));
+    fn ultramarine_template_parses() {
+        let cfg = ReadymadeConfig::from_toml_str(include_str!(
+            "../crates/libreadymade/templates/ultramarine.toml"
+        ))
+        .unwrap();
+        cfg.check().unwrap();
+        assert_eq!(cfg.install.nvidia_mok_password, "ultramarine");
+        assert!(cfg.install.nvidia_secureboot_docs.is_some());
     }
 }

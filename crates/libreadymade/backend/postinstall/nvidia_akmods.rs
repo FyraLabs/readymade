@@ -15,7 +15,7 @@
 //! Run this after the kernel and bootloader are installed, and before [`super::selinux::SELinux`]
 //! so the generated keys get labeled.
 
-use crate::{consts::NVIDIA_MOK_PASSWORD, prelude::*, stage};
+use crate::{prelude::*, stage};
 
 use super::{Context, PostInstallModule};
 
@@ -26,8 +26,24 @@ const AKMODS_KEYGEN_UNITS: [&str; 2] = [
     "akmods-keygen@akmods-keygen.service",
 ];
 
+/// Password used when none is configured.
+pub const DEFAULT_MOK_PASSWORD: &str = "readymade";
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct NvidiaAkmods;
+#[serde(default)]
+pub struct NvidiaAkmods {
+    /// Password the user types in `MokManager` on first boot to confirm enrolling the akmods
+    /// key. Readymade sets it from `install.nvidia_mok_password`, which the UI shows.
+    pub mok_password: String,
+}
+
+impl Default for NvidiaAkmods {
+    fn default() -> Self {
+        Self {
+            mok_password: DEFAULT_MOK_PASSWORD.into(),
+        }
+    }
+}
 
 impl PostInstallModule for NvidiaAkmods {
     fn name(&self) -> &'static str {
@@ -72,7 +88,7 @@ impl PostInstallModule for NvidiaAkmods {
                 rebuild_kmods()?;
             });
             stage!(mok "Queueing Secure Boot key enrollment" {
-                queue_mok_enrollment(Path::new(AKMODS_PUBLIC_KEY))?;
+                queue_mok_enrollment(Path::new(AKMODS_PUBLIC_KEY), &self.mok_password)?;
             });
         }
 
@@ -84,59 +100,40 @@ impl PostInstallModule for NvidiaAkmods {
 /// exists. Failures only warn: the system still boots, and akmods rebuilds and signs the module
 /// with the enrolled key on the next kernel update.
 fn rebuild_kmods() -> Result<()> {
-    let modules = Path::new("/usr/lib/modules");
-    let kernels = std::fs::read_dir(modules)
-        .wrap_err_with(|| format!("cannot read {}", modules.display()))?
-        .filter_map(std::result::Result::ok)
-        .filter(|entry| entry.path().join("vmlinuz").is_file())
-        .map(|entry| entry.file_name());
-    for kver in kernels {
-        let status = Command::new("akmods")
-            .args(["--force", "--kernels"])
-            .arg(&kver)
-            .status();
-        match status {
-            Ok(status) if status.success() => {}
-            Ok(status) => {
-                tracing::warn!(
-                    ?kver,
-                    code = ?status.code(),
-                    "akmods failed, NVIDIA module won't load under Secure Boot until the next kernel update"
-                );
-                continue;
-            }
-            Err(err) => {
-                tracing::warn!(?kver, ?err, "cannot run akmods");
-                continue;
-            }
+    for kver in super::bootc_to_mutable::installed_kernels(Path::new("/"))? {
+        if !run_or_warn(
+            Command::new("akmods").args(["--force", "--kernels", &kver]),
+            "akmods failed, NVIDIA module won't load under Secure Boot until the next kernel update",
+        ) {
+            continue;
         }
         // The initramfs may carry an early-loaded copy of the module with the old signature.
         // Only regenerate existing ones: kernels without a boot entry don't get one.
-        let mut initramfs = std::ffi::OsString::from("/boot/initramfs-");
-        initramfs.push(&kver);
-        initramfs.push(".img");
-        if !Path::new(&initramfs).exists() {
-            continue;
-        }
-        let status = Command::new("dracut")
-            .args(["--force", "--kver"])
-            .arg(&kver)
-            .arg(&initramfs)
-            .status();
-        match status {
-            Ok(status) if status.success() => {}
-            Ok(status) => tracing::warn!(?kver, code = ?status.code(), "dracut failed"),
-            Err(err) => tracing::warn!(?kver, ?err, "cannot run dracut"),
+        let initramfs = format!("/boot/initramfs-{kver}.img");
+        if Path::new(&initramfs).exists() {
+            run_or_warn(
+                Command::new("dracut").args(["--force", "--kver", &kver, &initramfs]),
+                "dracut failed",
+            );
         }
     }
     Ok(())
 }
 
-/// Ask shim to enroll `key` on next boot. The user confirms it in `MokManager` with
-/// [`NVIDIA_MOK_PASSWORD`].
-fn queue_mok_enrollment(key: &Path) -> Result<()> {
+/// Run `cmd`, logging `msg` as a warning if it fails. Returns whether it succeeded.
+fn run_or_warn(cmd: &mut Command, msg: &str) -> bool {
+    match cmd.status() {
+        Ok(status) if status.success() => return true,
+        Ok(status) => tracing::warn!(?cmd, code = ?status.code(), "{msg}"),
+        Err(err) => tracing::warn!(?cmd, ?err, "{msg}"),
+    }
+    false
+}
+
+/// Ask shim to enroll `key` on next boot. The user confirms it in `MokManager` with `password`.
+fn queue_mok_enrollment(key: &Path, password: &str) -> Result<()> {
     let hash = Command::new("mokutil")
-        .arg(format!("--generate-hash={NVIDIA_MOK_PASSWORD}"))
+        .arg(format!("--generate-hash={password}"))
         .output()
         .wrap_err("cannot run mokutil")?;
     if !hash.status.success() {
@@ -153,4 +150,25 @@ fn queue_mok_enrollment(key: &Path) -> Result<()> {
         ["--hash-file"], [hash_file.path()],
     ] => |r| bail!("mokutil --import failed with exit code {:?}", r.code()));
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::backend::postinstall::Module;
+
+    #[test]
+    fn deserializes_without_password() {
+        let module: Module = serde_json::from_str(r#"{"module":"NvidiaAkmods"}"#).unwrap();
+        assert_eq!(module, NvidiaAkmods::default().into());
+        let module: Module =
+            serde_json::from_str(r#"{"module":"NvidiaAkmods","mok_password":"secret"}"#).unwrap();
+        assert_eq!(
+            module,
+            NvidiaAkmods {
+                mok_password: "secret".into()
+            }
+            .into()
+        );
+    }
 }

@@ -71,11 +71,7 @@ mod tests {
         assert!(!has_nvidia_display_in(root.path()));
         pci_device(root.path(), "0000:01:00.0", "0x10de", "0x030000");
         assert!(has_nvidia_display_in(root.path()));
-    }
-
-    #[test]
-    fn missing_pci_bus_is_not_nvidia() {
-        assert!(!has_nvidia_display_in(Path::new("/nonexistent")));
+        assert!(!has_nvidia_display_in(&root.path().join("missing")));
     }
 
     #[test]
