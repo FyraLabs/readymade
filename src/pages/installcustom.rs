@@ -315,7 +315,8 @@ macro_rules! impl_partition_type {
     ($($entry:ident $s:literal),*$(,)?) => {
         impl PartitionType {
             #[must_use] fn all() -> &'static [Self] {
-                Box::leak(Box::new([$(Self::$entry),*, Self::Other("".to_owned())]))
+                static ALL: &[PartitionType] = &[$(PartitionType::$entry),*, PartitionType::Other(String::new())];
+                ALL
             }
 
             #[allow(clippy::missing_const_for_fn)]
@@ -379,7 +380,9 @@ impl SimpleComponent for PartitionTypeDropdown {
             #[local_ref] dropdown ->
             gtk::DropDown {
                 connect_selected_notify[sender] => move |dropdown| {
-                    let selected = PartitionType::all()[dropdown.selected() as usize].clone();
+                    let Some(selected) = PartitionType::all().get(dropdown.selected() as usize).cloned() else {
+                        return;
+                    };
                     tracing::trace!(?selected, "PartitionTypeDropdown::selected");
                     sender.input(selected);
                 },
@@ -523,7 +526,7 @@ kurage::generate_component!(AddDialog {
 
     #[name(window)]
     libhelium::Window {
-        set_title: Some("Mount Target"),
+        set_title: Some(&t!("dialog-mp")),
         set_default_width: 400,
         set_default_height: 325,
         set_vexpand: true,

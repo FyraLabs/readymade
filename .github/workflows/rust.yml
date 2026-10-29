@@ -8,6 +8,7 @@ jobs:
     rust:
         uses: FyraLabs/actions/.github/workflows/rust.yml@main
         with:
+            test-cache: true
             test-container: '{"image": "ghcr.io/terrapkg/builder:f44"}'
             test-pre: dnf install -y libhelium-devel 'pkgconfig(libacl)' 'pkgconfig(glib-2.0)' 'pkgconfig(gnome-desktop-4)' 'pkgconfig(openssl)' clang-devel gcc mold cmake cryptsetup
             clippy-pre: dnf install -y libhelium-devel 'pkgconfig(libacl)' 'pkgconfig(glib-2.0)' 'pkgconfig(gnome-desktop-4)' 'pkgconfig(openssl)' clang-devel gcc mold cmake cryptsetup

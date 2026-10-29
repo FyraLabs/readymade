@@ -16,7 +16,8 @@ impl PostInstallModule for SELinux {
     fn run(&self, _context: &Context) -> Result<()> {
         stage!(selinux "Setting SELinux labels" {
             crate::cmd!("setfiles" [
-                ["-e", "/proc", "-e", "/sys"],
+                // /dev and /run/host are bind mounts from the live system
+                ["-e", "/proc", "-e", "/sys", "-e", "/dev", "-e", "/run/host"],
                 ["/etc/selinux/targeted/contexts/files/file_contexts", "/"],
             ] => |e| bail!("setfiles failed with exit code {:?}", e.code()));
         });

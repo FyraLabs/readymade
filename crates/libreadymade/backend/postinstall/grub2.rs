@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{io::Write, path::Path, process::Command};
+use std::{io::Write, path::Path};
 use tracing::{info, warn};
 
 use crate::{backend::mounts::generate_cryptdata, prelude::*, stage};
@@ -81,18 +81,17 @@ GRUB_ENABLE_BLSCFG={enable_blsconfig}
 fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> Result<()> {
     let disk_display = disk.as_ref().display();
     info!(disk = ?disk_display, "Generating GRUB2 configuration...");
-    // this should probably be run inside a chroot... but we'll see
     crate::cmd!("grub2-mkconfig" [["-o", "/boot/grub2/grub.cfg"]] => |r| {
         warn!("Failed to generate GRUB2 configuration (status code {:?})", r.code());
-        if !Path::new("/boot/grub/grub.cfg").exists() {
-            return Err(color_eyre::Report::msg("Fail to generate GRUB2 cfg").note("/boot/grub/grub.cfg does not exist"));
+        if !Path::new("/boot/grub2/grub.cfg").exists() {
+            return Err(color_eyre::Report::msg("Fail to generate GRUB2 cfg").note("/boot/grub2/grub.cfg does not exist"));
         }
     });
 
     info!("Blessing the disk with GRUB2...");
     crate::cmd!("grub2-install" [
         ["--target=i386-pc", "--recheck", "--boot-directory=/boot"],
-        // We are going tov4_10 force the installation, because for some reason
+        // We are going to force the installation, because for some reason
         // grub-install just couldn't find our xbootldr partition
         // even though it exists.
         //
@@ -118,19 +117,13 @@ impl PostInstallModule for GRUB2 {
 
             // Now, let's add extra boot opts if they exist
             if let Some(crypt_data) = crypt_data {
-                // prepend
-                let current_value = defaults.cmdline_linux;
-
-                // this is a mess.
-                // todo: In the event someone thinks this code stinks, please please PLEASE refactor it for us.
-
                 let joined_cmdline = crypt_data.cmdline_opts.join(" ");
                 tracing::info!("Adding cryptsetup cmdline options: {joined_cmdline}");
-                defaults.cmdline_linux = format!("{joined_cmdline} {current_value}");
+                defaults.cmdline_linux = format!("{joined_cmdline} {}", defaults.cmdline_linux);
             }
 
-            let defaults_str = defaults.generate();
-            std::fs::write("/etc/default/grub", defaults_str)?;
+            std::fs::create_dir_all("/etc/default")?;
+            std::fs::write("/etc/default/grub", defaults.generate())?;
         });
 
         if context.uefi {

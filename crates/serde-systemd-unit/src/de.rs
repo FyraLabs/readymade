@@ -2,6 +2,20 @@ use serde::de::IntoDeserializer;
 
 use crate::Value;
 
+/// Implement `deserialize_*` methods that parse the string with [`str::parse`].
+macro_rules! parse_scalars {
+    ($($method:ident => $visit:ident),* $(,)?) => {$(
+        fn $method<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+        where
+            V: serde::de::Visitor<'de>,
+        {
+            visitor.$visit(self.0.parse().map_err(|e| {
+                serde::de::Error::custom(format!("failed to parse {:?}: {e}", self.0))
+            })?)
+        }
+    )*};
+}
+
 pub struct OptStringDeserializer<'a>(pub &'a str);
 
 impl<'de> serde::de::Deserializer<'de> for OptStringDeserializer<'_> {
@@ -67,54 +81,27 @@ impl<'de> serde::de::Deserializer<'de> for OptStringDeserializer<'_> {
         visitor.visit_seq(SingleValueSeq(self.0))
     }
 
-    fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    parse_scalars! {
+        deserialize_i8 => visit_i8,
+        deserialize_i16 => visit_i16,
+        deserialize_i32 => visit_i32,
+        deserialize_i64 => visit_i64,
+        deserialize_u8 => visit_u8,
+        deserialize_u16 => visit_u16,
+        deserialize_u32 => visit_u32,
+        deserialize_u64 => visit_u64,
+        deserialize_f32 => visit_f32,
+        deserialize_f64 => visit_f64,
+        deserialize_char => visit_char,
+    }
+
+    fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        visitor.visit_u32(
-            self.0
-                .parse()
-                .map_err(|_| serde::de::Error::custom("failed to parse u32"))?,
-        )
-    }
-
-    fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        visitor.visit_u64(
-            self.0
-                .parse()
-                .map_err(|_| serde::de::Error::custom("failed to parse u64"))?,
-        )
-    }
-
-    fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        visitor.visit_i32(
-            self.0
-                .parse()
-                .map_err(|_| serde::de::Error::custom("failed to parse i32"))?,
-        )
-    }
-
-    fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        visitor.visit_i64(
-            self.0
-                .parse()
-                .map_err(|_| serde::de::Error::custom("failed to parse i64"))?,
-        )
-    }
-
-    serde::forward_to_deserialize_any! {
-        bool i8 i16 f32 f64 char string
-        bytes byte_buf unit unit_struct newtype_struct tuple
-        tuple_struct struct ignored_any map
+        visitor.visit_bool(parse_bool(self.0).ok_or_else(|| {
+            serde::de::Error::custom(format!("failed to parse bool from {:?}", self.0))
+        })?)
     }
 
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -124,32 +111,37 @@ impl<'de> serde::de::Deserializer<'de> for OptStringDeserializer<'_> {
         visitor.visit_str(self.0)
     }
 
-    fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        visitor.visit_u8(
-            self.0
-                .parse()
-                .map_err(|_| serde::de::Error::custom("failed to parse u8"))?,
-        )
-    }
-
-    fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        visitor.visit_u16(
-            self.0
-                .parse()
-                .map_err(|_| serde::de::Error::custom("failed to parse u16"))?,
-        )
+    serde::forward_to_deserialize_any! {
+        string bytes byte_buf unit unit_struct newtype_struct tuple
+        tuple_struct struct ignored_any map
     }
 }
 
-pub struct OptVecDeserializer(pub Vec<String>);
+/// Parse a boolean the same way systemd's `parse_boolean()` does.
+#[must_use]
+pub fn parse_bool(s: &str) -> Option<bool> {
+    match s.to_ascii_lowercase().as_str() {
+        "1" | "yes" | "y" | "true" | "t" | "on" => Some(true),
+        "0" | "no" | "n" | "false" | "f" | "off" => Some(false),
+        _ => None,
+    }
+}
 
-impl<'de> serde::de::Deserializer<'de> for OptVecDeserializer {
+/// Forward `deserialize_*` methods expecting a single value to [`OptVecDeserializer::last`].
+macro_rules! forward_to_last {
+    ($($method:ident)*) => {$(
+        fn $method<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+        where
+            V: serde::de::Visitor<'de>,
+        {
+            self.last()?.$method(visitor)
+        }
+    )*};
+}
+
+pub struct OptVecDeserializer<'a>(pub &'a [String]);
+
+impl<'de> serde::de::Deserializer<'de> for OptVecDeserializer<'_> {
     type Error = serde::de::value::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -172,9 +164,9 @@ impl<'de> serde::de::Deserializer<'de> for OptVecDeserializer {
     {
         use serde::de::SeqAccess;
 
-        struct SeqDeserializer(std::vec::IntoIter<String>);
+        struct SeqDeserializer<'a>(std::slice::Iter<'a, String>);
 
-        impl<'de> SeqAccess<'de> for SeqDeserializer {
+        impl<'de> SeqAccess<'de> for SeqDeserializer<'_> {
             type Error = serde::de::value::Error;
 
             fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
@@ -183,36 +175,47 @@ impl<'de> serde::de::Deserializer<'de> for OptVecDeserializer {
             {
                 self.0.next().map_or_else(
                     || Ok(None),
-                    |val| seed.deserialize(OptStringDeserializer(&val)).map(Some),
+                    |val| seed.deserialize(OptStringDeserializer(val)).map(Some),
                 )
             }
         }
 
-        visitor.visit_seq(SeqDeserializer(self.0.into_iter()))
+        visitor.visit_seq(SeqDeserializer(self.0.iter()))
     }
 
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_enum<V>(
+        self,
+        name: &'static str,
+        variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        // When a string is expected but we have a sequence, use the first element
-        self.0.first().map_or_else(
-            || Err(serde::de::Error::custom("empty sequence")),
-            |first| visitor.visit_str(first),
-        )
+        self.last()?.deserialize_enum(name, variants, visitor)
     }
 
-    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        self.deserialize_str(visitor)
+    forward_to_last! {
+        deserialize_bool deserialize_i8 deserialize_i16 deserialize_i32 deserialize_i64
+        deserialize_u8 deserialize_u16 deserialize_u32 deserialize_u64 deserialize_f32
+        deserialize_f64 deserialize_char deserialize_str deserialize_string
+        deserialize_identifier
     }
 
     serde::forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char
         bytes byte_buf unit unit_struct newtype_struct tuple
-        tuple_struct struct enum identifier ignored_any map
+        tuple_struct struct ignored_any map
+    }
+}
+
+impl OptVecDeserializer<'_> {
+    /// When a single value is expected but the key was repeated, the last assignment wins, like
+    /// it does for most systemd settings.
+    fn last(&self) -> Result<OptStringDeserializer<'_>, serde::de::value::Error> {
+        self.0
+            .last()
+            .map(|s| OptStringDeserializer(s))
+            .ok_or_else(|| serde::de::Error::custom("empty sequence"))
     }
 }
 
@@ -302,7 +305,7 @@ impl<'de> serde::de::VariantAccess<'de> for UnitOnlyVariantAccess {
 }
 
 pub struct SectionDeserializer<'a> {
-    pub map: &'a std::collections::BTreeMap<String, Value>,
+    pub map: &'a std::collections::HashMap<String, Value>,
 }
 
 impl<'de> serde::de::Deserializer<'de> for SectionDeserializer<'_> {
@@ -319,14 +322,8 @@ impl<'de> serde::de::Deserializer<'de> for SectionDeserializer<'_> {
     where
         V: serde::de::Visitor<'de>,
     {
-        // This function should check if we're looking for a specific key
-        // and if that key exists in the map, rather than just checking if
-        // the map is empty.
-
-        // We don't have direct access to the field name here, so we'll
-        // need to deserialize as a map and let the struct deserializer
-        // handle the optionality of fields
-        self.deserialize_map(visitor)
+        // the section exists, otherwise its key would not have been visited at all
+        visitor.visit_some(self)
     }
 
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -334,7 +331,7 @@ impl<'de> serde::de::Deserializer<'de> for SectionDeserializer<'_> {
         V: serde::de::Visitor<'de>,
     {
         struct KeysMap<'a> {
-            iter: std::collections::btree_map::Iter<'a, String, Value>,
+            iter: std::collections::hash_map::Iter<'a, String, Value>,
             current: Option<(&'a String, &'a Value)>,
         }
 
@@ -362,7 +359,7 @@ impl<'de> serde::de::Deserializer<'de> for SectionDeserializer<'_> {
                 if let Some((_key, val)) = self.current.take() {
                     match val {
                         Value::String(s) => seed.deserialize(OptStringDeserializer(s)),
-                        Value::Array(arr) => seed.deserialize(OptVecDeserializer(arr.clone())),
+                        Value::Array(arr) => seed.deserialize(OptVecDeserializer(arr)),
                     }
                 } else {
                     Err(serde::de::Error::custom("Value missing"))

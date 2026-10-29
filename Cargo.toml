@@ -13,7 +13,6 @@ publish = false
 color-eyre = { workspace = true }
 const_format = { workspace = true }
 educe = "0.6.0"
-filesystem-table = { workspace = true }
 freedesktop-desktop-entry = { version = "0.7.11", git = "https://github.com/madonuko/freedesktop-desktop-entry", default-features = false }
 gtk4 = { version = "*", features = ["v4_12"] }
 i18n-embed = { version = "0.16.0", features = [
@@ -53,6 +52,9 @@ with_builtin_macros = "0.1.0"
 
 [build-dependencies]
 glib-build-tools = "0.21.0"
+
+[lints]
+workspace = true
 
 [workspace.dependencies]
 bytesize = { version = "2.3.1", features = ["serde"] }

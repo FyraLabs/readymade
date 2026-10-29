@@ -44,7 +44,7 @@ impl FactoryComponent for DiskInit {
             },
 
             gtk::Label {
-                set_label: &self.os_name.clone().unwrap_or(t!("unknown-os").to_string())
+                set_label: &self.os_name.clone().unwrap_or_else(|| t!("unknown-os"))
             },
 
             gtk::Label {

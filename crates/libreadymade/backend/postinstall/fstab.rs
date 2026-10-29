@@ -1,8 +1,5 @@
 use super::{Context, PostInstallModule};
 use crate::prelude::*;
-use color_eyre::Result;
-use color_eyre::eyre::OptionExt;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Write;
 
@@ -25,12 +22,8 @@ impl PostInstallModule for Fstab {
 
 /// Generate a /etc/fstab file from the DDI partition types
 ///
-/// This function may be deprecated when systemd 256 hits f40, or when
-/// we rebase to f41
-///
-/// # XXX: This will read the config files in the ***CURRENT*** root context
-/// So you must have the same config files in the chroot, or exit the chroot,
-/// run this, then re-enter the chroot.
+/// The filesystem types are read from `/proc/mounts`, so `mounts` must be mounted relative to the
+/// current root (i.e. this should run inside the installed system's chroot).
 ///
 /// # Errors
 ///
@@ -64,19 +57,18 @@ pub fn generate_fstab(mounts: &Mounts) -> color_eyre::Result<String> {
 
     tracing::trace!(?partitions, "Sorted partitions");
 
-    let bufreader = std::fs::read_to_string("/proc/mounts").wrap_err("cannot open /proc/mounts")?;
-    // BufReader::from(std::fs::File::open("/proc/mounts").wrap_err("cannot open /proc/mounts")?);
+    let proc_mounts =
+        std::fs::read_to_string("/proc/mounts").wrap_err("cannot open /proc/mounts")?;
     let mut fstypes = HashMap::new();
-    for line in bufreader.lines() {
+    for line in proc_mounts.lines() {
         let [_, mount, parttype, ..] = line.split(' ').collect::<Vec<_>>()[..] else {
             bail!("Unexpected line in /proc/mounts: {line:?}");
         };
-        fstypes.insert(mount, parttype);
+        // mount points with whitespace in them are octal-escaped, like in fstab
+        fstypes.insert(filesystem_table::unescape_field(mount), parttype);
     }
 
     for ((mnt, part), mountobj) in partitions {
-        println!("Processing partition: {}", part.display());
-        // if let Some(_mntpnt) = part.ddi_mountpoint() {
         tracing::trace!(?part, "Processing partition");
 
         let mnt = format!("{}", mnt.display());
@@ -84,7 +76,7 @@ pub fn generate_fstab(mounts: &Mounts) -> color_eyre::Result<String> {
             .get(mnt.as_str())
             .ok_or_else(|| eyre!("{mnt} is not mounted, cannot determine its filesystem type"))?;
         let entry = fstab_entry(mountobj, fstype)?;
-        writeln!(&mut fstab, "{entry}").unwrap();
+        writeln!(&mut fstab, "{entry}")?;
     }
 
     Ok(fstab)
@@ -93,28 +85,17 @@ pub fn generate_fstab(mounts: &Mounts) -> color_eyre::Result<String> {
 /// Generate an FS Table entry for the partition,
 /// Returns a line for /etc/fstab
 ///
-/// This will refer to the config file systemd-repart refers to.
-///
 /// # Errors
 ///
 /// Returns an error if the UUID of the partition (or, for LUKS partitions, its decrypted mapper
 /// device) cannot be found.
 #[tracing::instrument]
 pub fn fstab_entry(mount: &Mount, fstype: &str) -> color_eyre::Result<String> {
-    const FALLBACK_FS: &str = "auto";
     const FALLBACK_OPTS: &str = "defaults";
     const FALLBACK_DUMP: i32 = 0;
     const FALLBACK_PASS: i32 = 2;
 
     tracing::trace!("Generating fstab entry");
-    // get fs type
-    let fs_fmt = fstype;
-
-    // serialize fs into string, if it's not there, use the fallback
-    // use serde::Serialize;
-    let fs_fmt_str = serde_json::to_string(fs_fmt)
-        .unwrap_or_else(|_| FALLBACK_FS.to_owned())
-        .replace('"', "");
 
     // if we have no mount options, use the fallback
     let mount_opts = if mount.options.is_empty() {
@@ -123,83 +104,36 @@ pub fn fstab_entry(mount: &Mount, fstype: &str) -> color_eyre::Result<String> {
         mount.options.as_str()
     };
 
-    // let's get the UUID
-
-    // let uuid = self.uuid.to_string();
-    // Check if the disk is encrypted
-    let is_encrypted = crate::backend::mounts::is_luks(&mount.partition);
-    let uuid_string = if is_encrypted {
+    // fstab refers to the filesystem, which for LUKS partitions is on the decrypted mapper device
+    let device = if crate::backend::mounts::is_luks(&mount.partition) {
         tracing::trace!("Partition is encrypted");
-        // We're gonna do what's called a pro gamer move.
-        // HACK: We will guess the UUID of the decrypted LUKS partition by:
-        // - Guessing where the mapper device will be
-        // - Finding the UUID of the mapper device by doing some symlink magic (thanks udev!)
-        // - Using that UUID for the fstab entry
-
-        // We're gonna be abusing the mapper cache, which should be populated by the time we get here
-
-        let mapper_cache = crate::backend::mounts::MAPPER_CACHE.read();
-        let mapper_path = mapper_cache
-            .get(&format!("{}", mount.partition.display()))
-            .ok_or_else(|| eyre!("{} has not been decrypted", mount.partition.display()))?;
-
-        tracing::trace!(?mapper_path, "Guessed mapper path as this");
-
-        // Thankfully, since we made lsblk-rs we can do this easily.
-        let device = lsblk::BlockDevice::from_path(mapper_path)?;
-        drop(mapper_cache);
-        tracing::trace!(?device, "Found device from mapper path");
-        let uuid = device
-            .uuid
-            .ok_or_eyre("Could not find UUID of decrypted device")?;
-
-        // The mapper path should be a symlink to the /dev/dm-XX device
-
-        // let dm = std::fs::read_link(&mapper_path)?;
-
-        // tracing::trace!(?dm, "Found decrypted device");
-
-        // let uuid = std::fs::read_dir("/dev/disk/by-uuid")?
-        //     .find_map(|entry| {
-        //         let entry = entry.ok()?;
-        //         let path = entry.path();
-        //         let link = std::fs::read_link(&path).ok()?;
-        //         if link == dm {
-        //             Some(path.file_name()?.to_string_lossy().to_string())
-        //         } else {
-        //             None
-        //         }
-        //     })
-        //     .ok_or_eyre("Could not find UUID for decrypted device")?;
-
-        // tracing::trace!(?uuid, "Found UUID for decrypted device!");
-
-        format!("UUID={uuid}")
+        // The partition has been decrypted to mount it, so it's in the mapper cache
+        crate::backend::mounts::MAPPER_CACHE
+            .read()
+            .get(&*mount.partition.to_string_lossy())
+            .cloned()
+            .ok_or_else(|| eyre!("{} has not been decrypted", mount.partition.display()))?
     } else {
-        tracing::trace!("Partition is not encrypted, using repart's");
-        format!(
-            "UUID={}",
-            lsblk::BlockDevice::from_path(&mount.partition)?
-                .uuid
-                .ok_or_eyre("can't find uuid of device")?
-        )
+        mount.partition.clone()
     };
-
-    // let's get the dump and pass values
+    tracing::trace!(?device, "Getting UUID of filesystem");
+    let uuid = lsblk::BlockDevice::from_path(&device)?
+        .uuid
+        .ok_or_else(|| eyre!("can't find UUID of {}", device.display()))?;
 
     let dump = FALLBACK_DUMP; //todo: is there a config option for this?
 
     // We will be checking from filesystem type
     // or the root device it should be 1. For other partitions it should be 2, or 0 to disable checking.
     // If the root file system is btrfs or XFS, the fsck order should be set to 0 instead of 1.
-    let pass = match fs_fmt {
+    let pass = match fstype {
         "btrfs" | "xfs" => 0,
         _ if mount.mountpoint == std::path::Path::new("/") => 1,
         _ => FALLBACK_PASS,
     };
 
     Ok(format!(
-        "{uuid_string}\t{}\t{fs_fmt_str}\t{mount_opts}\t{dump}\t{pass}",
-        mount.mountpoint.display()
+        "UUID={uuid}\t{}\t{fstype}\t{mount_opts}\t{dump}\t{pass}",
+        filesystem_table::escape_field(&mount.mountpoint.to_string_lossy())
     ))
 }

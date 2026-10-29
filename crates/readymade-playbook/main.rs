@@ -1,4 +1,7 @@
-use color_eyre::Result;
+use color_eyre::{
+    Result,
+    eyre::{OptionExt, WrapErr},
+};
 use libreadymade::playbook::Playbook;
 use std::{fs, sync::mpsc, thread};
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
@@ -13,23 +16,24 @@ fn main() -> Result<()> {
 
     let playbook_file = std::env::args()
         .nth(1)
-        .expect("usage: readymade-playbook <playbook-file>");
+        .ok_or_eyre("usage: readymade-playbook <playbook-file>")?;
 
-    let playbook: Playbook = serde_json::from_str(fs::read_to_string(playbook_file)?.as_str())?;
+    let playbook: Playbook = serde_json::from_str(
+        &fs::read_to_string(&playbook_file)
+            .wrap_err_with(|| format!("cannot read {playbook_file}"))?,
+    )
+    .wrap_err_with(|| format!("cannot parse playbook {playbook_file}"))?;
 
     let (tx, rx) = mpsc::channel();
 
     thread::scope(|s| {
-        let playbook_handle = s.spawn(move || playbook.play(tx));
-
+        // `play()` drops the sender when it's done, which ends the progress loop below
         s.spawn(move || {
             while let Ok(progress) = rx.recv() {
-                dbg!(progress);
+                eprintln!("{progress:?}");
             }
         });
 
-        playbook_handle.join().unwrap()
-    })?;
-
-    Ok(())
+        playbook.play(tx)
+    })
 }

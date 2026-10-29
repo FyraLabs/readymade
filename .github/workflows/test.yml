@@ -38,5 +38,33 @@ jobs:
           dnf install -y isotovideo edk2-ovmf qemu systemd-repart dosfstools e2fsprogs btrfs-progs
           dnf builddep -y ci/readymade.spec
 
+      - name: Restore Cargo cache
+        id: cargo-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: e2e-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            e2e-cargo-
+
+      # built here rather than only in test.sh so the cache gets saved even if the e2e test fails
+      - name: Build readymade-playbook
+        run: cargo build -p readymade-playbook --bin readymade-playbook --release
+
+      - name: Save Cargo cache
+        if: steps.cargo-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+
       - name: Run tests
         run: cd test && ./test.sh

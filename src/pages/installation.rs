@@ -328,6 +328,17 @@ impl Component for InstallationPage {
         _: &Self::Root,
     ) {
         match message {
+            InstallationPageCommandMsg::FinishInstallation(Err(e))
+                if e.is::<state::AuthCancelled>() =>
+            {
+                // nothing happened to the disk, let them try again
+                tracing::info!("Authentication cancelled, going back to confirmation");
+                sender
+                    .output(InstallationPageOutput::Navigate(NavigationAction::GoTo(
+                        crate::Page::Confirmation,
+                    )))
+                    .unwrap();
+            }
             InstallationPageCommandMsg::FinishInstallation(res) => {
                 if let Err(e) = res {
                     sender

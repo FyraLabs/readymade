@@ -22,5 +22,5 @@ WantedBy=multi-user.target
 let mut ini = SystemdIni::new();
 ini.parse(unit).unwrap();
 
-assert_eq!(ini["Unit"]["Description"].as_str(), "Test unit");
+assert_eq!(ini.sections["Unit"]["Description"].as_str(), "Test unit");
 ```

@@ -1,5 +1,6 @@
 use crate::{
-    backend::provisioners::filesystem::FileSystemProvisionerModule, backend::util::fs::copy_dir,
+    backend::provisioners::filesystem::FileSystemProvisionerModule,
+    backend::util::fs::{CopySource, copy_dir},
     prelude::*,
 };
 
@@ -103,32 +104,10 @@ impl FileSystemProvisionerModule for Copy {
                 copy_dir(&mount_path, destroot)?;
             });
         } else {
-            let copy_source = PathBuf::from(copy_source);
-            if copy_source.is_file() {
-                // XXX: we should be using consistent paths, maybe a const? -ci
-                const MOUNT_PATH: &str = "/mnt/rdmsqsh";
-                tracing::warn!("Copy source is a file, treating as an image to mount");
-                crate::stage!(extracting "Extracting files" {
-                    tracing::trace!(?MOUNT_PATH, "Mounting disk image");
-                    std::fs::create_dir_all(MOUNT_PATH)?;
-                    let return_code = Command::new("mount")
-                        .arg(&copy_source)
-                        .arg(MOUNT_PATH)
-                        .status()?
-                        .code();
-                    if return_code.is_none_or(|return_code| return_code != 0) {
-                        bail!("mount command returns rc={return_code:?}");
-                    }
-                    scopeguard::defer! {
-                        _ = Command::new("umount").arg(MOUNT_PATH).status();
-                    }
-                    copy_dir(MOUNT_PATH, destroot)?;
-                });
-            } else {
-                crate::stage!(copying "Copying files" {
-                    copy_dir(&copy_source, destroot)?;
-                });
-            }
+            crate::stage!(copying "Copying files" {
+                let source = CopySource::open(Path::new(copy_source))?;
+                copy_dir(source.path(), destroot)?;
+            });
         }
 
         Ok(())

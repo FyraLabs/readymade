@@ -9,8 +9,7 @@ use crate::backend::provisioners::disk::DiskProvisionerModule;
 use crate::backend::provisioners::filesystem::FileSystemProvisionerModule;
 use crate::backend::util::sys::check_uefi;
 use crate::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::{cell::RefCell, path::PathBuf, sync::mpsc};
+use std::{cell::RefCell, sync::mpsc};
 use sys_mount::MountFlags;
 use tiffin::{Container, MountTarget};
 
@@ -43,20 +42,28 @@ pub struct Playbook {
     pub postinstall: Vec<crate::backend::postinstall::Module>,
 }
 
-// TODO: handle luks lol
-fn mounts_to_container(tempdir: &tempfile::TempDir, mounts: &Mounts) -> Container {
-    let mut container = Container::new(tempdir.path().to_owned());
+/// Exists outside the chroot while [`Playbook::inner_sys_setup`] runs, so it can tell whether it
+/// was accidentally called outside the chroot.
+const SETUP_LOCKFILE_PATH: &str = "/var/run/readymade-setup.lock";
+
+fn mounts_to_container(
+    root: &Path,
+    mounts: &Mounts,
+    passphrase: Option<&str>,
+) -> Result<Container> {
+    let mut container = Container::new(root.to_owned());
 
     for mount in &mounts.0 {
-        dbg!(&mount.mountpoint, &mount.partition);
+        tracing::trace!(?mount.mountpoint, ?mount.partition, "Adding mount to container");
+        let (flags, data) = crate::backend::mounts::split_mount_options(&mount.options);
         container.add_mount(
             MountTarget {
                 target: mount.mountpoint.clone(),
-                flags: MountFlags::empty(),
-                data: (mount.options != "defaults").then(|| mount.options.clone()),
+                flags,
+                data: (!data.is_empty()).then_some(data),
                 fstype: None,
             },
-            mount.partition.clone(),
+            mount.source(passphrase)?,
         );
     }
 
@@ -74,7 +81,7 @@ fn mounts_to_container(tempdir: &tempfile::TempDir, mounts: &Mounts) -> Containe
 
     container.host_bind_mount();
 
-    container
+    Ok(container)
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -88,7 +95,24 @@ pub enum PlaybookProgress {
 }
 
 thread_local! {
-    pub(crate) static PROGRESS_SENDER: RefCell<Option<mpsc::Sender<PlaybookProgress>>> = const { RefCell::new(None) };
+    static PROGRESS_SENDER: RefCell<Option<mpsc::Sender<PlaybookProgress>>> = const { RefCell::new(None) };
+}
+
+/// Report progress to the receiver passed to [`Playbook::play`].
+///
+/// Progress is informational only, so this never fails: if there is no receiver (e.g. outside
+/// [`Playbook::play`], or the receiver has hung up), the progress is just logged.
+#[doc(hidden)] // used by `stage!`
+pub fn report_progress(progress: PlaybookProgress) {
+    PROGRESS_SENDER.with_borrow(|tx| {
+        let Some(tx) = tx else {
+            tracing::debug!(?progress, "No progress receiver");
+            return;
+        };
+        if let Err(e) = tx.send(progress) {
+            tracing::debug!(?e, "Cannot report progress, receiver hung up");
+        }
+    });
 }
 
 impl Playbook {
@@ -100,6 +124,10 @@ impl Playbook {
         mpsc::channel()
     }
 
+    fn passphrase(&self) -> Option<&str> {
+        (self.encryption.as_ref()).map(|e| e.encryption_key.as_str())
+    }
+
     /// Execute the playbook
     ///
     /// # Errors
@@ -107,44 +135,40 @@ impl Playbook {
     /// Returns an error if provisioning, system setup or cleanup fails.
     pub fn play(&self, progress: mpsc::Sender<PlaybookProgress>) -> Result<()> {
         PROGRESS_SENDER.with(|tx| *tx.borrow_mut() = Some(progress));
-        // todo: maybe use a guard here
-        let result = (|| {
-            let mounts = self.disk_provisioner.run(self)?;
-            if let Some(filesystem_provisioner) = &self.filesystem_provisioner {
-                filesystem_provisioner.run(self, &mounts)?;
-            }
+        scopeguard::defer! {
+            PROGRESS_SENDER.with(|tx| *tx.borrow_mut() = None);
+            // Everything has been unmounted by now, success or not
+            crate::backend::mounts::close_all_mappers();
+        }
 
-            self.setup_system(&mounts)?;
+        let mounts = self.disk_provisioner.run(self)?;
+        if let Some(filesystem_provisioner) = &self.filesystem_provisioner {
+            filesystem_provisioner.run(self, &mounts)?;
+        }
 
-            if let Some(filesystem_provisioner) = &self.filesystem_provisioner {
-                filesystem_provisioner.cleanup(self, &mounts)?;
-            }
-            Ok(())
-        })();
-        PROGRESS_SENDER.with(|tx| *tx.borrow_mut() = None);
-        result
+        self.setup_system(&mounts)?;
+
+        if let Some(filesystem_provisioner) = &self.filesystem_provisioner {
+            filesystem_provisioner.cleanup(self, &mounts)?;
+        }
+        Ok(())
     }
 
     #[tracing::instrument]
     fn setup_system(&self, mounts: &Mounts) -> Result<()> {
         // Let's create a lockfile to prevent running _inner_sys_setup outside the chroot jail
-        let lockfile_path = "/var/run/readymade-setup.lock";
-        std::fs::write(lockfile_path, b"")?;
+        std::fs::write(SETUP_LOCKFILE_PATH, b"")?;
+        scopeguard::defer! {
+            if let Err(e) = std::fs::remove_file(SETUP_LOCKFILE_PATH) {
+                tracing::warn!(?e, "Failed to remove setup lock file after installation");
+            }
+        }
 
-        let tempdir = tempfile::tempdir()?;
-
-        // XXX: This is a bit hacky, but this function should be called before output.generate_fstab() for
-        // the fstab generator to be correct, IF we're using encryption
-        //
-        // todo: Unfuck this
-        let mut container = mounts_to_container(&tempdir, mounts);
-        // let fstab = mounts.generate_fstab()?;
+        // Declared before the container, so it's dropped after everything has been unmounted
+        let root = crate::backend::util::fs::MountRoot::new()?;
+        let mut container = mounts_to_container(root.path(), mounts, self.passphrase())?;
         // tiffin will run `nix::unistd::chdir("/")` when entering the container, so we can use `sysroot as above`
         container.run(|| self.inner_sys_setup(mounts))??;
-
-        // Let's remove the lockfile now that we're done
-        std::fs::remove_file(lockfile_path)
-            .wrap_err("Failed to remove setup lock file after installation")?;
 
         Ok(())
     }
@@ -155,82 +179,35 @@ impl Playbook {
     ///
     /// Returns an error if called outside the chroot (the setup lock file exists), or if a
     /// post-installation module fails.
-    ///
-    /// # Panics
-    ///
-    /// Panics if called outside [`Self::play`], or if progress cannot be reported.
-    #[allow(clippy::unwrap_in_result)]
     #[tracing::instrument]
     pub fn inner_sys_setup(&self, mounts: &Mounts) -> Result<()> {
         // ===SAFETY CHECK===
         // Let's make sure we're NOT running OUTSIDE the chroot jail
         // Many fstabs have been lost before due to this.
-        let lockfile_path = "/var/run/readymade-setup.lock";
-        if Path::new(lockfile_path).exists() {
+        if Path::new(SETUP_LOCKFILE_PATH).exists() {
             bail!(
-                "Safety check failed: Setup lock file inside chroot exists at {lockfile_path}. This is likely a bug in the installer, please report it."
+                "Safety check failed: Setup lock file inside chroot exists at {SETUP_LOCKFILE_PATH}. This is likely a bug in the installer, please report it."
             );
         }
-
-        // dbg!(std::fs::read_dir("/")?.collect_vec());
-        // dbg!(std::fs::read_dir("/boot")?.collect_vec());
 
         // We will run the specified postinstall modules now
         let context = crate::backend::postinstall::Context {
             destination_disk: self.destination_disk.clone(),
             uefi: check_uefi(),
-            // uefi: if self.installation_type.is_chromebook_install() {
-            //     true
-            // } else {
-            //     check_uefi()
-            // },
-            mounts: mounts.clone(), // esp_partition: esp_node,
-                                    // xbootldr_partition: xbootldr_node.to_owned(),
-                                    // crypt_data: crypt_data.clone(),
+            mounts: mounts.clone(),
         };
 
-        // if state_dump.state.copy_mode.is_repart() {
-        //     tracing::info!("Writing /etc/fstab...");
-        //     std::fs::create_dir_all("/etc/").wrap_err("cannot create /etc/")?;
-        //     std::fs::write("/etc/fstab", fstab).wrap_err("cannot write to /etc/fstab")?;
-        // }
-
-        // // Write the state dump to the chroot
-        // let state_dump_path = Path::new(crate::consts::READYMADE_STATE_PATH);
-        // let parent =
-        //     (state_dump_path.parent()).context("Invalid state dump path - no parent directory")?;
-        // std::fs::create_dir_all(parent)
-        //     .wrap_err("Failed to create parent directories for state dump")?;
-        // std::fs::write(
-        //     state_dump_path,
-        //     state_dump
-        //         .export_string()
-        //         .wrap_err("Failed to serialize state dump")?,
-        // )
-        // .wrap_err("Failed to write state dump file")?;
-
-        // if let Some(data) = crypt_data.filter(|_| state_dump.state.copy_mode.is_repart()) {
-        //     tracing::info!("Writing /etc/crypttab...");
-        //     std::fs::write("/etc/crypttab", data.crypttab)
-        //         .wrap_err("cannot write to /etc/crypttab")?;
-        // }
-
-        (self.postinstall.iter().enumerate())
-            .inspect(|(_, module)| tracing::debug!(?module, "Running module"))
-            .map(|(i, module)| {
-                PROGRESS_SENDER.with_borrow(|tx| {
-                    tx.as_ref()
-                        .expect("couldn't get progress sender")
-                        .send(PlaybookProgress::PostModule(
-                            module.name().to_owned(),
-                            i,
-                            self.postinstall.len(),
-                        ))
-                        .expect("couldn't send progress");
-                });
-                module.run(&context)?;
-                Ok(())
-            })
-            .try_collect()
+        for (i, module) in self.postinstall.iter().enumerate() {
+            tracing::debug!(?module, "Running module");
+            report_progress(PlaybookProgress::PostModule(
+                module.name().to_owned(),
+                i,
+                self.postinstall.len(),
+            ));
+            module
+                .run(&context)
+                .wrap_err_with(|| format!("postinstall module {} failed", module.name()))?;
+        }
+        Ok(())
     }
 }

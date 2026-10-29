@@ -1,77 +1,26 @@
-use std::{
-    io::{BufRead, BufReader},
-    process::{Child, Output},
-};
-
-/// Wait for `cmd` while streaming its stdout and stderr to the terminal, running each closure in
-/// `f` on its own thread in the meantime. Returns the command's output and the captured logs.
+/// Run a command, checking its exit status.
 ///
-/// # Panics
+/// ```ignore
+/// cmd!("umount" [["-R"], [path]] => |status| bail!("umount failed: {:?}", status.code()));
+/// ```
 ///
-/// Panics if `cmd` was not spawned with piped stdout and stderr, or if its output is not valid UTF-8.
-pub fn pipe_cmd<const N: usize, F: FnOnce() + Send>(
-    msg: &str,
-    mut cmd: Child,
-    f: [F; N],
-) -> (std::io::Result<Output>, String) {
-    let logs: std::sync::Arc<parking_lot::Mutex<String>> = std::sync::Arc::default();
-    let stdout = cmd.stdout.take().expect("can't take stdout");
-    let stderr = cmd.stderr.take().expect("can't take stderr");
-    println!("┌─ BEGIN: {msg}");
-    let cmd = std::thread::scope(|s| {
-        s.spawn(|| {
-            let reader = BufReader::new(stdout);
-            (reader.lines().map(|line| line.unwrap())).for_each(|line| {
-                *logs.lock() += &line;
-                *logs.lock() += "\n";
-                println!(" │ {line}");
-            });
-        });
-        s.spawn(|| {
-            let reader = BufReader::new(stderr);
-            (reader.lines().map(|line| line.unwrap())).for_each(|line| {
-                *logs.lock() += &line;
-                *logs.lock() += "\n";
-                eprintln!("!│ {line}");
-            });
-        });
-        for f in f {
-            s.spawn(f);
-        }
-        cmd.wait_with_output()
-    });
-    let logs = std::sync::Arc::into_inner(logs).unwrap().into_inner();
-    println!("└─ END OF {msg}");
-    (cmd, logs)
-}
-
-// NOTE: this doesn't work well with [I; N] which requires all iterators to have the same type…
-/*
-pub fn cmd<const N: usize, I, S>(process: &str, argss: [I; N]) -> ExitStatus
-where
-    I: IntoIterator<Item = S>,
-    S: AsRef<std::ffi::OsStr>,
-{
-    let mut cmd = Command::new(process);
-    for args in argss {
-        cmd.args(args);
-    }
-    cmd.status()
-        .unwrap_or_else(|_| panic!("fail to execute {process}"))
-}*/
-
+/// Each bracketed group is passed to [`std::process::Command::args`]. If the command cannot be
+/// spawned, the enclosing function returns an error; if it exits unsuccessfully, `$err` is
+/// evaluated with the [`std::process::ExitStatus`] bound to `$cmd`.
 #[macro_export]
 macro_rules! cmd {
     ($process:literal $([$($args:expr),+$(,)?])? => |$cmd:tt| $err:expr) => {
-        let cmd = Command::new($process)
-            $(
-                $(.args($args))+
-            )?
-            .status()
-            .context(concat!("fail to execute ", $process))?;
-        if !cmd.success() {
+        let status = $crate::prelude::WrapErr::wrap_err(
+            ::std::process::Command::new($process)
+                $(
+                    $(.args($args))+
+                )?
+                .status(),
+            concat!("fail to execute ", $process),
+        )?;
+        if !status.success() {
             #[allow(clippy::let_underscore_untyped)]
-            let $cmd = cmd;
+            let $cmd = status;
             $err;
         }
     };

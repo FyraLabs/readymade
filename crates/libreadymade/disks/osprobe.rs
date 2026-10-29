@@ -6,35 +6,27 @@ use itertools::Itertools;
 pub struct OSProbe {
     pub part: PathBuf,
     pub os_name_pretty: String,
-    // pub os_name: String,
-    // pub part_type: String,
-    // pub part_fs: Option<String>,
-    // pub part_uuid: Option<String>,
-    // pub kernel_opts: Option<String>,
 }
 
 impl OSProbe {
+    /// Parse a line of `os-prober` output, e.g.
+    /// `/dev/sda1@/efi/Microsoft/Boot/bootmgfw.efi:Windows Boot Manager:Windows:efi`.
+    ///
+    /// Returns `None` if the line is malformed.
     #[tracing::instrument]
-    pub fn from_entry(entry: &str) -> Self {
-        let parts = tracing::debug_span!("OS Probe Entry", ?entry)
-            .in_scope(|| entry.split(':').collect_vec());
-
-        // Minimum 4 parts, Part 5, 6 and 7 are optional
-
-        let [part, os_name_pretty, /*os_name, part_type,*/ ..] = parts[..] else {
-            panic!(
-                "Expected at least 4 OS Probe entries for `{entry}`, but found the following: {parts:?}"
-            );
+    pub fn from_entry(entry: &str) -> Option<Self> {
+        // Minimum 4 parts: partition, pretty name, short name, boot type
+        let mut parts = entry.split(':');
+        let (Some(part), Some(os_name_pretty)) = (parts.next(), parts.next()) else {
+            tracing::warn!(?entry, "Unexpected os-prober entry");
+            return None;
         };
+        // EFI entries have the bootloader path appended to the partition
+        let part = part.split_once('@').map_or(part, |(part, _)| part);
 
-        tracing::info_span!("Serializing os-prober entry").in_scope(|| Self {
+        Some(Self {
             part: part.into(),
             os_name_pretty: os_name_pretty.to_owned(),
-            // os_name: os_name.to_owned(),
-            // part_type: part_type.to_owned(),
-            // part_fs: parts.get(4).map(ToString::to_string),
-            // part_uuid: parts.get(5).map(ToString::to_string),
-            // kernel_opts: parts.get(6).map(ToString::to_string),
         })
     }
 
@@ -50,7 +42,7 @@ impl OSProbe {
             let strout = strout.ok()?;
             tracing::info!(?strout, "OS Probe Output");
             let v = strout.lines().map(str::trim);
-            let v = v.filter(|l| !l.is_empty()).map(Self::from_entry);
+            let v = v.filter(|l| !l.is_empty()).filter_map(Self::from_entry);
             let v = v.collect_vec();
             (!v.is_empty()).then_some(v)
         });
@@ -58,5 +50,26 @@ impl OSProbe {
             tracing::error!("{ERROR}");
             None
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_entry() {
+        let os = OSProbe::from_entry(
+            "/dev/nvme0n1p1@/efi/Microsoft/Boot/bootmgfw.efi:Windows Boot Manager:Windows:efi",
+        )
+        .unwrap();
+        assert_eq!(os.part, PathBuf::from("/dev/nvme0n1p1"));
+        assert_eq!(os.os_name_pretty, "Windows Boot Manager");
+
+        let os = OSProbe::from_entry("/dev/sda2:Fedora Linux 42:Fedora:linux").unwrap();
+        assert_eq!(os.part, PathBuf::from("/dev/sda2"));
+        assert_eq!(os.os_name_pretty, "Fedora Linux 42");
+
+        assert!(OSProbe::from_entry("garbage").is_none());
     }
 }

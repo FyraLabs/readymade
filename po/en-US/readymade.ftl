@@ -1,6 +1,8 @@
 prev = Previous
 next = Next
 
+readymade-installer = Readymade Installer
+
 unknown-os = Unknown OS
 
 parttype-root = Filesystem root ({$path})
@@ -80,10 +82,12 @@ dialog-installtype-password = Password
 dialog-installtype-repeat = Repeat Password
 dialog-installtype-cancel = Cancel
 dialog-installtype-confirm = Confirm
+dialog-installtype-weak-password = This password is weak. We recommend using at least 8 characters, including some uppercase letters.
 
 installtype-edit-mp = Edit mountpoint
 installtype-rm-mp = Remove mountpoint
 
+dialog-mp = Mount Target
 dialog-mp-part = Partition
 dialog-mp-at = Mount at
 dialog-mp-opts = Mount options
