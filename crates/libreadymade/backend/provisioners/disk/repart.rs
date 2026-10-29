@@ -81,7 +81,9 @@ pub(crate) fn mounts_from_output(
         configs
             .into_iter()
             .map(|(file, config)| {
-                let node = repart_out.partitions.iter()
+                let node = repart_out
+                    .partitions
+                    .iter()
                     .find(|part| part.file().file_name() == Some(std::ffi::OsStr::new(&file)))
                     .map(|OutputPartition { node, .. }| node)
                     .ok_or_else(|| eyre!("systemd-repart output has no partition for {file}"))?;

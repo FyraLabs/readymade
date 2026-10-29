@@ -215,9 +215,14 @@ impl DiskLayout {
 
     fn from_lsblk_json(json: &str) -> Result<Self, DualBootError> {
         let out: LsblkOutput = serde_json::from_str(json).map_err(DualBootError::other)?;
-        let disk = out.blockdevices.into_iter().next()
+        let disk = out
+            .blockdevices
+            .into_iter()
+            .next()
             .ok_or_else(|| DualBootError::other("lsblk returned no devices"))?;
-        let mut partitions = disk.children.iter()
+        let mut partitions = disk
+            .children
+            .iter()
             .map(|part| {
                 Ok(Partition {
                     path: part.name.clone(),
@@ -239,7 +244,9 @@ impl DiskLayout {
         partitions.sort_by_key(|p| p.start);
         Ok(Self {
             // the disk's own PTTYPE is sometimes empty while its partitions have it
-            pttype: disk.pttype.clone()
+            pttype: disk
+                .pttype
+                .clone()
                 .or_else(|| disk.children.iter().find_map(|c| c.pttype.clone())),
             path: disk.name,
             size: disk.size,
@@ -255,7 +262,9 @@ impl DiskLayout {
     /// Free space right after `part`, up to the next partition or the end of the usable area.
     #[must_use]
     pub fn free_after(&self, part: &Partition) -> u64 {
-        let limit = self.partitions.iter()
+        let limit = self
+            .partitions
+            .iter()
             .map(|p| p.start)
             .filter(|&start| start >= part.end())
             .min()
@@ -281,12 +290,14 @@ impl DiskLayout {
         let candidates = if direct.clone().next().is_some() {
             direct.collect_vec()
         } else {
-            self.partitions.iter()
+            self.partitions
+                .iter()
                 .filter(|p| p.may_be_windows())
                 .filter(|p| p.parttype.is_none() || p.parttype_is(BASIC_DATA_TYPE))
                 .collect_vec()
         };
-        candidates.into_iter()
+        candidates
+            .into_iter()
             .max_by_key(|p| p.size)
             .ok_or(DualBootError::NoWindows)
     }
@@ -481,7 +492,10 @@ pub fn parse_ntfsresize_info(partition: &Path, output: &str) -> Result<NtfsInfo,
     let min_size = bytes_after("You might resize at").ok_or_else(|| {
         DualBootError::NtfsCheck(
             partition.to_owned(),
-            output.lines().rev().find(|l| !l.trim().is_empty())
+            output
+                .lines()
+                .rev()
+                .find(|l| !l.trim().is_empty())
                 .unwrap_or("no output from ntfsresize")
                 .trim()
                 .to_owned(),
@@ -535,7 +549,9 @@ pub(crate) fn hiberfile_header(partition: &Path) -> Result<Vec<u8>, DualBootErro
         .spawn()
         .map_err(|e| err(&e))?;
     let mut header = Vec::with_capacity(4096);
-    child.stdout.take()
+    child
+        .stdout
+        .take()
         .ok_or_else(|| err(&"cannot read ntfscat output"))?
         .take(4096)
         .read_to_end(&mut header)
@@ -735,7 +751,9 @@ pub(crate) fn sfdisk_resize_line(start: u64, new_size: u64, sector_size: u64) ->
 /// Windows still works; it just has unused space at the end of its partition.
 pub fn shrink(disk: &Path, info: &DualBootInfo, new_size: u64, dry_run: bool) -> Result<()> {
     let disk = DiskLayout::read(disk).map_err(|e| eyre!("{e}"))?;
-    let part = disk.partitions.iter()
+    let part = disk
+        .partitions
+        .iter()
         .find(|p| p.path == info.windows_partition)
         .ok_or_eyre("Windows partition disappeared")?;
     if part.start != info.windows_start || part.size != info.windows_size {
@@ -793,7 +811,9 @@ pub fn shrink(disk: &Path, info: &DualBootInfo, new_size: u64, dry_run: bool) ->
     run_logged(Command::new("udevadm").arg("settle"), None)?;
 
     let after = DiskLayout::read(&disk.path).map_err(|e| eyre!("{e}"))?;
-    let part_after = after.partitions.iter()
+    let part_after = after
+        .partitions
+        .iter()
         .find(|p| p.number == part.number)
         .ok_or_eyre("Windows partition disappeared after resizing")?;
     if part_after.start != part.start || part_after.size != new_size {

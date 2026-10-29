@@ -101,7 +101,8 @@ impl Output {
     /// Generate a `BTreeMap` of mountpoint -> node name for generating /etc/fstab
     /// from DDI partition types
     pub fn mountpoints(&self) -> impl Iterator<Item = (&'static str, String)> + '_ {
-        self.partitions.iter()
+        self.partitions
+            .iter()
             .filter_map(|part| part.ddi_mountpoint().map(|mp| (mp, part.node.clone())))
     }
 

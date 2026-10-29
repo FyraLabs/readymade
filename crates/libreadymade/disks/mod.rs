@@ -32,15 +32,18 @@ pub fn detect_os() -> Vec<Disk> {
     tracing::debug!(?disks, "Found disks");
 
     let probed = OSProbe::scan().unwrap_or_default();
-    let osprobe: HashMap<_, _> = probed.iter()
+    let osprobe: HashMap<_, _> = probed
+        .iter()
         .map(|os| (os.part.clone(), os.os_name_pretty.clone()))
         .collect();
-    let windows = probed.iter()
+    let windows = probed
+        .iter()
         .filter(|os| os.os_name == "Windows")
         .map(OSProbe::partition)
         .collect::<Vec<_>>();
 
-    disks.into_iter()
+    disks
+        .into_iter()
         .filter(|disk| is_valid_disk(live_device.as_deref(), disk))
         .map(|disk| make_disk(&osprobe, &windows, disk))
         .collect()
@@ -51,20 +54,25 @@ fn make_disk(
     windows: &[PathBuf],
     mut disk: lsblk::BlockDevice,
 ) -> Disk {
-    let windows_partitions = windows.iter()
+    let windows_partitions = windows
+        .iter()
         .filter(|part| {
             crate::backend::util::fs::get_whole_disk(part)
                 .is_ok_and(|whole| Path::new(&whole) == disk.fullname)
         })
         .cloned()
         .collect();
-    let model =
-        disk.sysfs().and_then(|p| std::fs::read_to_string(p.join("device").join("model")));
+    let model = disk
+        .sysfs()
+        .and_then(|p| std::fs::read_to_string(p.join("device").join("model")));
     let ret = Disk {
-        disk_name: model.map(|s| s.trim().to_owned()).ok()
+        disk_name: model
+            .map(|s| s.trim().to_owned())
+            .ok()
             .or_else(|| disk.label.take().or_else(|| disk.id.take()))
             .map_or_else(|| disk.name.clone(), |s| format!("{s} ({})", disk.name)),
-        os_name: osprobe.iter()
+        os_name: osprobe
+            .iter()
             .filter_map(|(path, osname)| path.to_str().zip(Some(osname)))
             .find_map(|(path, osname)| {
                 path.starts_with(disk.fullname.to_str().unwrap())

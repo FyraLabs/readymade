@@ -130,9 +130,12 @@ fn add_windows_entry(context: &Context) -> Result<()> {
     if !Path::new(BOOTMGFW).exists() {
         return Ok(());
     }
-    let esp = context.mounts.get_esp_partition()
+    let esp = context
+        .mounts
+        .get_esp_partition()
         .ok_or_else(|| eyre!("Windows Boot Manager found but no ESP is mounted"))?;
-    let uuid = lsblk::BlockDevice::list()?.into_iter()
+    let uuid = lsblk::BlockDevice::list()?
+        .into_iter()
         .find(|dev| dev.fullname == esp.partition)
         .and_then(|dev| dev.uuid)
         .ok_or_else(|| eyre!("Could not find UUID for ESP {:?}", esp.partition))?;

@@ -60,7 +60,9 @@ pub fn layer_templates(src: &Path, dest: &Path, layers: &TemplateLayers) -> Resu
         }
         let mut ini = serde_systemd_unit::parse(&std::fs::read_to_string(&path)?)
             .map_err(|e| eyre!("cannot parse {path:?}: {e:?}"))?;
-        let part = ini.sections.get_mut("Partition")
+        let part = ini
+            .sections
+            .get_mut("Partition")
             .ok_or_else(|| eyre!("{path:?} has no [Partition] section"))?;
         let ty = part.get("Type").map(|v| v.as_str().to_owned());
         let mut set = |k: &str, v: String| _ = part.insert(k.to_owned(), Value::String(v));
@@ -127,7 +129,11 @@ fn check_adoption(out: &Output, info: &DualBootInfo) -> Result<()> {
             );
         }
     }
-    if !out.partitions.iter().any(|p| p.part_type == "esp" && !p.file().as_os_str().is_empty()) {
+    if !out
+        .partitions
+        .iter()
+        .any(|p| p.part_type == "esp" && !p.file().as_os_str().is_empty())
+    {
         bail!("systemd-repart did not adopt the existing ESP");
     }
     Ok(())
@@ -159,8 +165,9 @@ impl DiskProvisionerModule for DualBoot {
         let disk = &playbook.destination_disk;
         let dry_run = dry_run();
         let efi_src = self.copy_source.as_deref().and_then(efi_source);
-        let esp_required =
-            efi_src.as_deref().map_or(0, |src| dualboot::efi_payload_size(src) + ESP_HEADROOM);
+        let esp_required = efi_src
+            .as_deref()
+            .map_or(0, |src| dualboot::efi_payload_size(src) + ESP_HEADROOM);
 
         let info = stage!(dualbootcheck "Checking the Windows partition" {
             dualboot::probe(disk, std::slice::from_ref(&self.windows_partition), esp_required)
@@ -545,7 +552,9 @@ type=DE94BBA4-06D1-4D40-A16A-BFD50179D6AC
         })
         .unwrap();
         check_adoption(&out, &info).unwrap();
-        let root = out.partitions.iter()
+        let root = out
+            .partitions
+            .iter()
             .find(|p| p.part_type.starts_with("root-"))
             .unwrap();
         assert_eq!(root.activity(), "create");
