@@ -47,7 +47,8 @@ pub fn mounts() -> Mounts {
 
 fn refresh_rows(ui: &AppWindow) {
     let rows = STATE.with_borrow(|state| state.mounts.iter().map(MountTarget::to_ui).collect_vec());
-    ui.global::<InstallCustomState<'_>>().set_mounts(model(rows));
+    ui.global::<InstallCustomState<'_>>()
+        .set_mounts(model(rows));
 }
 
 fn list_partitions() -> Vec<String> {
@@ -80,9 +81,7 @@ fn open_mount_dialog(ui: &AppWindow, editing: Option<usize>, target: &MountTarge
         );
 
     state.set_partitions(model(partitions.iter().map(|p| p.to_shared_string())));
-    state.set_mountpoint_types(model(
-        types.iter().map(|t| t.description_string().into()),
-    ));
+    state.set_mountpoint_types(model(types.iter().map(|t| t.description_string().into())));
     state.set_dialog_partition(i32::try_from(partition).unwrap_or_default());
     state.set_dialog_mountpoint_type(i32::try_from(mountpoint_type).unwrap_or_default());
     state.set_dialog_custom_mountpoint(custom.into());
@@ -110,7 +109,9 @@ pub fn init(ui: &AppWindow) {
     let weak = ui.as_weak();
     state.on_edit(move |index| {
         let Some(ui) = weak.upgrade() else { return };
-        let Ok(index) = usize::try_from(index) else { return };
+        let Ok(index) = usize::try_from(index) else {
+            return;
+        };
         let Some(target) = STATE.with_borrow(|state| state.mounts.get(index).cloned()) else {
             tracing::error!(index, "request to edit nonexistent row");
             return;

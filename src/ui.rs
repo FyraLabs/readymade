@@ -63,10 +63,7 @@ fn init_l10n(ui: &AppWindow) {
                 Err(_) => fargs.set(key.to_string(), value.to_string()),
             }
         }
-        crate::LL
-            .read()
-            .get_args_fluent(&id, Some(&fargs))
-            .into()
+        crate::LL.read().get_args_fluent(&id, Some(&fargs)).into()
     });
 }
 
@@ -89,7 +86,8 @@ pub fn run() -> Result<()> {
     let distro = ui.global::<Distro<'_>>();
     distro.set_name(cfg.distro.name.to_shared_string());
     distro.set_icon(icon(&cfg.distro.icon, 128));
-    ui.global::<Icons<'_>>().set_drive(icon("drive-harddisk", 128));
+    ui.global::<Icons<'_>>()
+        .set_drive(icon("drive-harddisk", 128));
     if let Some(family) = monospace_family() {
         ui.global::<Fonts<'_>>().set_mono(family.into());
     }

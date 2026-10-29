@@ -51,11 +51,15 @@ pub fn init(ui: &AppWindow) {
     let weak = ui.as_weak();
     state.on_select(move |locale| {
         let Some(ui) = weak.upgrade() else { return };
-        let Some(lang) = LANGUAGE_ROWS.iter().find(|lang| lang.locale == locale.as_str()) else {
+        let Some(lang) = LANGUAGE_ROWS
+            .iter()
+            .find(|lang| lang.locale == locale.as_str())
+        else {
             tracing::error!(%locale, "selected locale is not in the list");
             return;
         };
-        ui.global::<LanguageState<'_>>().set_selected(locale.clone());
+        ui.global::<LanguageState<'_>>()
+            .set_selected(locale.clone());
         set_lang(lang);
         crate::ui::relocalize(&ui, &locale);
     });

@@ -13,14 +13,22 @@ thread_local! {
 pub fn init(ui: &AppWindow) {
     let weak = ui.as_weak();
     PROBLEM_TIMER.with(|timer| {
-        timer.start(slint::TimerMode::Repeated, Duration::from_secs(1), move || {
-            let Some(ui) = weak.upgrade() else { return };
-            if ui.global::<Nav<'_>>().get_page() != Page::Confirmation {
-                return;
-            }
-            let problem = Problem::detect().as_ref().map(Problem::msg).unwrap_or_default();
-            ui.global::<ConfirmationState<'_>>().set_problem(problem.into());
-        });
+        timer.start(
+            slint::TimerMode::Repeated,
+            Duration::from_secs(1),
+            move || {
+                let Some(ui) = weak.upgrade() else { return };
+                if ui.global::<Nav<'_>>().get_page() != Page::Confirmation {
+                    return;
+                }
+                let problem = Problem::detect()
+                    .as_ref()
+                    .map(Problem::msg)
+                    .unwrap_or_default();
+                ui.global::<ConfirmationState<'_>>()
+                    .set_problem(problem.into());
+            },
+        );
     });
 
     let warns = Rc::new(RefCell::new(Vec::<Warning>::new()));

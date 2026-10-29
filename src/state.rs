@@ -245,5 +245,4 @@ fn mount_live_base(dev: &str) -> std::io::Result<PathBuf> {
 }
 
 /// State related to the user's installation configuration
-pub static APPLICATION_STATE: LazyLock<RwLock<ApplicationState>> =
-    LazyLock::new(Default::default);
+pub static APPLICATION_STATE: LazyLock<RwLock<ApplicationState>> = LazyLock::new(Default::default);

@@ -96,7 +96,8 @@ pub fn init(ui: &AppWindow) {
             background_dark,
         }
     });
-    ui.global::<InstallationState<'_>>().set_bentos(model(bentos));
+    ui.global::<InstallationState<'_>>()
+        .set_bentos(model(bentos));
 }
 
 /// Build the playbook from the user's choices and run it in the background.
@@ -124,9 +125,7 @@ pub fn start(ui: &AppWindow) {
         let progress_weak = weak.clone();
         let res = state::install_using_subprocess(&playbook, move |progress| {
             let status = match progress {
-                PlaybookProgress::Stage(status) | PlaybookProgress::StageProgress(status) => {
-                    status
-                }
+                PlaybookProgress::Stage(status) | PlaybookProgress::StageProgress(status) => status,
                 PlaybookProgress::PostModule(module, index, total) => {
                     format!("Post-install {} / {}: {}", index + 1, total, module)
                 }
