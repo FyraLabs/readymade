@@ -3,6 +3,7 @@ mod cfg;
 mod pages;
 mod prelude;
 mod state;
+mod ui;
 
 use parking_lot::RwLock;
 use std::sync::LazyLock;
@@ -11,15 +12,12 @@ use crate::{
     prelude::*,
     state::{APPLICATION_STATE, ApplicationState},
 };
-use gtk::glib::translate::FromGlibPtrNone;
 use i18n_embed::LanguageLoader as _;
 use libreadymade::playbook::Playbook;
-use pages::installation::InstallationPageMsg;
-use relm4::SharedState;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 /// State related to the user's installation configuration
-static CONFIG: SharedState<cfg::ReadymadeConfig> = SharedState::new();
+static CONFIG: LazyLock<RwLock<cfg::ReadymadeConfig>> = LazyLock::new(Default::default);
 
 pub static LL: LazyLock<RwLock<i18n_embed::fluent::FluentLanguageLoader>> =
     LazyLock::new(|| RwLock::new(handle_l10n()));
@@ -30,200 +28,6 @@ pub static LL: LazyLock<RwLock<i18n_embed::fluent::FluentLanguageLoader>> =
 struct Localizations;
 
 static LOCALE_SOLVER: LazyLock<poly_l10n::LocaleFallbackSolver> = LazyLock::new(Default::default);
-
-const APPID: &str = "com.fyralabs.Readymade";
-
-macro_rules! generate_pages {
-    ($Page:ident $AppModel:ident $AppMsg:ident: $($page:ident $($forward:expr)?),+$(,)?) => {paste::paste! {
-        use pages::{$([<$page:lower>]::[<$page:camel Page>]),+};
-        use pages::{$([<$page:lower>]::[<$page:camel PageOutput>]),+};
-
-
-        #[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
-        pub enum $Page {
-            #[default]
-            $([< $page:camel >]),+
-        }
-
-        struct $AppModel {
-            page: $Page,
-            $(
-                [<$page:snake _page>]: relm4::Controller<[<$page:camel Page>]>,
-            )+
-        }
-
-        impl $AppModel {
-            fn _default(sender: ComponentSender<Self>) -> Self {Self {
-                page: $Page::default(),
-                $(
-                    [<$page:snake _page>]: [<$page:camel Page>]::builder()
-                        .launch(())
-                        .forward(sender.input_sender(), generate_pages!(@$page $AppMsg $($forward)?)),
-                )+
-            }}
-        }
-    }};
-    (@$page:ident $AppMsg:ident) => {paste::paste! {
-        |msg| match msg {
-            [<$page:camel PageOutput>]::Navigate(action) => $AppMsg::Navigate(action),
-        }
-    }};
-    (@$page:ident $AppMsg:ident $forward:expr) => { $forward };
-}
-
-generate_pages!(Page AppModel AppMsg:
-    Language,
-    Welcome,
-    Destination,
-    InstallationType,
-    Confirmation |msg| {
-        tracing::debug!("ConfirmationPage emitted {msg:?}");
-        match msg {
-            ConfirmationPageOutput::StartInstallation => AppMsg::StartInstallation,
-            ConfirmationPageOutput::Navigate(action) => AppMsg::Navigate(action),
-        }
-    },
-    Installation |msg| {
-        tracing::debug!("InstallationPage emitted {msg:?}");
-        match msg {
-            InstallationPageOutput::Navigate(action) => AppMsg::Navigate(action),
-            InstallationPageOutput::SendErr(s) => AppMsg::SendErr(s),
-        }
-    },
-    InstallDual,
-    InstallCustom,
-    Completed,
-    Failure,
-);
-
-#[derive(Clone, Debug)]
-pub enum NavigationAction {
-    GoTo(Page),
-    Quit,
-}
-
-#[derive(Debug)]
-enum AppMsg {
-    StartInstallation,
-    Navigate(NavigationAction),
-    SendErr(String),
-}
-
-#[allow(clippy::str_to_string)]
-#[relm4::component]
-impl SimpleComponent for AppModel {
-    type Init = ();
-
-    type Input = AppMsg;
-    type Output = ();
-
-    view! {
-        libhelium::ApplicationWindow {
-            set_title: Some("Readymade Installer"),
-            set_default_width: 550,
-            set_default_height: 600,
-            set_vexpand: true,
-
-            #[name = "overlay"]
-            #[wrap(Some)]
-            set_child = &gtk::Overlay {
-                set_hexpand: true,
-                set_vexpand: true,
-
-                #[wrap(Some)]
-                set_child = &gtk::Box {
-                    set_vexpand: true,
-                    set_orientation: gtk::Orientation::Vertical,
-                    #[transition = "SlideLeftRight"]
-                    match model.page {
-                        Page::Language => *model.language_page.widget(),
-                        Page::Welcome => *model.welcome_page.widget(),
-                        Page::Destination => *model.destination_page.widget(),
-                        Page::InstallationType => *model.installation_type_page.widget(),
-                        Page::InstallDual => *model.install_dual_page.widget(),
-                        Page::InstallCustom => *model.install_custom_page.widget(),
-                        Page::Confirmation => *model.confirmation_page.widget(),
-                        Page::Installation => *model.installation_page.widget(),
-                        Page::Completed => *model.completed_page.widget(),
-                        Page::Failure => *model.failure_page.widget(),
-                    }
-                }
-            }
-        }
-    }
-
-    // Initialize the UI.
-    fn init(
-        (): Self::Init,
-        root: Self::Root,
-        sender: ComponentSender<Self>,
-    ) -> ComponentParts<Self> {
-        // TODO: make libhelium force this
-        let display = gtk::gdk::Display::default().unwrap();
-        let settings = gtk::Settings::for_display(&display);
-
-        let theme = gtk::IconTheme::for_display(&display);
-        theme.add_resource_path("/com/FyraLabs/Readymade/icons");
-        settings.set_gtk_icon_theme_name(Some("Hydrogen"));
-
-        let mut model = Self::_default(sender);
-
-        if CONFIG.read().no_langpage {
-            model.page = Page::Welcome;
-        }
-
-        if !CONFIG.read().distro.bios_support
-            && !std::fs::exists("/sys/firmware/efi").is_ok_and(|x| x)
-        {
-            model.page = Page::Failure;
-            model
-                .failure_page
-                .emit(pages::failure::FailurePageMsg::Err(t!("err-no-bios")));
-        }
-
-        let widgets = view_output!();
-
-        ComponentParts { model, widgets }
-    }
-
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
-        match message {
-            AppMsg::StartInstallation => {
-                let playbook = {
-                    let custom_mounts = (APPLICATION_STATE.read().installation_type
-                        == Some(cfg::InstallationType::Custom))
-                    .then(|| self.install_custom_page.model().mounts());
-                    APPLICATION_STATE
-                        .read()
-                        .to_playbook(&CONFIG.read(), custom_mounts)
-                };
-
-                match playbook {
-                    Ok(playbook) => self
-                        .installation_page
-                        .emit(InstallationPageMsg::StartInstallation(playbook)),
-                    Err(err) => {
-                        self.page = Page::Failure;
-                        self.failure_page
-                            .emit(pages::failure::FailurePageMsg::Err(format!("{err:?}")));
-                    }
-                }
-            }
-            AppMsg::Navigate(NavigationAction::GoTo(page)) => self.page = page,
-
-            // FIXME: The following code is commented out because it'd trigger relm4 to drop the
-            // RegionPage and LanguagePage, and somehow during quitting, it triggers the signal
-            // `:selected_children_changed` which causes the program to crash upon accessing the
-            // dropped components.
-            //
-            // AppMsg::Navigate(NavigationAction::Quit) => relm4::main_application().quit(),
-            AppMsg::Navigate(NavigationAction::Quit) => std::process::exit(0),
-            AppMsg::SendErr(s) => self
-                .failure_page
-                .emit(pages::failure::FailurePageMsg::Err(s)),
-        }
-    }
-}
 
 static AVAILABLE_LANGS: LazyLock<Vec<i18n_embed::unic_langid::LanguageIdentifier>> =
     LazyLock::new(|| {
@@ -291,39 +95,10 @@ fn main() -> Result<()> {
     *CONFIG.write() = cfg::get_cfg()?;
     *APPLICATION_STATE.write() = ApplicationState::from(&*CONFIG.read());
 
-    gtk::gio::resources_register_include!("resources.gresource")?;
-
-    // Load external gresource files for downstream overrides
-    // #78
-    let gresources = std::fs::read_dir("/usr/share/readymade/resources");
-    _ = gresources.into_iter().flatten().try_for_each(|f| {
-        let file = f?;
-        if file.file_name().as_encoded_bytes().ends_with(b"gresource") {
-            gtk::gio::resources_register(&gtk::gio::Resource::load(file.path())?);
-        }
-        Result::<()>::Ok(())
-    });
-
-    let default_accent = unsafe {
-        &libhelium::RGBColor::from_glib_none(std::ptr::from_mut(&mut libhelium::ffi::HeRGBColor {
-            r: 0.0,
-            g: 7.0,
-            b: 143.0,
-        }))
-    };
-
-    let app = libhelium::Application::builder()
-        .application_id(APPID)
-        .flags(libhelium::gtk::gio::ApplicationFlags::default())
-        // SAFETY: placeholder
-        .default_accent_color(default_accent)
-        .build();
-
     tracing::debug!("Starting Readymade");
     *LL.write() = handle_l10n();
     langs_th.join().expect("cannot join available_langs_th");
-    RelmApp::from_app(app).run::<AppModel>(());
-    Ok(())
+    ui::run()
 }
 
 /// Returns a logging guard.

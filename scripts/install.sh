@@ -10,7 +10,7 @@ root=`realpath ${1-/}`
 #    msgfmt $langfile -o $root/usr/share/locale/$(basename $langfile .po)/LC_MESSAGES/com.fyralabs.Readymade.mo
 #done
 
-BENTO=`sed -nE 's@^\s+const BENTO_ASSETS_PATH: &str = "(.+)";$@\1@p' src/pages/installation.rs | head -n1`
+BENTO=`sed -nE 's@^\s+(pub\(super\) )?const BENTO_ASSETS_PATH: &str = "(.+)";$@\2@p' src/pages/installation.rs | head -n1`
 
 for f in po/*; do
     install -Dm644 {,$root/$BENTO/}$f/readymade.ftl

@@ -1,0 +1,40 @@
+import { TextEdit } from "std-widgets.slint";
+import { Fonts, Lang, Nav } from "../globals.slint";
+import { NavRow, PageView, Spacer } from "../widgets.slint";
+import { Button, ButtonVariant } from "../slintcn/components/button.slint";
+
+export global FailureState {
+    in property <string> log;
+    out property <string> bug-report-link: "https://github.com/FyraLabs/readymade/issues";
+}
+
+export component FailurePage inherits PageView {
+    title: Lang.t("page-failure", []);
+
+    TextEdit {
+        vertical-stretch: 1;
+        read-only: true;
+        wrap: no-wrap;
+        font-family: Fonts.mono;
+        text: FailureState.log;
+    }
+
+    NavRow {
+        Button {
+            variant: ButtonVariant.ghost;
+            text: Lang.t("page-failure-close", []);
+            clicked => {
+                Nav.quit();
+            }
+        }
+
+        Spacer { }
+
+        Button {
+            text: Lang.t("page-failure-bug", []);
+            clicked => {
+                Nav.open-url(FailureState.bug-report-link);
+            }
+        }
+    }
+}

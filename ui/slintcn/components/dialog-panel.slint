@@ -1,0 +1,128 @@
+// slintcn DialogPanel — the headless dialog card (no Scrim, no full-window
+// mount). Use this when you have your own overlay root / modal orchestration
+// (mount it where you want, control visibility yourself). For the batteries-
+// included version that mounts full-window with a backdrop, use `Dialog`.
+//
+// Public API:
+//   in property <string> title / description
+//   in property <string> close-label: "Close"
+//   in property <bool>   trap-focus: true   (Escape → closed(); Tab trapped)
+//   callback closed()                        (X button or footer button)
+//   public function take-focus()             (focus the panel's FocusScope)
+//
+// Body content goes via `@children` between header and footer.
+
+import { Tokens } from "../theme/tokens.slint";
+import { Button, ButtonVariant } from "button.slint";
+import { Separator, SeparatorOrientation } from "separator.slint";
+import { Icon } from "icon.slint";
+import { LucidePaths } from "lucide-paths.slint";
+
+export component DialogPanel inherits Rectangle {
+    // Heading at the top of the panel.
+    in property <string> title;
+    // Body text under the title.
+    in property <string> description;
+    // Tooltip / accessible label for the X-close button.
+    in property <string> close-label: "Close";
+    // Tab-cycle focus inside the panel; set false to disable the trap.
+    in property <bool>   trap-focus: true;
+    // Fired when the X-close button is pressed.
+    callback closed();
+
+    background: Tokens.color-card;
+    border-color: Tokens.color-border-hairline;
+    border-width: 1px;
+    border-radius: Tokens.radius-lg;     // shadcn dialog rounded-lg (10)
+    drop-shadow-blur:     Tokens.shadow-e3-blur;
+    drop-shadow-offset-y: Tokens.shadow-e3-offset-y;
+    drop-shadow-color:    Tokens.shadow-e3-color;
+
+    width: 420px;
+    height: layout.preferred-height;
+
+    // Clicks on empty panel area are absorbed; nested controls still receive
+    // their own clicks via Slint's nested-TouchArea routing.
+    TouchArea {
+        clicked => { }
+
+        layout := VerticalLayout {
+            padding: Tokens.spacing-xl;       // p-6 (24)
+            spacing: Tokens.spacing-lg;       // gap-4 (16)
+
+            // Header
+            VerticalLayout {
+                spacing: Tokens.spacing-sm;   // gap-2 (8)
+                if root.title != "": Text {
+                    text: root.title;
+                    color: Tokens.color-foreground;
+                    font-size: Tokens.typography-title-size;
+                    font-weight: Tokens.typography-weight-semibold;
+                }
+                if root.description != "": Text {
+                    text: root.description;
+                    color: Tokens.color-muted-foreground;
+                    font-size: Tokens.typography-body-size;
+                    wrap: word-wrap;
+                }
+            }
+
+            @children
+
+            Separator { orientation: SeparatorOrientation.horizontal; }
+
+            HorizontalLayout {
+                alignment: end;
+                Button {
+                    variant: ButtonVariant.default;
+                    text: root.close-label;
+                    clicked => { root.closed(); }
+                }
+            }
+        }
+    }
+
+    // X close button, top-right (shadcn).
+    close-x := Rectangle {
+        x: parent.width - self.width - 12px;
+        y: 12px;
+        width: 28px;
+        height: 28px;
+        border-radius: Tokens.radius-sm;
+        background: x-touch.has-hover ? Tokens.color-accent : transparent;
+        Icon {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            commands: LucidePaths.x-mark;
+            tint: Tokens.color-muted-foreground;
+            size: 16px;
+        }
+        x-touch := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { root.closed(); }
+        }
+        animate background {
+            duration: Tokens.motion-fast;
+            easing: Tokens.motion-easing-standard;
+        }
+    }
+
+    public function take-focus() { focus-scope.focus(); }
+
+    forward-focus: focus-scope;
+    focus-scope := FocusScope {
+        enabled: root.trap-focus;
+        // this sits on top of the close button; grabbing focus on press would eat the first click
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == "\u{1b}") {
+                root.closed();
+                return accept;
+            }
+            if (event.text == "\u{9}") {
+                return accept;   // trap Tab (single focusable footer button)
+            }
+            return reject;
+        }
+    }
+}

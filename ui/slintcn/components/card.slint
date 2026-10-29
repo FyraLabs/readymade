@@ -1,0 +1,126 @@
+import { Tokens } from "../theme/tokens.slint";
+
+// Card is intentionally non-focusable (matches shadcn's <div>-based Card).
+// To make a card keyboard-activatable, wrap it in a Button(variant: ghost)
+// or place a Button inside it as the affordance.
+//
+// glass: non-interactive translucent surface (e.g. inside a Dialog body).
+// glass-interactive: clickable variant — its border/background respond to hover.
+// Both share the same e3 shadow.
+export enum CardVariant { solid, glass, glass-interactive, raised }
+export enum CardSize    { sm, default }
+// Independent padding + radius axes (mirrors the web Card API). `xxl` = 2xl.
+export enum CardPadding { none, sm, md, lg }
+export enum CardRadius  { md, lg, xl, xxl }
+
+export component Card inherits Rectangle {
+    // Surface treatment — solid, raised, ghost, glass.
+    in property <CardVariant> variant: CardVariant.solid;
+    // Padding preset — sm, default, lg.
+    in property <CardSize>    size:    CardSize.default;
+    // Padding override — none, sm, md, lg, xl. Use this OR `size`.
+    in property <CardPadding> card-padding: CardPadding.lg;
+    // Corner radius override — md, lg, xl, full.
+    in property <CardRadius>  card-radius:  CardRadius.xl;
+
+    // Read-only hover signal — driven by the internal TouchArea below.
+    // Consumers can read it (e.g. to drive header chip styling) but never set it.
+    out property <bool> hovered <=> touch.has-hover;
+
+    background:
+        variant == CardVariant.glass || variant == CardVariant.glass-interactive ?
+            (variant == CardVariant.glass-interactive && hovered
+                ? Tokens.color-surface-3
+                : Tokens.color-scrim-2) :
+        Tokens.color-card;
+
+    border-color:
+        variant == CardVariant.glass-interactive && hovered
+            ? Tokens.color-border-hairline-strong
+            : Tokens.color-border-hairline;
+    border-width: 1px;
+    border-radius:
+        card-radius == CardRadius.md  ? Tokens.radius-md :
+        card-radius == CardRadius.lg  ? Tokens.radius-lg :
+        card-radius == CardRadius.xxl ? 20px :
+        /* xl */                        Tokens.radius-xl;
+
+    drop-shadow-blur:
+        variant == CardVariant.glass || variant == CardVariant.glass-interactive
+            ? Tokens.shadow-e3-blur :
+        variant == CardVariant.raised ? Tokens.shadow-e2-blur : 0px;
+    drop-shadow-offset-y:
+        variant == CardVariant.glass || variant == CardVariant.glass-interactive
+            ? Tokens.shadow-e3-offset-y :
+        variant == CardVariant.raised ? Tokens.shadow-e2-offset-y : 0px;
+    drop-shadow-color:
+        variant == CardVariant.glass || variant == CardVariant.glass-interactive
+            ? Tokens.shadow-e3-color :
+        variant == CardVariant.raised ? Tokens.shadow-e2-color : transparent;
+
+    animate background, border-color {
+        duration: Tokens.motion-base;
+        easing: Tokens.motion-easing-standard;
+    }
+
+    // padding-l derives from the `padding` axis (none/sm/md/lg → 0/12/16/24).
+    // gap-l is the in-content rhythm, still keyed off `size`.
+    out property <length> padding-l:
+        card-padding == CardPadding.none ? 0px :
+        card-padding == CardPadding.sm   ? Tokens.spacing-md :
+        card-padding == CardPadding.md   ? Tokens.spacing-lg :
+        /* lg */                           Tokens.spacing-xl;
+    // Resolved gap between header / content / footer in px; outbound.
+    out property <length> gap-l:
+        size == CardSize.sm ? Tokens.spacing-md : Tokens.spacing-lg;
+
+    // Hover tracker. Placed before @children so child interactive controls
+    // (Buttons, Inputs) sit z-above and receive their own click events.
+    touch := TouchArea { }
+
+    @children
+}
+
+// shadcn-faithful Card composition helpers. Compose inside a Card's
+// VerticalLayout (padding: parent.padding-l; spacing: parent.gap-l):
+//
+//   Card {
+//       VerticalLayout {
+//           padding: parent.padding-l;
+//           spacing: parent.gap-l;
+//           CardHeader {
+//               CardTitle { text: "Notifications"; }
+//               CardDescription { text: "Choose what to be notified about."; }
+//           }
+//           // ...content...
+//           CardFooter { Button { text: "Save"; } }
+//       }
+//   }
+
+export component CardTitle inherits Text {
+    color: Tokens.color-foreground;
+    font-size: Tokens.typography-title-size;   // text-lg (18)
+    font-weight: Tokens.typography-weight-semibold;
+}
+
+export component CardDescription inherits Text {
+    color: Tokens.color-muted-foreground;
+    font-size: Tokens.typography-body-size;     // text-sm (14)
+    wrap: word-wrap;
+}
+
+export component CardHeader inherits VerticalLayout {
+    spacing: 6px;   // gap-1.5 between title + description
+    @children
+}
+
+export component CardContent inherits VerticalLayout {
+    spacing: Tokens.spacing-md;
+    @children
+}
+
+export component CardFooter inherits HorizontalLayout {
+    alignment: end;
+    spacing: Tokens.spacing-sm;   // gap-2 between footer buttons
+    @children
+}

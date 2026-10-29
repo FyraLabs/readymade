@@ -1,0 +1,40 @@
+// slintcn FocusRing — shared keyboard-focus ring (you own this file after `slintcn add`).
+//
+// A component root cannot read `parent` in Slint, so the host passes its own box
+// size in. Place it as the LAST child of the element that should get the ring,
+// wrapped in a keyboard-only guard so it never appears on a mouse click:
+//
+//     if scope.has-focus && !root.pointer-focus : FocusRing {
+//         host-width: parent.width;
+//         host-height: parent.height;
+//     }
+//
+// It draws an outline `offset` px outside that box. Override `radius` per call
+// site to match the host element's corner radius.
+//
+// KNOWN LIMITATION (Slint 1.16): there is no focus-lost / focus-changed event,
+// so the `pointer-focus` flag used by every consumer is not cleared on focus
+// loss. Narrow edge case: mouse-click a control, Tab away to another control,
+// then Tab back to the same control — the ring stays suppressed until the next
+// key press clears the flag. Accepted given the current Slint 1.16 API surface.
+
+import { Tokens } from "../theme/tokens.slint";
+
+export component FocusRing inherits Rectangle {
+    // The host element's own box; the ring is drawn around it expanded by offset.
+    in property <length> host-width;
+    in property <length> host-height;
+    in property <length> offset:     Tokens.focus-ring-offset;
+    in property <length> ring-width: Tokens.focus-ring-width;
+    in property <length> radius:     Tokens.radius-md + root.offset;
+    in property <color>  ring-color: Tokens.color-ring-muted;
+
+    x: -root.offset;
+    y: -root.offset;
+    width:  root.host-width  + 2 * root.offset;
+    height: root.host-height + 2 * root.offset;
+    border-width:  root.ring-width;
+    border-color:  root.ring-color;
+    border-radius: root.radius;
+    background:    transparent;
+}

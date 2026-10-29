@@ -1,0 +1,53 @@
+import { Distro, Lang, Nav } from "../globals.slint";
+import { NavRow, PageView, Spacer } from "../widgets.slint";
+import { Tokens } from "../slintcn/theme/tokens.slint";
+import { Button, ButtonVariant } from "../slintcn/components/button.slint";
+
+export global CompletedState {
+    callback reboot();
+}
+
+export component CompletedPage inherits PageView {
+    title: Lang.t("page-completed", []);
+
+    VerticalLayout {
+        alignment: center;
+        spacing: Tokens.spacing-lg;
+        vertical-stretch: 1;
+
+        HorizontalLayout {
+            alignment: center;
+            Image {
+                source: Distro.icon;
+                width: 128px;
+                height: 128px;
+            }
+        }
+
+        Text {
+            text: Lang.t("page-completed-desc", []);
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            color: Tokens.color-foreground;
+        }
+    }
+
+    NavRow {
+        Button {
+            variant: ButtonVariant.ghost;
+            text: Lang.t("page-completed-close", []);
+            clicked => {
+                Nav.quit();
+            }
+        }
+
+        Spacer { }
+
+        Button {
+            text: Lang.t("page-completed-reboot", []);
+            clicked => {
+                CompletedState.reboot();
+            }
+        }
+    }
+}

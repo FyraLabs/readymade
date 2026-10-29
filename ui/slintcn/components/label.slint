@@ -1,0 +1,46 @@
+import { Tokens } from "../theme/tokens.slint";
+
+export enum LabelVariant { default, muted, required }
+
+// Form label. Wire `clicked` to focus the associated input — shadcn's
+// htmlFor=… without DOM IDs.
+//
+//   Label { text: "Email"; clicked => { email-input.focus(); } }
+//   Input { email-input := ... }
+//
+// The `required` variant appends a destructive-colored asterisk.
+export component Label inherits Rectangle {
+    // The label text.
+    in property <string> text;
+    // Visual style — `default`, `muted`, `required` (appends an asterisk).
+    in property <LabelVariant> variant: LabelVariant.default;
+    // Fired when the label is clicked; useful for forwarding focus.
+    callback clicked();
+
+    background: transparent;
+    width:  row.preferred-width;
+    height: row.preferred-height;
+
+    row := HorizontalLayout {
+        spacing: 2px;
+        Text {
+            text: root.text;
+            color: variant == LabelVariant.muted
+                ? Tokens.color-muted-foreground
+                : Tokens.color-foreground;
+            font-size: Tokens.typography-body-size;   // shadcn Label text-sm (14)
+            font-weight: Tokens.typography-weight-medium;
+        }
+        if variant == LabelVariant.required: Text {
+            text: "*";
+            color: Tokens.color-destructive;
+            font-size: Tokens.typography-body-size;   // shadcn Label text-sm (14)
+            font-weight: Tokens.typography-weight-medium;
+        }
+    }
+
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}

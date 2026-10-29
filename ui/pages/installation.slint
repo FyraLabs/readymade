@@ -1,0 +1,149 @@
+import { ProgressIndicator } from "std-widgets.slint";
+import { Lang, Nav } from "../globals.slint";
+import { PageView } from "../widgets.slint";
+import { Theme, ThemeMode, Tokens } from "../slintcn/theme/tokens.slint";
+
+export struct Bento {
+    title: string,
+    desc: string,
+    link: string,
+    icon: image,
+    background: image,
+    background-dark: image,
+}
+
+export global InstallationState {
+    in property <[Bento]> bentos;
+    in property <string> status;
+}
+
+component BentoCard inherits Rectangle {
+    in property <Bento> bento;
+    // used when the distro didn't install its own artwork
+    in property <image> fallback;
+    in property <image> fallback-dark;
+    property <image> light: root.bento.background.width > 0 ? root.bento.background : root.fallback;
+    property <image> dark: root.bento.background-dark.width > 0 ? root.bento.background-dark : root.fallback-dark;
+
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    min-height: 96px;
+    border-radius: Tokens.radius-xl;
+    border-width: 1px;
+    border-color: touch.has-hover ? Tokens.color-border-hairline-strong : Tokens.color-border-hairline;
+    clip: true;
+    background: Tokens.color-card;
+    accessible-role: button;
+    accessible-label: root.bento.title;
+    accessible-description: root.bento.desc;
+    accessible-action-default => {
+        Nav.open-url(root.bento.link);
+    }
+
+    Image {
+        width: 100%;
+        height: 100%;
+        source: Theme.mode == ThemeMode.dark ? root.dark : root.light;
+        image-fit: cover;
+    }
+
+    Rectangle {
+        y: parent.height - self.height;
+        height: content.preferred-height;
+        background: Tokens.color-card;
+
+        content := HorizontalLayout {
+            padding: Tokens.spacing-md;
+            padding-left: Tokens.spacing-lg;
+            spacing: Tokens.spacing-lg;
+
+            VerticalLayout {
+                alignment: center;
+                Image {
+                    source: root.bento.icon;
+                    colorize: Tokens.color-foreground;
+                    width: 28px;
+                    height: 28px;
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+
+                Text {
+                    text: root.bento.title;
+                    font-size: 16px;
+                    font-weight: Tokens.typography-weight-semibold;
+                    wrap: word-wrap;
+                    color: Tokens.color-foreground;
+                }
+
+                Text {
+                    text: root.bento.desc;
+                    font-size: Tokens.typography-body-size;
+                    wrap: word-wrap;
+                    color: Tokens.color-muted-foreground;
+                }
+            }
+        }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            Nav.open-url(root.bento.link);
+        }
+    }
+}
+
+export component InstallationPage inherits PageView {
+    title: Lang.t("page-installation", []);
+    spacing: Tokens.spacing-lg;
+
+    GridLayout {
+        spacing: Tokens.spacing-sm;
+        vertical-stretch: 1;
+
+        BentoCard {
+            row: 0;
+            col: 0;
+            rowspan: 4;
+            bento: InstallationState.bentos[0];
+            fallback: @image-url("../../data/viewports-light.webp");
+            fallback-dark: @image-url("../../data/viewports-dark.webp");
+        }
+
+        BentoCard {
+            row: 0;
+            col: 1;
+            rowspan: 2;
+            bento: InstallationState.bentos[1];
+            fallback: @image-url("../../data/umbrella-light.webp");
+            fallback-dark: @image-url("../../data/umbrella-dark.webp");
+        }
+
+        BentoCard {
+            row: 2;
+            col: 1;
+            rowspan: 2;
+            bento: InstallationState.bentos[2];
+            fallback: @image-url("../../data/blueprint.webp");
+            fallback-dark: @image-url("../../data/blueprint-dark.webp");
+        }
+    }
+
+    VerticalLayout {
+        spacing: Tokens.spacing-sm;
+
+        Text {
+            text: InstallationState.status;
+            horizontal-alignment: center;
+            overflow: elide;
+            color: Tokens.color-foreground;
+        }
+
+        ProgressIndicator {
+            indeterminate: true;
+        }
+    }
+}

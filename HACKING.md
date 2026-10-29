@@ -2,7 +2,7 @@
 
 Readymade is an OS installer written in Rust, and currently a frontend for systemd-repart.
 
-The UI code is written in [Relm](https://relm4.org/), a GTK4 UI framework for Rust inspired by Elm.
+The UI is written in [Slint](https://slint.dev/). The markup lives in `ui/`, and each page has a matching module in `src/pages/` that wires its callbacks to the backend. Buttons, inputs and other primitives in `ui/slintcn/` are vendored from [slintcn](https://github.com/yfn020/slintcn), the same set Taidan uses. We own those files now, so edit them freely.
 
 ## Dedicated backend
 
@@ -27,8 +27,7 @@ We have considered using distinst, but we have decided to write our own installe
 
 To build Readymade, you need to have the following dependencies installed:
 
-- GTK4
-- libhelium
+- fontconfig
 - Rust
 
 To build Readymade, simply run:

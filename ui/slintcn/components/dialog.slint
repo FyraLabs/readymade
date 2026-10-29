@@ -1,0 +1,85 @@
+// slintcn Dialog — modal overlay (Scrim + DialogPanel), shadcn chrome.
+//
+// Mount as the LAST child of Window (see popup-helpers.slint) sized to the
+// full window via `width: parent.width; height: parent.height`.
+//
+// Dialog = backdrop Scrim + a centered, fading DialogPanel. If you have your
+// own overlay root / modal orchestration, install `dialog-panel` and mount
+// `DialogPanel` directly instead.
+//
+// Public API:
+//   in-out property <bool> open
+//   in property <string> title / description
+//   in property <bool> dismiss-on-backdrop: true
+//   in property <string> close-label: "Close"
+//   callback dismissed()
+//
+// Body content goes via `@children` (forwarded into the panel).
+
+import { Tokens } from "../theme/tokens.slint";
+import { Scrim } from "popup-helpers.slint";
+import { DialogPanel } from "dialog-panel.slint";
+
+export component Dialog inherits Rectangle {
+    // Two-way; consumer sets true to show, slintcn sets false on close.
+    in-out property <bool> open: false;
+    // Heading at the top of the modal.
+    in property <string> title;
+    // Body text under the title.
+    in property <string> description;
+    // When true, clicking outside the panel closes the modal.
+    in property <bool>   dismiss-on-backdrop: true;
+    // Tooltip / accessible label for the X-close button.
+    in property <string> close-label: "Close";
+    // Fired when the modal closes for any reason.
+    callback dismissed();
+
+    background: transparent;
+
+    Scrim {
+        x: 0; y: 0;
+        width:  root.width;
+        height: root.height;
+        shown: root.open;
+        clicked => {
+            if (root.dismiss-on-backdrop) {
+                root.open = false;
+                root.dismissed();
+            }
+        }
+    }
+
+    panel := DialogPanel {
+        title: root.title;
+        description: root.description;
+        close-label: root.close-label;
+        trap-focus: root.open;
+
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+
+        // shadcn fades + zooms; Slint has no scale transform on Rectangle,
+        // so we use a clean opacity fade (no floaty slide).
+        opacity: root.open ? 1.0 : 0.0;
+        visible: root.open || self.opacity > 0.0;
+        animate opacity {
+            duration: Tokens.motion-base;
+            easing: Tokens.motion-easing-standard;
+        }
+
+        closed => {
+            root.open = false;
+            root.dismissed();
+        }
+
+        @children
+    }
+
+    changed open => {
+        if (self.open) {
+            panel.take-focus();
+        }
+    }
+
+    forward-focus: panel;
+}

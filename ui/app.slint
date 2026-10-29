@@ -1,0 +1,143 @@
+import { Palette } from "std-widgets.slint";
+import { Distro, FluentArg, Fonts, Icons, Lang, Nav, Page, SelectedDisk } from "globals.slint";
+import { Theme, ThemeMode, Tokens } from "slintcn/theme/tokens.slint";
+import { CompletedPage, CompletedState } from "pages/completed.slint";
+import { ConfirmationPage, ConfirmationState, WarningDialog } from "pages/confirmation.slint";
+import { DestinationPage, DestinationState, DiskEntry } from "pages/destination.slint";
+import { FailurePage, FailureState } from "pages/failure.slint";
+import { Bento, InstallationPage, InstallationState } from "pages/installation.slint";
+import { EncryptDialog, InstallationTypePage, InstallationTypeState, InstallKind } from "pages/installation_type.slint";
+import { InstallCustomPage, InstallCustomState, MountDialog, MountRow, PartTool, PartToolDialog } from "pages/install_custom.slint";
+import { InstallDualPage } from "pages/install_dual.slint";
+import { LanguagePage, LanguageRow, LanguageState } from "pages/language.slint";
+import { WelcomePage } from "pages/welcome.slint";
+
+export {
+    Bento,
+    CompletedState,
+    ConfirmationState,
+    DestinationState,
+    DiskEntry,
+    Distro,
+    FailureState,
+    FluentArg,
+    Fonts,
+    Icons,
+    InstallationState,
+    InstallationTypeState,
+    InstallCustomState,
+    InstallKind,
+    Lang,
+    LanguageRow,
+    LanguageState,
+    MountRow,
+    Nav,
+    Page,
+    PartTool,
+    SelectedDisk,
+}
+
+/// Wraps a page so it slides in from the side it lives on relative to the current page.
+component Slide inherits Rectangle {
+    in property <int> index;
+    property <int> current: Nav.page == Page.language ? 0
+        : Nav.page == Page.welcome ? 1
+        : Nav.page == Page.destination ? 2
+        : Nav.page == Page.installation-type ? 3
+        : Nav.page == Page.install-dual ? 4
+        : Nav.page == Page.install-custom ? 5
+        : Nav.page == Page.confirmation ? 6
+        : Nav.page == Page.installation ? 7
+        : Nav.page == Page.completed ? 8
+        : 9;
+
+    x: root.index < root.current ? -self.width : root.index > root.current ? self.width : 0;
+    // only the current page and the one sliding out are worth drawing
+    visible: abs(self.x) < self.width;
+
+    animate x {
+        duration: Tokens.motion-base;
+        easing: Tokens.motion-easing-standard;
+    }
+
+    @children
+}
+
+export component AppWindow inherits Window {
+    private property <bool> dark: Palette.color-scheme == ColorScheme.dark;
+
+    title: "Readymade Installer";
+    icon: Distro.icon;
+    preferred-width: 760px;
+    preferred-height: 600px;
+    min-width: 600px;
+    min-height: 520px;
+    background: Tokens.color-background;
+    default-font-size: Tokens.typography-body-size;
+
+    init => {
+        Theme.mode = root.dark ? ThemeMode.dark : ThemeMode.light;
+    }
+    changed dark => {
+        Theme.mode = root.dark ? ThemeMode.dark : ThemeMode.light;
+    }
+
+    Rectangle {
+        clip: true;
+
+        Slide {
+            index: 0;
+            LanguagePage { }
+        }
+
+        Slide {
+            index: 1;
+            WelcomePage { }
+        }
+
+        Slide {
+            index: 2;
+            DestinationPage { }
+        }
+
+        Slide {
+            index: 3;
+            InstallationTypePage { }
+        }
+
+        Slide {
+            index: 4;
+            InstallDualPage { }
+        }
+
+        Slide {
+            index: 5;
+            InstallCustomPage { }
+        }
+
+        Slide {
+            index: 6;
+            ConfirmationPage { }
+        }
+
+        Slide {
+            index: 7;
+            InstallationPage { }
+        }
+
+        Slide {
+            index: 8;
+            CompletedPage { }
+        }
+
+        Slide {
+            index: 9;
+            FailurePage { }
+        }
+    }
+
+    if InstallationTypeState.dialog-open: EncryptDialog { }
+    if ConfirmationState.warning-open: WarningDialog { }
+    if InstallCustomState.mount-dialog-open: MountDialog { }
+    if InstallCustomState.tools-open: PartToolDialog { }
+}
