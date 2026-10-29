@@ -9,7 +9,7 @@ BuildRequires:	anda-srpm-macros rust-packaging
 BuildRequires:  pkgconfig(libhelium-1)
 BuildRequires:  clang-devel
 BuildRequires:  gcc
-BuildRequires:  mold
+BuildRequires:  lld
 BuildRequires:  cmake
 BuildRequires:  glibc-all-langpacks
 BuildRequires:  openssl-devel
