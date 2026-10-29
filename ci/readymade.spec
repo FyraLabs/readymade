@@ -6,16 +6,19 @@ License:        GPL-3.0-or-later
 URL:            https://github.com/FyraLabs/readymade
 Source0:        %{url}/archive/%{gitcommit}.tar.gz
 BuildRequires:	anda-srpm-macros rust-packaging
-BuildRequires:  pkgconfig(libhelium-1)
+BuildRequires:  pkgconfig(fontconfig)
 BuildRequires:  clang-devel
 BuildRequires:  gcc
-BuildRequires:  mold
+BuildRequires:  lld
 BuildRequires:  cmake
 BuildRequires:  glibc-all-langpacks
 BuildRequires:  openssl-devel
 BuildRequires:  pkgconfig(libacl)
 # We'll need cryptsetup to unlock disks for now
 Requires:       cryptsetup
+# dlopen()ed by winit, so rpm cannot pick these up on its own
+Requires:       libxkbcommon
+Requires:       mesa-libEGL
 Recommends:     readymade-config
 
 %description

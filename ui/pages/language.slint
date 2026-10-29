@@ -1,0 +1,54 @@
+import { ListView } from "std-widgets.slint";
+import { Lang, Nav, Page } from "../globals.slint";
+import { ListRow, NavRow, PageView, Spacer } from "../widgets.slint";
+import { Button } from "../slintcn/components/button.slint";
+import { Input } from "../slintcn/components/input.slint";
+
+export struct LanguageRow {
+    locale: string,
+    name: string,
+    native-name: string,
+}
+
+export global LanguageState {
+    /// Rows matching the current search query.
+    in property <[LanguageRow]> rows;
+    in property <string> selected;
+    callback search(query: string);
+    callback select(locale: string);
+}
+
+export component LanguagePage inherits PageView {
+    title: Lang.t("page-language", []);
+
+    Input {
+        placeholder: Lang.t("page-language-search-lang", []);
+        edited(text) => {
+            LanguageState.search(text);
+        }
+    }
+
+    ListView {
+        vertical-stretch: 1;
+        for row in LanguageState.rows: ListRow {
+            title: row.name;
+            subtitle: row.native-name;
+            selected: row.locale == LanguageState.selected;
+            clicked => {
+                LanguageState.select(row.locale);
+            }
+        }
+    }
+
+    NavRow {
+        Spacer { }
+
+        Button {
+            text: Lang.t("page-language-next", []);
+            disabled: LanguageState.selected == "";
+            clicked => {
+                Nav.page = Page.welcome;
+            }
+        }
+    }
+}

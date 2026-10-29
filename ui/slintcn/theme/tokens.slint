@@ -1,0 +1,133 @@
+// slintcn default theme — dark + light, switchable at runtime.
+//
+// `Theme.mode` selects which palette slot each semantic role pulls from.
+// Components only read `Tokens.*` — they don't care which mode is active.
+// Mutate `Theme.mode = ThemeMode.light` from Rust or Slint anywhere and
+// every color binding updates reactively.
+//
+// To retune a VALUE: edit palette.slint.
+// To remap a SEMANTIC ROLE: change the per-mode picks below.
+
+import { Palette } from "palette.slint";
+
+export enum ThemeMode { dark, light }
+
+export global Theme {
+    // in-out property <ThemeMode> mode: ThemeMode.dark;
+    in-out property <ThemeMode> mode: ThemeMode.light;
+}
+
+export global Tokens {
+    // surfaces
+    out property <color> color-background:
+        Theme.mode == ThemeMode.light ? Palette.neutral-50 : Palette.neutral-950;
+    out property <color> color-foreground:
+        Theme.mode == ThemeMode.light ? Palette.neutral-900 : Palette.neutral-50;
+    out property <color> color-card:
+        Theme.mode == ThemeMode.light ? Palette.neutral-100 : Palette.neutral-900;
+    out property <color> color-card-foreground:
+        Theme.mode == ThemeMode.light ? Palette.neutral-900 : Palette.neutral-50;
+
+    // intent
+    out property <color> color-primary:
+        Theme.mode == ThemeMode.light ? Palette.neutral-900 : Palette.neutral-200;
+    out property <color> color-primary-foreground:
+        Theme.mode == ThemeMode.light ? Palette.neutral-50 : Palette.neutral-900;
+    out property <color> color-secondary:
+        Theme.mode == ThemeMode.light ? Palette.neutral-100 : Palette.neutral-800;
+    out property <color> color-muted:
+        Theme.mode == ThemeMode.light ? Palette.neutral-100 : Palette.neutral-800;
+    out property <color> color-muted-foreground:
+        Theme.mode == ThemeMode.light ? Palette.neutral-500 : Palette.neutral-400;
+    out property <color> color-destructive:        Palette.red-400;
+    out property <color> color-affirm:             Palette.green-400;
+    // Subtle hover surface for outline/ghost controls — shadcn's "accent".
+    out property <color> color-accent:
+        Theme.mode == ThemeMode.light ? Palette.alpha-b-08-on-light : Palette.alpha-w-08;
+    // Subtler foreground than muted, for Text tone="subtle".
+    out property <color> color-subtle-foreground:
+        Theme.mode == ThemeMode.light ? Palette.neutral-400 : Palette.neutral-600;
+    // HUD scrim levels (pill backgrounds at increasing opacity).
+    out property <color> color-scrim-0: Palette.alpha-b-30;
+    out property <color> color-scrim-1: Palette.alpha-b-45;
+
+    // focus / interaction
+    out property <color> color-ring:
+        Theme.mode == ThemeMode.light ? Palette.neutral-700 : Palette.neutral-500;
+    // Translucent ring for the shadcn `ring-[3px] ring-ring/50` focus look.
+    out property <color> color-ring-muted:
+        Theme.mode == ThemeMode.light
+        ? Palette.neutral-700.with-alpha(0.5)
+        : Palette.neutral-500.with-alpha(0.5);
+    out property <length> focus-ring-width:  3px;
+    out property <length> focus-ring-offset: 2px;
+
+    // glass / scrim / hairline — overlays invert their tint per mode so the
+    // contrast stays comfortable on either background.
+    out property <color> color-surface-1:
+        Theme.mode == ThemeMode.light ? Palette.alpha-b-04-on-light : Palette.alpha-w-04;
+    out property <color> color-surface-2:
+        Theme.mode == ThemeMode.light ? Palette.alpha-b-08-on-light : Palette.alpha-w-08;
+    out property <color> color-surface-3:
+        Theme.mode == ThemeMode.light ? Palette.alpha-b-12-on-light : Palette.alpha-w-12;
+    // Scrim is always a dim black wash regardless of mode.
+    out property <color> color-scrim-2: Palette.alpha-b-60;
+    out property <color> color-border-hairline:
+        Theme.mode == ThemeMode.light ? Palette.alpha-b-10-on-light : Palette.alpha-w-10;
+    out property <color> color-border-hairline-strong:
+        Theme.mode == ThemeMode.light ? Palette.alpha-b-20-on-light : Palette.alpha-w-20;
+
+    // radius — shadcn --radius: 0.625rem (10px) with derived steps.
+    out property <length> radius-sm: 6px;   // radius - 4
+    out property <length> radius-md: 8px;   // radius - 2
+    out property <length> radius-lg: 10px;  // radius
+    out property <length> radius-xl: 16px;  // radius + 6
+
+    // motion
+    out property <duration> motion-fast: 150ms;
+    out property <duration> motion-base: 200ms;
+    out property <easing> motion-easing-standard:    cubic-bezier(0.4, 0.0, 0.2, 1.0);
+    out property <easing> motion-easing-emphasized:  cubic-bezier(0.05, 0.7, 0.1, 1.0);
+
+    // elevation shadows (same shadow tone for both themes — natural)
+    out property <length> shadow-e2-blur:     8px;
+    out property <length> shadow-e2-offset-y: 2px;
+    out property <color> shadow-e2-color:    Palette.alpha-b-32;
+    out property <length> shadow-e3-blur:     24px;
+    out property <length> shadow-e3-offset-y: 8px;
+    out property <color> shadow-e3-color:    Palette.alpha-b-38;
+
+    // glow effects (subtler tint in light mode)
+    out property <length> shadow-glow-md-blur:  16px;
+    out property <color> shadow-glow-md-color:
+        Theme.mode == ThemeMode.light ? Palette.alpha-b-20-on-light : Palette.alpha-w-25;
+    out property <length> shadow-glow-lg-blur:  24px;
+    out property <color> shadow-glow-lg-color:
+        Theme.mode == ThemeMode.light ? Palette.alpha-b-32 : Palette.alpha-w-35;
+
+    // typography
+    out property <int> typography-weight-medium:     500;
+    out property <int> typography-weight-semibold:   600;
+    out property <length> typography-body-sm-size:      13px;  // text-sm-ish
+    out property <length> typography-body-size:         14px;  // text-sm
+    out property <length> typography-label-size:        12px;  // text-xs
+    out property <length> typography-title-size:        18px;  // text-lg (CardTitle, Dialog title)
+    out property <length> typography-h2-size:           20px;  // text-xl
+    out property <length> typography-h1-size:           24px;  // section heading
+
+    // spacing — Tailwind 4px base; shadcn uses 2/3/4/6/8 most.
+    out property <length> spacing-xs:  4px;   // 1
+    out property <length> spacing-sm:  8px;   // 2
+    out property <length> spacing-md:  12px;  // 3
+    out property <length> spacing-lg:  16px;  // 4
+    out property <length> spacing-xl:  24px;  // 6  (Card/Dialog padding)
+    out property <length> spacing-2xl: 32px;  // 8
+
+    // control density — shadcn control heights (h-8/h-9/h-10).
+    out property <length> density-button-xs:      28px;
+    out property <length> density-button-sm:      32px;  // h-8
+    out property <length> density-button-default: 36px;  // h-9
+    out property <length> density-button-lg:      40px;  // h-10
+    out property <length> density-input:          36px;  // h-9
+    out property <length> density-control:        36px;  // h-9 (Select trigger, etc.)
+}

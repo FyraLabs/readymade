@@ -1,0 +1,326 @@
+import { Spinner } from "std-widgets.slint";
+import { Tokens } from "slintcn/theme/tokens.slint";
+import { Icon } from "slintcn/components/icon.slint";
+import { Scrim } from "slintcn/components/popup-helpers.slint";
+
+/// A page with a large title on top, i.e. what `He.ViewMono` used to give us.
+export component PageView inherits Rectangle {
+    in property <string> title;
+    in property <length> spacing: Tokens.spacing-sm;
+
+    background: Tokens.color-background;
+
+    VerticalLayout {
+        padding: Tokens.spacing-lg;
+        padding-top: Tokens.spacing-xl;
+        spacing: root.spacing;
+
+        if root.title != "": Text {
+            text: root.title;
+            font-size: Tokens.typography-h1-size;
+            font-weight: Tokens.typography-weight-semibold;
+            color: Tokens.color-foreground;
+            accessible-role: none;
+        }
+
+        @children
+    }
+}
+
+/// Bottom row of a page: optional left-hand button(s), a spacer, then right-hand button(s).
+export component NavRow inherits HorizontalLayout {
+    spacing: Tokens.spacing-sm;
+    padding-top: Tokens.spacing-sm;
+    @children
+}
+
+export component Spacer inherits Rectangle {
+    horizontal-stretch: 1;
+}
+
+/// Centered placeholder for an empty or loading view (`He.EmptyPage`).
+export component EmptyState inherits VerticalLayout {
+    in property <image> icon;
+    in property <string> title;
+    in property <string> description;
+    in property <bool> busy;
+
+    alignment: center;
+    spacing: Tokens.spacing-sm;
+    vertical-stretch: 1;
+
+    HorizontalLayout {
+        alignment: center;
+        if root.busy: Spinner {
+            indeterminate: true;
+            width: 48px;
+            height: 48px;
+        }
+        if !root.busy: Image {
+            source: root.icon;
+            colorize: Tokens.color-muted-foreground;
+            width: 64px;
+            height: 64px;
+        }
+    }
+
+    Text {
+        text: root.title;
+        font-size: Tokens.typography-h2-size;
+        font-weight: Tokens.typography-weight-semibold;
+        horizontal-alignment: center;
+        color: Tokens.color-foreground;
+    }
+
+    Text {
+        text: root.description;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+        color: Tokens.color-muted-foreground;
+    }
+}
+
+/// Big disk icon with a name and a subtitle underneath.
+export component DiskSummary inherits VerticalLayout {
+    in property <image> icon;
+    in property <string> name;
+    in property <string> subtitle;
+    in property <string> detail;
+    in property <length> icon-size: 128px;
+
+    alignment: center;
+    spacing: 2px;
+
+    HorizontalLayout {
+        alignment: center;
+        Image {
+            source: root.icon;
+            width: root.icon-size;
+            height: root.icon-size;
+        }
+    }
+
+    Text {
+        text: root.name;
+        font-size: 16px;
+        font-weight: Tokens.typography-weight-semibold;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+        color: Tokens.color-foreground;
+    }
+
+    Text {
+        text: root.subtitle;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+        color: Tokens.color-foreground;
+    }
+
+    if root.detail != "": Text {
+        text: root.detail;
+        horizontal-alignment: center;
+        color: Tokens.color-muted-foreground;
+    }
+}
+
+/// Square ghost button holding a single Lucide icon.
+export component IconButton inherits Rectangle {
+    in property <string> commands;
+    in property <string> label;
+    in property <color> tint: Tokens.color-foreground;
+    in property <bool> disabled;
+    callback clicked;
+
+    width: Tokens.density-button-default;
+    height: Tokens.density-button-default;
+    border-radius: Tokens.radius-md;
+    background: touch.has-hover && !root.disabled ? Tokens.color-accent : transparent;
+    opacity: root.disabled ? 0.5 : 1;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: !root.disabled;
+    accessible-action-default => {
+        root.clicked();
+    }
+
+    animate background {
+        duration: Tokens.motion-fast;
+        easing: Tokens.motion-easing-standard;
+    }
+
+    Icon {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: self.size;
+        height: self.size;
+        commands: root.commands;
+        tint: root.tint;
+        size: 18px;
+    }
+
+    touch := TouchArea {
+        enabled: !root.disabled;
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+/// Clickable surface with the selected/hover treatment shared by list rows and disk cards.
+export component Selectable inherits Rectangle {
+    in property <bool> selected;
+    in property <string> label;
+    in property <string> description;
+    out property <bool> hovered: touch.has-hover;
+    callback clicked;
+
+    border-radius: Tokens.radius-lg;
+    border-width: 1px;
+    border-color: root.selected ? Tokens.color-ring : transparent;
+    background: root.selected ? Tokens.color-surface-2 : touch.has-hover ? Tokens.color-surface-1 : transparent;
+    accessible-role: list-item;
+    accessible-label: root.label;
+    accessible-description: root.description;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected;
+    accessible-action-default => {
+        root.clicked();
+    }
+
+    animate background, border-color {
+        duration: Tokens.motion-fast;
+        easing: Tokens.motion-easing-standard;
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    @children
+}
+
+/// Selectable row with a title and a subtitle (`He.MiniContentBlock` in a `GtkListBox`).
+export component ListRow inherits Selectable {
+    in property <string> title;
+    in property <string> subtitle;
+
+    label: self.title;
+    description: self.subtitle;
+    height: layout.preferred-height;
+
+    layout := VerticalLayout {
+        padding: Tokens.spacing-md;
+        padding-left: Tokens.spacing-lg;
+        spacing: 2px;
+
+        Text {
+            text: root.title;
+            font-weight: Tokens.typography-weight-medium;
+            color: Tokens.color-foreground;
+        }
+
+        Text {
+            text: root.subtitle;
+            color: Tokens.color-muted-foreground;
+        }
+    }
+}
+
+/// In-window modal: slintcn's scrim with a card on top. Footer buttons go in `@children`.
+///
+/// Mount it with `if` as the last child of the window so it draws over everything and starts
+/// out fresh every time it opens.
+export component Modal inherits Rectangle {
+    in property <bool> open: true;
+    in property <string> title;
+    in property <string> description;
+    in property <string> icon;
+    in property <length> panel-width: 420px;
+    /// Escape or a click on the backdrop.
+    callback dismissed();
+
+    Scrim {
+        width: root.width;
+        height: root.height;
+        shown: root.open;
+        clicked => {
+            root.dismissed();
+        }
+    }
+
+    panel := Rectangle {
+        visible: root.open;
+        width: min(root.width - 2 * Tokens.spacing-lg, root.panel-width);
+        height: min(root.height - 2 * Tokens.spacing-lg, layout.preferred-height);
+        background: Tokens.color-card;
+        border-color: Tokens.color-border-hairline;
+        border-width: 1px;
+        border-radius: Tokens.radius-lg;
+        drop-shadow-blur: Tokens.shadow-e3-blur;
+        drop-shadow-offset-y: Tokens.shadow-e3-offset-y;
+        drop-shadow-color: Tokens.shadow-e3-color;
+        clip: true;
+
+        init => {
+            scope.focus();
+        }
+
+        // absorb clicks on the panel so they don't reach the scrim
+        TouchArea { }
+
+        scope := FocusScope {
+            focus-on-click: false;
+            key-pressed(event) => {
+                if event.text == Key.Escape {
+                    root.dismissed();
+                    return accept;
+                }
+                reject
+            }
+        }
+
+        layout := VerticalLayout {
+            padding: Tokens.spacing-xl;
+            spacing: Tokens.spacing-lg;
+
+            HorizontalLayout {
+                spacing: Tokens.spacing-sm;
+
+                if root.icon != "": VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 0;
+                    Icon {
+                        commands: root.icon;
+                        tint: Tokens.color-destructive;
+                        size: 20px;
+                        width: self.size;
+                        height: self.size;
+                    }
+                }
+
+                Text {
+                    horizontal-stretch: 1;
+                    text: root.title;
+                    color: Tokens.color-foreground;
+                    font-size: Tokens.typography-title-size;
+                    font-weight: Tokens.typography-weight-semibold;
+                    wrap: word-wrap;
+                    vertical-alignment: center;
+                }
+            }
+
+            if root.description != "": Text {
+                text: root.description;
+                color: Tokens.color-muted-foreground;
+                font-size: Tokens.typography-body-size;
+                wrap: word-wrap;
+            }
+
+            @children
+        }
+    }
+}

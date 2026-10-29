@@ -1,0 +1,93 @@
+import { Distro, Lang, Nav, Page } from "../globals.slint";
+import { NavRow, PageView, Spacer } from "../widgets.slint";
+import { Tokens } from "../slintcn/theme/tokens.slint";
+import { Button, ButtonVariant } from "../slintcn/components/button.slint";
+
+// how this works:
+// - find the partition with the largest size. That partition probably contains the other system
+// - resize that partition?
+export component InstallDualPage inherits PageView {
+    // placeholder sizes until this is wired up to the disk
+    property <int> total-size: 500;
+    property <int> min-other-allocation: 200;
+    property <int> min-distro-allocation: 200;
+    property <float> split: 0.5;
+    property <int> other-allocation: clamp(round(root.split * root.total-size), root.min-other-allocation, root.total-size - root.min-distro-allocation);
+    property <int> distro-allocation: root.total-size - root.other-allocation;
+
+    title: Lang.t("page-installdual", []);
+
+    VerticalLayout {
+        alignment: center;
+        vertical-stretch: 1;
+
+        paned := Rectangle {
+            height: 96px;
+            border-width: 1px;
+            border-color: Tokens.color-border-hairline-strong;
+            border-radius: Tokens.radius-lg;
+            background: Tokens.color-card;
+
+            VerticalLayout {
+                x: 0;
+                width: handle.x;
+                alignment: center;
+
+                Text {
+                    text: Lang.t("page-installdual-otheros", []);
+                    horizontal-alignment: center;
+                    color: Tokens.color-foreground;
+                }
+
+                Text {
+                    text: "\{root.other-allocation} GB";
+                    horizontal-alignment: center;
+                    color: Tokens.color-muted-foreground;
+                }
+            }
+
+            VerticalLayout {
+                x: handle.x + handle.width;
+                width: parent.width - self.x;
+                alignment: center;
+
+                Text {
+                    text: Distro.name;
+                    horizontal-alignment: center;
+                    color: Tokens.color-foreground;
+                }
+
+                Text {
+                    text: "\{root.distro-allocation} GB";
+                    horizontal-alignment: center;
+                    color: Tokens.color-muted-foreground;
+                }
+            }
+
+            handle := Rectangle {
+                width: 4px;
+                x: parent.width * root.other-allocation / root.total-size - self.width / 2;
+                background: drag.pressed || drag.has-hover ? Tokens.color-foreground : Tokens.color-border-hairline-strong;
+
+                drag := TouchArea {
+                    mouse-cursor: col-resize;
+                    moved => {
+                        root.split = clamp((handle.x + self.mouse-x) / paned.width, 0, 1);
+                    }
+                }
+            }
+        }
+    }
+
+    NavRow {
+        Button {
+            variant: ButtonVariant.ghost;
+            text: Lang.t("prev", []);
+            clicked => {
+                Nav.page = Page.installation-type;
+            }
+        }
+
+        Spacer { }
+    }
+}

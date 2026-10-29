@@ -1,0 +1,329 @@
+import { ComboBox, ListView } from "std-widgets.slint";
+import { Fonts, Lang, Nav, Page } from "../globals.slint";
+import { IconButton, Modal, NavRow, PageView, Selectable, Spacer } from "../widgets.slint";
+import { Tokens } from "../slintcn/theme/tokens.slint";
+import { Button, ButtonVariant } from "../slintcn/components/button.slint";
+import { Input } from "../slintcn/components/input.slint";
+import { LucidePaths } from "../slintcn/components/lucide-paths.slint";
+
+export struct MountRow {
+    partition: string,
+    mountpoint: string,
+    options: string,
+}
+
+export struct PartTool {
+    name: string,
+    icon: image,
+}
+
+/// Wizard to set up custom partitioning.
+///
+/// Users should also be able to label their partition with a special magic value to suggest
+/// Readymade to use that partition for a specific purpose, like /boot or /home.
+export global InstallCustomState {
+    in property <[MountRow]> mounts;
+    in property <string> description;
+
+    // mount target dialog; the dialog reads these once when it opens
+    in-out property <bool> mount-dialog-open;
+    in property <[string]> partitions;
+    /// Descriptions of the known mountpoints; the last one means "type your own".
+    in property <[string]> mountpoint-types;
+    in property <int> dialog-partition;
+    in property <int> dialog-mountpoint-type;
+    in property <string> dialog-custom-mountpoint;
+    in property <string> dialog-options;
+
+    callback add();
+    callback edit(index: int);
+    callback remove(index: int);
+    callback save(partition: int, mountpoint-type: int, custom-mountpoint: string, options: string);
+
+    // partitioning tool picker
+    in-out property <bool> tools-open;
+    in property <[PartTool]> tools;
+    callback open-tools();
+    callback launch-tool(index: int);
+}
+
+component MountRowView inherits Rectangle {
+    in property <MountRow> mount;
+    callback edit;
+    callback remove;
+
+    height: layout.preferred-height;
+    border-radius: Tokens.radius-lg;
+    border-width: 1px;
+    border-color: Tokens.color-border-hairline;
+    background: Tokens.color-card;
+
+    layout := HorizontalLayout {
+        padding: Tokens.spacing-sm;
+        padding-left: Tokens.spacing-lg;
+        spacing: Tokens.spacing-xs;
+
+        Text {
+            text: root.mount.mountpoint + " ← " + root.mount.partition + (root.mount.options == "" ? "" : " [" + root.mount.options + "]");
+            font-family: Fonts.mono;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+            color: Tokens.color-foreground;
+        }
+
+        IconButton {
+            commands: LucidePaths.pencil;
+            label: Lang.t("installtype-edit-mp", []);
+            clicked => {
+                root.edit();
+            }
+        }
+
+        IconButton {
+            commands: LucidePaths.trash;
+            label: Lang.t("installtype-rm-mp", []);
+            tint: Tokens.color-destructive;
+            clicked => {
+                root.remove();
+            }
+        }
+    }
+}
+
+export component InstallCustomPage inherits PageView {
+    title: Lang.t("page-installcustom", []);
+
+    ListView {
+        vertical-stretch: 1;
+        for mount[index] in InstallCustomState.mounts: VerticalLayout {
+            padding-bottom: Tokens.spacing-sm;
+            MountRowView {
+                mount: mount;
+                edit => {
+                    InstallCustomState.edit(index);
+                }
+                remove => {
+                    InstallCustomState.remove(index);
+                }
+            }
+        }
+    }
+
+    // bottom bar
+    Rectangle {
+        height: bar.preferred-height;
+        border-radius: Tokens.radius-xl;
+        border-width: 1px;
+        border-color: Tokens.color-border-hairline;
+        background: Tokens.color-card;
+
+        bar := HorizontalLayout {
+            padding: Tokens.spacing-sm;
+            spacing: Tokens.spacing-sm;
+
+            IconButton {
+                commands: LucidePaths.plus;
+                label: Lang.t("page-installcustom-add", []);
+                clicked => {
+                    InstallCustomState.add();
+                }
+            }
+
+            VerticalLayout {
+                alignment: center;
+                horizontal-stretch: 1;
+
+                Text {
+                    text: Lang.t("page-installcustom-title", []);
+                    font-weight: Tokens.typography-weight-semibold;
+                    horizontal-alignment: center;
+                    color: Tokens.color-foreground;
+                }
+
+                Text {
+                    text: Lang.t("page-installcustom-desc", [{ key: "num", value: InstallCustomState.mounts.length }]);
+                    horizontal-alignment: center;
+                    color: Tokens.color-muted-foreground;
+                }
+            }
+
+            IconButton {
+                commands: LucidePaths.sliders;
+                label: Lang.t("page-installcustom-tool", []);
+                clicked => {
+                    InstallCustomState.open-tools();
+                }
+            }
+        }
+    }
+
+    NavRow {
+        Button {
+            variant: ButtonVariant.ghost;
+            text: Lang.t("prev", []);
+            clicked => {
+                Nav.page = Page.installation-type;
+            }
+        }
+
+        Spacer { }
+
+        Button {
+            text: Lang.t("next", []);
+            disabled: InstallCustomState.mounts.length == 0;
+            clicked => {
+                Nav.page = Page.confirmation;
+            }
+        }
+    }
+}
+
+export component MountDialog inherits Modal {
+    private property <bool> is-other: mountpoint-type.current-index == InstallCustomState.mountpoint-types.length - 1;
+    private property <string> custom-mountpoint: InstallCustomState.dialog-custom-mountpoint;
+
+    title: "Mount Target";
+    dismissed => {
+        InstallCustomState.mount-dialog-open = false;
+    }
+
+    GridLayout {
+        spacing: Tokens.spacing-sm;
+
+        Row {
+            Text {
+                text: Lang.t("dialog-mp-part", []);
+                vertical-alignment: center;
+                color: Tokens.color-foreground;
+            }
+
+            partition := ComboBox {
+                model: InstallCustomState.partitions;
+                current-index: InstallCustomState.dialog-partition;
+            }
+        }
+
+        Row {
+            Text {
+                text: Lang.t("dialog-mp-at", []);
+                vertical-alignment: center;
+                color: Tokens.color-foreground;
+            }
+
+            mountpoint-type := ComboBox {
+                model: InstallCustomState.mountpoint-types;
+                current-index: InstallCustomState.dialog-mountpoint-type;
+            }
+        }
+
+        Row {
+            Rectangle { }
+
+            Input {
+                visible: root.is-other;
+                height: root.is-other ? Tokens.density-input : 0px;
+                placeholder: "/mnt/data";
+                text: root.custom-mountpoint;
+                edited(text) => {
+                    root.custom-mountpoint = text;
+                }
+            }
+        }
+
+        Row {
+            Text {
+                text: Lang.t("dialog-mp-opts", []);
+                vertical-alignment: center;
+                color: Tokens.color-foreground;
+            }
+
+            options := Input {
+                text: InstallCustomState.dialog-options;
+            }
+        }
+    }
+
+    HorizontalLayout {
+        alignment: end;
+        spacing: Tokens.spacing-sm;
+
+        Button {
+            variant: ButtonVariant.outline;
+            text: Lang.t("dialog-installtype-cancel", []);
+            clicked => {
+                InstallCustomState.mount-dialog-open = false;
+            }
+        }
+
+        Button {
+            text: Lang.t("dialog-installtype-confirm", []);
+            disabled: InstallCustomState.partitions.length == 0 || (root.is-other && root.custom-mountpoint == "");
+            clicked => {
+                InstallCustomState.mount-dialog-open = false;
+                InstallCustomState.save(partition.current-index, mountpoint-type.current-index, root.custom-mountpoint, options.text);
+            }
+        }
+    }
+}
+
+component ToolButton inherits Selectable {
+    in property <PartTool> tool;
+
+    label: self.tool.name;
+    width: 120px;
+    height: layout.preferred-height;
+
+    layout := VerticalLayout {
+        padding: Tokens.spacing-sm;
+        spacing: Tokens.spacing-xs;
+
+        HorizontalLayout {
+            alignment: center;
+            Image {
+                source: root.tool.icon;
+                width: 64px;
+                height: 64px;
+            }
+        }
+
+        Text {
+            text: root.tool.name;
+            wrap: word-wrap;
+            horizontal-alignment: center;
+            color: Tokens.color-foreground;
+        }
+    }
+}
+
+export component PartToolDialog inherits Modal {
+    title: Lang.t("installtype-parttool", []);
+    panel-width: 560px;
+    dismissed => {
+        InstallCustomState.tools-open = false;
+    }
+
+    HorizontalLayout {
+        alignment: center;
+        spacing: Tokens.spacing-lg;
+
+        for tool[index] in InstallCustomState.tools: ToolButton {
+            tool: tool;
+            clicked => {
+                InstallCustomState.launch-tool(index);
+            }
+        }
+    }
+
+    HorizontalLayout {
+        alignment: end;
+
+        Button {
+            variant: ButtonVariant.outline;
+            text: Lang.t("page-failure-close", []);
+            clicked => {
+                InstallCustomState.tools-open = false;
+            }
+        }
+    }
+}

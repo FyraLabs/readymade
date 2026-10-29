@@ -1,0 +1,43 @@
+// slintcn popup helpers — shared primitives for Dialog / AlertDialog / Sheet.
+//
+// Mount pattern (consumer responsibility, due to Slint's lack of portals):
+//
+//   Window {
+//       VerticalLayout { /* main UI */ }
+//       // Dialog/Sheet must be the LAST child so they draw on top of the
+//       // main UI. They take the Window's full area:
+//       Dialog {
+//           width: parent.width;
+//           height: parent.height;
+//           open <=> dialog-open;
+//           ...
+//       }
+//   }
+//
+// When `open` is false the overlay's scrim has opacity 0 and no TouchArea —
+// so pointer events fall through to the underlying UI normally.
+
+import { Tokens } from "../theme/tokens.slint";
+
+// Full-coverage dimmed backdrop. Animates opacity in/out via the `shown`
+// input (we can't reuse Slint's built-in `visible` — it's reserved on every
+// element). Clicking the backdrop fires `clicked`; the consumer decides
+// whether that closes the modal (Dialog has a `dismiss-on-backdrop` policy).
+export component Scrim inherits Rectangle {
+    in property <bool> shown: false;
+    callback clicked();
+
+    background: Tokens.color-scrim-2;
+    opacity: shown ? 1.0 : 0.0;
+
+    animate opacity {
+        duration: Tokens.motion-base;
+        easing: Tokens.motion-easing-standard;
+    }
+
+    // Only intercept clicks while shown — otherwise the modal would block
+    // interaction with the rest of the app even when closed.
+    if shown: TouchArea {
+        clicked => { root.clicked(); }
+    }
+}

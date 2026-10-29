@@ -2,6 +2,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    sync::LazyLock,
 };
 
 use ipc_channel::{IpcError, ipc::IpcOneShotServer};
@@ -18,7 +19,7 @@ use libreadymade::{
     disks::Disk,
     playbook::{EncryptionConfig, Playbook, PlaybookProgress},
 };
-use relm4::SharedState;
+use parking_lot::RwLock;
 
 use crate::cfg::{CopyMode, InstallationType, ReadymadeConfig};
 use crate::prelude::*;
@@ -244,4 +245,5 @@ fn mount_live_base(dev: &str) -> std::io::Result<PathBuf> {
 }
 
 /// State related to the user's installation configuration
-pub static APPLICATION_STATE: SharedState<ApplicationState> = SharedState::new();
+pub static APPLICATION_STATE: LazyLock<RwLock<ApplicationState>> =
+    LazyLock::new(Default::default);

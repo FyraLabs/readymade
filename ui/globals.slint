@@ -1,0 +1,59 @@
+export enum Page {
+    language,
+    welcome,
+    destination,
+    installation-type,
+    confirmation,
+    installation,
+    install-dual,
+    install-custom,
+    completed,
+    failure,
+}
+
+export struct FluentArg {
+    key: string,
+    value: string,
+}
+
+/// Fluent translations live on the Rust side. `current-locale` is passed to `_t` so every binding
+/// that went through `t()` gets re-evaluated when the language changes.
+export global Lang {
+    in property <string> current-locale;
+
+    public pure function t(id: string, args: [FluentArg]) -> string {
+        _t(id, args, current-locale);
+    }
+    pure callback _t(id: string, args: [FluentArg], current-locale: string) -> string;
+    _t(id, args, current-locale) => "t(" + id + ")";
+}
+
+export global Nav {
+    in-out property <Page> page;
+    callback quit();
+    callback open-url(url: string);
+}
+
+export global Distro {
+    in property <string> name;
+    in property <image> icon;
+}
+
+export global Fonts {
+    /// Slint only takes concrete family names, so Rust fills in whatever fontconfig picks for
+    /// `monospace`.
+    in property <string> mono: "monospace";
+}
+
+/// Full-color icons resolved from the system icon theme at startup.
+export global Icons {
+    in property <image> drive;
+    out property <image> loading: @image-url("../data/icons/content-loading-symbolic.svg");
+    out property <image> no-disk: @image-url("../data/icons/list-remove-all-symbolic.svg");
+}
+
+/// The disk picked on the destination page, shown again on later pages.
+export global SelectedDisk {
+    in property <string> name;
+    in property <string> os;
+}

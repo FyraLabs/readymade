@@ -1,0 +1,108 @@
+import { Distro, Icons, Lang, Nav, Page, SelectedDisk } from "../globals.slint";
+import { DiskSummary, Modal, NavRow, PageView, Spacer } from "../widgets.slint";
+import { Tokens } from "../slintcn/theme/tokens.slint";
+import { Button, ButtonVariant } from "../slintcn/components/button.slint";
+import { Icon } from "../slintcn/components/icon.slint";
+import { LucidePaths } from "../slintcn/components/lucide-paths.slint";
+
+export global ConfirmationState {
+    /// Something preventing the installation (e.g. the disk is mounted), empty if none.
+    in property <string> problem;
+
+    in property <bool> warning-open;
+    in property <string> warning-title;
+    in property <string> warning-desc;
+
+    callback start();
+    callback warning-confirm();
+    callback warning-cancel();
+}
+
+export component ConfirmationPage inherits PageView {
+    title: Lang.t("page-confirmation", []);
+
+    HorizontalLayout {
+        alignment: center;
+        spacing: Tokens.spacing-lg;
+        vertical-stretch: 1;
+
+        DiskSummary {
+            icon: Icons.drive;
+            name: SelectedDisk.name;
+            subtitle: SelectedDisk.os;
+        }
+
+        VerticalLayout {
+            alignment: center;
+            Icon {
+                commands: LucidePaths.arrow-right;
+                size: 48px;
+                tint: Tokens.color-muted-foreground;
+            }
+        }
+
+        DiskSummary {
+            icon: Icons.drive;
+            name: SelectedDisk.name;
+            subtitle: Distro.name;
+        }
+    }
+
+    if ConfirmationState.problem != "": Text {
+        text: ConfirmationState.problem;
+        wrap: word-wrap;
+        horizontal-alignment: center;
+        color: Tokens.color-destructive;
+    }
+
+    NavRow {
+        Button {
+            variant: ButtonVariant.ghost;
+            text: Lang.t("prev", []);
+            clicked => {
+                Nav.page = Page.installation-type;
+            }
+        }
+
+        Spacer { }
+
+        Button {
+            variant: ButtonVariant.destructive;
+            text: Lang.t("page-welcome-install", []);
+            disabled: ConfirmationState.problem != "";
+            clicked => {
+                ConfirmationState.start();
+            }
+        }
+    }
+}
+
+export component WarningDialog inherits Modal {
+    title: ConfirmationState.warning-title;
+    description: ConfirmationState.warning-desc;
+    icon: LucidePaths.triangle-alert;
+    dismissed => {
+        ConfirmationState.warning-cancel();
+    }
+
+    HorizontalLayout {
+        alignment: end;
+        spacing: Tokens.spacing-sm;
+
+        Button {
+            variant: ButtonVariant.outline;
+            text: Lang.t("dialog-installtype-cancel", []);
+            clicked => {
+                ConfirmationState.warning-cancel();
+            }
+        }
+
+        Button {
+            variant: ButtonVariant.destructive;
+            text: Lang.t("dialog-installtype-confirm", []);
+            clicked => {
+                ConfirmationState.warning-confirm();
+            }
+        }
+    }
+}

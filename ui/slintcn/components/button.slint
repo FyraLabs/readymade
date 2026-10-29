@@ -1,0 +1,190 @@
+// slintcn Button — copy-paste primitive (you own this file after `slintcn add`).
+//
+// Per-variant visuals are resolved into rest/hover color pairs below, then
+// the top-level visual properties pick one or the other based on a single
+// `interactive-hover` flag. Adding a 9th variant is a single-row append on
+// each rest/hover pair, not a tour of nested ternaries.
+
+import { Tokens } from "../theme/tokens.slint";
+
+export enum ButtonVariant {
+    default, outline, secondary, ghost, link, destructive, glow, glass,
+}
+
+export enum ButtonSize {
+    xs, sm, default, lg, icon, icon-xs, icon-sm, icon-lg,
+}
+
+export component Button inherits Rectangle {
+    // Visual style — default, secondary, outline, ghost, link, destructive, success, glow.
+    in property <ButtonVariant> variant: ButtonVariant.default;
+    // Height + horizontal padding preset — xs, sm, default, lg, xl, xxl, xxxl, icon.
+    in property <ButtonSize>    size:    ButtonSize.default;
+    // Label rendered inside the button.
+    in property <string> text;
+    // When true, the button dims and stops firing `clicked`.
+    in property <bool>   disabled: false;
+    // Fired on press release while enabled.
+    callback clicked();
+
+    // ----- sizing -----
+    property <bool> is-icon:
+        size == ButtonSize.icon || size == ButtonSize.icon-xs
+        || size == ButtonSize.icon-sm || size == ButtonSize.icon-lg;
+
+    // shadcn horizontal padding: default px-4(16), sm px-3(12), lg px-6(24).
+    property <length> hpad:
+        size == ButtonSize.xs ? 10px :
+        size == ButtonSize.sm ? 12px :
+        size == ButtonSize.lg ? 24px : 16px;
+
+    height:
+        size == ButtonSize.xs || size == ButtonSize.icon-xs ? Tokens.density-button-xs :
+        size == ButtonSize.sm || size == ButtonSize.icon-sm ? Tokens.density-button-sm :
+        size == ButtonSize.lg || size == ButtonSize.icon-lg ? Tokens.density-button-lg :
+        Tokens.density-button-default;
+
+    width: is-icon ? self.height : label.preferred-width + 2 * hpad;
+
+    border-radius: Tokens.radius-md;
+
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-enabled: !root.disabled;
+    accessible-action-default => {
+        if (!root.disabled) { root.clicked(); }
+    }
+
+    // ----- per-variant color resolution (single source per role) -----
+    property <color> bg-rest:
+        variant == ButtonVariant.outline     ? transparent :
+        variant == ButtonVariant.secondary   ? Tokens.color-secondary :
+        variant == ButtonVariant.ghost       ? transparent :
+        variant == ButtonVariant.link        ? transparent :
+        variant == ButtonVariant.destructive ? Tokens.color-destructive.with-alpha(0.2) :
+        variant == ButtonVariant.glass       ? Tokens.color-scrim-2 :
+        /* default | glow */                   Tokens.color-foreground;
+
+    property <color> bg-hover:
+        variant == ButtonVariant.outline     ? Tokens.color-accent :
+        variant == ButtonVariant.secondary   ? Tokens.color-secondary.with-alpha(0.8) :
+        variant == ButtonVariant.ghost       ? Tokens.color-accent :
+        variant == ButtonVariant.link        ? transparent :
+        variant == ButtonVariant.destructive ? Tokens.color-destructive.with-alpha(0.3) :
+        variant == ButtonVariant.glass       ? Tokens.color-surface-3 :
+        /* default | glow */                   Tokens.color-foreground.with-alpha(0.95);
+
+    property <length> border-w:
+        variant == ButtonVariant.outline || variant == ButtonVariant.glass ? 1px : 0px;
+    property <color> border-rest:
+        variant == ButtonVariant.outline || variant == ButtonVariant.glass
+            ? Tokens.color-border-hairline : transparent;
+    property <color> border-hover:
+        variant == ButtonVariant.outline || variant == ButtonVariant.glass
+            ? Tokens.color-border-hairline-strong : transparent;
+
+    property <length> shadow-rest-blur:
+        variant == ButtonVariant.glow ? Tokens.shadow-glow-md-blur : 0px;
+    property <length> shadow-hover-blur:
+        variant == ButtonVariant.glow ? Tokens.shadow-glow-lg-blur : 0px;
+    property <color> shadow-rest-color:
+        variant == ButtonVariant.glow ? Tokens.shadow-glow-md-color : transparent;
+    property <color> shadow-hover-color:
+        variant == ButtonVariant.glow ? Tokens.shadow-glow-lg-color : transparent;
+
+    property <color> fg-rest:
+        variant == ButtonVariant.default || variant == ButtonVariant.glow
+            ? Tokens.color-primary-foreground :
+        variant == ButtonVariant.destructive ? Tokens.color-destructive :
+        variant == ButtonVariant.link        ? Tokens.color-primary :
+        variant == ButtonVariant.ghost || variant == ButtonVariant.outline
+            ? Tokens.color-muted-foreground :
+        /* secondary | glass */                Tokens.color-foreground;
+    property <color> fg-hover:
+        variant == ButtonVariant.default || variant == ButtonVariant.glow
+            ? Tokens.color-primary-foreground :
+        variant == ButtonVariant.destructive ? Tokens.color-destructive :
+        variant == ButtonVariant.link        ? Tokens.color-primary :
+        variant == ButtonVariant.ghost || variant == ButtonVariant.outline
+            ? Tokens.color-foreground :
+        /* secondary | glass */                Tokens.color-foreground;
+
+    // ----- composed visual state -----
+    property <bool> interactive-hover: touch.has-hover && !disabled;
+
+    background:        interactive-hover ? bg-hover            : bg-rest;
+    border-width:      border-w;
+    border-color:      interactive-hover ? border-hover        : border-rest;
+    drop-shadow-blur:  interactive-hover ? shadow-hover-blur   : shadow-rest-blur;
+    drop-shadow-color: interactive-hover ? shadow-hover-color  : shadow-rest-color;
+
+    // The button's root y is owned by the parent layout; press feedback is
+    // expressed as a 1 px label-only shift so we don't fight layout placement.
+    opacity: root.disabled ? 0.5 : 1.0;
+
+    animate opacity, background, border-color, drop-shadow-blur, drop-shadow-color {
+        duration: Tokens.motion-fast;
+        easing: Tokens.motion-easing-standard;
+    }
+
+    label := Text {
+        x: (parent.width - self.preferred-width) / 2;
+        y: (parent.height - self.preferred-height) / 2
+            + (touch.pressed && !root.disabled ? 1px : 0px);
+        animate y { duration: Tokens.motion-fast; easing: Tokens.motion-easing-standard; }
+        text: root.text;
+        color: interactive-hover ? fg-hover : fg-rest;
+        font-size:
+            size == ButtonSize.xs || size == ButtonSize.sm
+                ? Tokens.typography-body-sm-size
+                : Tokens.typography-body-size;
+        font-weight: Tokens.typography-weight-medium;
+        visible: root.text != "";
+    }
+
+    if variant == ButtonVariant.link && interactive-hover: Rectangle {
+        x: label.x;
+        y: label.y + label.preferred-height - 2px;
+        width: label.preferred-width;
+        height: 1px;
+        background: Tokens.color-primary;
+    }
+
+    @children
+
+    touch := TouchArea {
+        mouse-cursor: root.disabled ? default : pointer;
+        clicked => {
+            if (!root.disabled) {
+                focus-scope.focus();
+                root.clicked();
+            }
+        }
+    }
+
+    forward-focus: focus-scope;
+    focus-scope := FocusScope {
+        enabled: !root.disabled;
+        // this sits on top of the TouchArea; grabbing focus on press would eat the first click
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == "\n" || event.text == " ") {
+                if (!root.disabled) { root.clicked(); }
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    // Outer focus ring — drawn last so it's visually unclipped.
+    if focus-scope.has-focus: Rectangle {
+        x: -Tokens.focus-ring-offset;
+        y: -Tokens.focus-ring-offset;
+        width:  parent.width  + 2 * Tokens.focus-ring-offset;
+        height: parent.height + 2 * Tokens.focus-ring-offset;
+        border-width: Tokens.focus-ring-width;
+        border-color: Tokens.color-ring-muted;
+        border-radius: Tokens.radius-md + Tokens.focus-ring-offset;
+        background: transparent;
+    }
+}

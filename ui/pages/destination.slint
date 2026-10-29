@@ -1,0 +1,122 @@
+import { ScrollView } from "std-widgets.slint";
+import { Icons, Lang, Nav, Page } from "../globals.slint";
+import { EmptyState, NavRow, PageView, Selectable, Spacer } from "../widgets.slint";
+import { Tokens } from "../slintcn/theme/tokens.slint";
+import { Button, ButtonVariant } from "../slintcn/components/button.slint";
+
+export struct DiskEntry {
+    name: string,
+    os: string,
+    size: string,
+}
+
+export global DestinationState {
+    in property <bool> scanning: true;
+    in property <[DiskEntry]> disks;
+    in property <int> selected: -1;
+    callback select(index: int);
+}
+
+component DiskCard inherits Selectable {
+    in property <DiskEntry> disk;
+
+    label: self.disk.name;
+    description: self.disk.os;
+    width: 176px;
+    height: layout.preferred-height;
+
+    layout := VerticalLayout {
+        padding: Tokens.spacing-md;
+        spacing: 2px;
+
+        HorizontalLayout {
+            alignment: center;
+            Image {
+                source: Icons.drive;
+                width: 128px;
+                height: 128px;
+            }
+        }
+
+        Text {
+            text: root.disk.name;
+            font-size: 16px;
+            font-weight: Tokens.typography-weight-semibold;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            color: Tokens.color-foreground;
+        }
+
+        Text {
+            text: root.disk.os;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            color: Tokens.color-foreground;
+        }
+
+        Text {
+            text: root.disk.size;
+            horizontal-alignment: center;
+            color: Tokens.color-muted-foreground;
+        }
+    }
+}
+
+export component DestinationPage inherits PageView {
+    title: Lang.t("page-destination", []);
+
+    if DestinationState.scanning: EmptyState {
+        busy: true;
+        title: Lang.t("page-destination-scanning", []);
+        description: Lang.t("page-destination-wait", []);
+    }
+
+    if !DestinationState.scanning && DestinationState.disks.length == 0: EmptyState {
+        icon: Icons.no-disk;
+        title: Lang.t("page-destination-no-disk", []);
+        description: Lang.t("page-destination-no-disk-desc", []);
+    }
+
+    if !DestinationState.scanning && DestinationState.disks.length > 0: ScrollView {
+        vertical-stretch: 1;
+
+        VerticalLayout {
+            alignment: center;
+            min-height: parent.visible-height;
+
+            FlexboxLayout {
+                flex-wrap: wrap;
+                alignment: center;
+                spacing: Tokens.spacing-sm;
+
+                for disk[index] in DestinationState.disks: DiskCard {
+                    disk: disk;
+                    selected: index == DestinationState.selected;
+                    clicked => {
+                        DestinationState.select(index);
+                    }
+                }
+            }
+        }
+    }
+
+    NavRow {
+        Button {
+            variant: ButtonVariant.ghost;
+            text: Lang.t("prev", []);
+            clicked => {
+                Nav.page = Page.welcome;
+            }
+        }
+
+        Spacer { }
+
+        Button {
+            text: Lang.t("next", []);
+            disabled: DestinationState.selected < 0;
+            clicked => {
+                Nav.page = Page.installation-type;
+            }
+        }
+    }
+}

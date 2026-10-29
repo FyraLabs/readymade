@@ -1,9 +1,6 @@
-use glib_build_tools::compile_resources;
+use slint_build::CompilerConfiguration;
 
 fn main() {
-    compile_resources(
-        &["data"],
-        "data/resources.gresource.xml",
-        "resources.gresource",
-    );
+    let cfg = CompilerConfiguration::new().with_style("fluent".into());
+    slint_build::compile_with_config("ui/app.slint", cfg).expect("cannot compile ui");
 }

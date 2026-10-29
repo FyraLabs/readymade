@@ -1,0 +1,196 @@
+import { CheckBox } from "std-widgets.slint";
+import { Icons, Lang, Nav, Page, SelectedDisk } from "../globals.slint";
+import { DiskSummary, Modal, NavRow, PageView, Spacer } from "../widgets.slint";
+import { Tokens } from "../slintcn/theme/tokens.slint";
+import { Button, ButtonSize, ButtonVariant } from "../slintcn/components/button.slint";
+import { Input } from "../slintcn/components/input.slint";
+
+export enum InstallKind {
+    none,
+    whole-disk,
+    dual-boot,
+    custom,
+    chromebook,
+}
+
+export global InstallationTypeState {
+    in property <bool> allow-whole-disk;
+    in property <bool> allow-dual-boot;
+    in property <bool> allow-custom;
+    in property <bool> allow-chromebook;
+    in property <bool> tpm-supported;
+
+    in-out property <InstallKind> kind;
+    in-out property <bool> encrypt;
+    in-out property <bool> tpm;
+    in-out property <bool> dialog-open;
+
+    out property <bool> can-encrypt: self.kind != InstallKind.none && self.kind != InstallKind.custom;
+
+    /// Store the selection (and the passphrase, if encryption is on) in the application state.
+    callback commit(passphrase: string);
+
+    public function proceed(passphrase: string) {
+        self.dialog-open = false;
+        self.commit(passphrase);
+        if self.kind == InstallKind.dual-boot {
+            Nav.page = Page.install-dual;
+        } else if self.kind == InstallKind.custom {
+            Nav.page = Page.install-custom;
+        } else {
+            Nav.page = Page.confirmation;
+        }
+    }
+}
+
+component KindButton inherits Button {
+    in property <InstallKind> kind;
+
+    variant: InstallationTypeState.kind == root.kind ? ButtonVariant.default : ButtonVariant.outline;
+    size: ButtonSize.lg;
+    accessible-checkable: true;
+    accessible-checked: InstallationTypeState.kind == root.kind;
+    clicked => {
+        InstallationTypeState.kind = root.kind;
+    }
+}
+
+export component InstallationTypePage inherits PageView {
+    title: Lang.t("page-installationtype", []);
+
+    VerticalLayout {
+        alignment: center;
+        spacing: 18px;
+        vertical-stretch: 1;
+
+        DiskSummary {
+            icon: Icons.drive;
+            name: SelectedDisk.name;
+            subtitle: SelectedDisk.os;
+        }
+
+        HorizontalLayout {
+            alignment: center;
+            spacing: Tokens.spacing-sm;
+
+            if InstallationTypeState.allow-whole-disk: KindButton {
+                kind: InstallKind.whole-disk;
+                text: Lang.t("page-installationtype-entire", []);
+            }
+            if InstallationTypeState.allow-dual-boot: KindButton {
+                kind: InstallKind.dual-boot;
+                text: Lang.t("page-installationtype-dual", []);
+            }
+            if InstallationTypeState.allow-custom: KindButton {
+                kind: InstallKind.custom;
+                text: Lang.t("page-installationtype-custom", []);
+            }
+            if InstallationTypeState.allow-chromebook: KindButton {
+                kind: InstallKind.chromebook;
+                text: Lang.t("page-installationtype-chromebook", []);
+            }
+        }
+    }
+
+    HorizontalLayout {
+        alignment: center;
+
+        VerticalLayout {
+            CheckBox {
+                text: Lang.t("page-installationtype-encrypt", []);
+                enabled: InstallationTypeState.can-encrypt;
+                checked <=> InstallationTypeState.encrypt;
+            }
+
+            CheckBox {
+                text: Lang.t("page-installationtype-tpm", []);
+                enabled: InstallationTypeState.encrypt && InstallationTypeState.can-encrypt && InstallationTypeState.tpm-supported;
+                checked <=> InstallationTypeState.tpm;
+            }
+        }
+    }
+
+    NavRow {
+        Button {
+            variant: ButtonVariant.ghost;
+            text: Lang.t("prev", []);
+            clicked => {
+                Nav.page = Page.destination;
+            }
+        }
+
+        Spacer { }
+
+        Button {
+            text: Lang.t("next", []);
+            disabled: InstallationTypeState.kind == InstallKind.none;
+            clicked => {
+                if InstallationTypeState.encrypt && InstallationTypeState.can-encrypt {
+                    InstallationTypeState.dialog-open = true;
+                } else {
+                    InstallationTypeState.proceed("");
+                }
+            }
+        }
+    }
+}
+
+export component EncryptDialog inherits Modal {
+    private property <bool> matches: password.text != "" && password.text == repeat.text;
+    private property <bool> weak: password.text.character-count < 8 || password.text.to-lowercase() == password.text;
+
+    title: Lang.t("dialog-installtype-encrypt", []);
+    description: Lang.t("dialog-installtype-encrypt-desc", []);
+    dismissed => {
+        InstallationTypeState.dialog-open = false;
+    }
+
+    password := Input {
+        password: true;
+        auto-focus: true;
+        placeholder: Lang.t("dialog-installtype-password", []);
+        accepted => {
+            repeat.focus();
+        }
+    }
+
+    repeat := Input {
+        password: true;
+        placeholder: Lang.t("dialog-installtype-repeat", []);
+        accepted => {
+            if root.matches {
+                InstallationTypeState.proceed(password.text);
+            }
+        }
+    }
+
+    Text {
+        // keep the space reserved so the dialog doesn't jump around while typing
+        opacity: root.weak && password.text != "" ? 1 : 0;
+        text: "Password is too weak. We recommend a password with at least 8 uppercase or lowercase characters.";
+        wrap: word-wrap;
+        font-size: Tokens.typography-body-sm-size;
+        color: Tokens.color-destructive;
+    }
+
+    HorizontalLayout {
+        alignment: end;
+        spacing: Tokens.spacing-sm;
+
+        Button {
+            variant: ButtonVariant.outline;
+            text: Lang.t("dialog-installtype-cancel", []);
+            clicked => {
+                InstallationTypeState.dialog-open = false;
+            }
+        }
+
+        Button {
+            text: Lang.t("dialog-installtype-confirm", []);
+            disabled: !root.matches;
+            clicked => {
+                InstallationTypeState.proceed(password.text);
+            }
+        }
+    }
+}

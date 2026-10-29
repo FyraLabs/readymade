@@ -1,0 +1,56 @@
+import { Distro, Lang, Nav, Page } from "../globals.slint";
+import { NavRow, PageView, Spacer } from "../widgets.slint";
+import { Tokens } from "../slintcn/theme/tokens.slint";
+import { Button, ButtonVariant } from "../slintcn/components/button.slint";
+
+export component WelcomePage inherits PageView {
+    VerticalLayout {
+        alignment: center;
+        spacing: Tokens.spacing-lg;
+        vertical-stretch: 1;
+
+        HorizontalLayout {
+            alignment: center;
+            Image {
+                source: Distro.icon;
+                width: 128px;
+                height: 128px;
+            }
+        }
+
+        Text {
+            text: Lang.t("page-welcome", [{ key: "distro", value: Distro.name }]);
+            font-size: 28px;
+            font-weight: Tokens.typography-weight-semibold;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            color: Tokens.color-foreground;
+        }
+
+        Text {
+            text: Lang.t("page-welcome-desc", [{ key: "distro", value: Distro.name }]);
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            color: Tokens.color-muted-foreground;
+        }
+    }
+
+    NavRow {
+        Button {
+            variant: ButtonVariant.outline;
+            text: Lang.t("page-welcome-try", []);
+            clicked => {
+                Nav.quit();
+            }
+        }
+
+        Spacer { }
+
+        Button {
+            text: Lang.t("page-welcome-install", []);
+            clicked => {
+                Nav.page = Page.destination;
+            }
+        }
+    }
+}

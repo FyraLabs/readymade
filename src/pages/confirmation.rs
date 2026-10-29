@@ -1,201 +1,62 @@
-use std::{os::unix::fs::FileTypeExt, path::PathBuf, process::Command, time::Duration};
+use std::{
+    cell::RefCell, os::unix::fs::FileTypeExt, path::PathBuf, process::Command, rc::Rc,
+    time::Duration,
+};
 
+use crate::ui::{ConfirmationState, Nav};
 use crate::{cfg::InstallationType, prelude::*};
 
-page!(Confirmation {
-    problem: Option<Problem>,
-    root: libhelium::ViewMono,
-    warns: Vec<Warning>,
-    warn_dialog: Option<Controller<Warning>>,
-}:
-    init(root, sender, model, widgets) {
-        gtk::glib::timeout_add(Duration::from_secs(1), move || {
-            sender.input(Self::Input::Check);
-            gtk::glib::ControlFlow::Continue
-        });
-        model.root = root;
-    }
-
-    update(self, message, sender) {
-        WarnCancel => {
-            self.clear_warning_dialog();
-            self.warns.clear();
-        },
-        WarnConfirm => {
-            self.clear_warning_dialog();
-            if !self.show_next_warning(&sender) {
-                sender
-                    .output(Self::Output::StartInstallation)
-                    .unwrap();
-
-                sender
-                    .output(Self::Output::Navigate(NavigationAction::GoTo(
-                        Page::Installation,
-                    )))
-                    .unwrap();
-            }
-        },
-        StartInstallation => {
-            self.warns = Warning::list().collect_vec();
-            self.clear_warning_dialog();
-            if !self.show_next_warning(&sender) {
-                sender
-                    .output(Self::Output::StartInstallation)
-                    .unwrap();
-
-                sender
-                    .output(Self::Output::Navigate(NavigationAction::GoTo(
-                        Page::Installation,
-                    )))
-                    .unwrap();
-            }
-        },
-        Check => {
-            self.problem = Problem::detect();
-        }
-    } => { StartInstallation }
-
-    gtk::CenterBox {
-        set_orientation: gtk::Orientation::Horizontal,
-        set_valign: gtk::Align::Center,
-        set_vexpand: true,
-
-        #[wrap(Some)]
-        set_start_widget = &gtk::Box {
-            set_orientation: gtk::Orientation::Vertical,
-            set_spacing: 2,
-            set_vexpand: true,
-            set_hexpand: true,
-            set_valign: gtk::Align::Center,
-            set_halign: gtk::Align::Center,
-
-            gtk::Image {
-                set_icon_name: Some("drive-harddisk"),
-                inline_css: "-gtk-icon-size: 128px"
-            },
-
-            gtk::Label {
-                #[watch]
-                set_label: &APPLICATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
-                inline_css: "font-size: 16px; font-weight: bold"
-            },
-
-            gtk::Label {
-                #[watch]
-                set_label: &APPLICATION_STATE.read().destination_disk.clone().map(|d| d.os_name.unwrap_or_else(|| t!("unknown-os"))).unwrap_or_default(),
-            }
-        },
-
-        #[wrap(Some)]
-        set_center_widget = &gtk::Image {
-            set_icon_name: Some("go-next-symbolic"),
-            inline_css: "-gtk-icon-size: 64px",
-            set_margin_horizontal: 16,
-        },
-
-        #[wrap(Some)]
-        set_end_widget = &gtk::Box {
-            set_orientation: gtk::Orientation::Vertical,
-            set_spacing: 2,
-            set_vexpand: true,
-            set_hexpand: true,
-            set_valign: gtk::Align::Center,
-            set_halign: gtk::Align::Center,
-
-            gtk::Image {
-                set_icon_name: Some("drive-harddisk"),
-                inline_css: "-gtk-icon-size: 128px"
-            },
-
-            gtk::Label {
-                #[watch]
-                set_label: &APPLICATION_STATE.read().destination_disk.clone().map(|d| d.disk_name).unwrap_or_default(),
-                inline_css: "font-size: 16px; font-weight: bold"
-            },
-
-            gtk::Label {
-                set_label: &crate::CONFIG.read().distro.name,
-            }
-        }
-    },
-
-    // relm4 doesn't support if lets
-    gtk::Label {
-        #[watch]
-        set_label: &model.problem.as_ref().map(Problem::msg).unwrap_or_default(),
-        set_use_markup: true,
-        add_css_class: "error",
-    },
-
-    gtk::Box {
-        set_orientation: gtk::Orientation::Horizontal,
-        set_spacing: 4,
-
-        libhelium::Button {
-            set_is_pill: true,
-            #[watch]
-            set_label: &t!("prev"),
-            add_css_class: "large-button",
-            connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(
-                    crate::Page::InstallationType
-            )),
-        },
-
-        gtk::Box {
-            set_hexpand: true,
-        },
-
-        libhelium::Button {
-            #[watch]
-            set_sensitive: model.problem.is_none(),
-            set_is_pill: true,
-            #[watch]
-            set_label: &t!("page-welcome-install"),
-            add_css_class: "large-button",
-            add_css_class: "destructive-action",
-            connect_clicked => ConfirmationPageMsg::StartInstallation
-        },
-    }
-);
-
-impl ConfirmationPage {
-    fn clear_warning_dialog(&mut self) {
-        if let Some(ctrl) = self.warn_dialog.take() {
-            let dialog = ctrl.widget();
-            if let Some(overlay) = self.overlay_widget()
-                && dialog.parent().is_some()
-            {
-                overlay.remove_overlay(dialog);
-            }
-            libhelium::prelude::HeDialogExt::set_visible(dialog, false);
-        }
-    }
-
-    fn show_next_warning(&mut self, sender: &relm4::ComponentSender<Self>) -> bool {
-        if let Some(warn) = self.warns.pop() {
-            if let Some(overlay) = self.overlay_widget() {
-                let ctrl = warn.pop(&overlay, sender);
-                self.warn_dialog = Some(ctrl);
-                true
-            } else {
-                tracing::warn!(
-                    "application overlay unavailable; cannot show confirmation warning dialog"
-                );
-                false
-            }
-        } else {
-            false
-        }
-    }
+thread_local! {
+    static PROBLEM_TIMER: slint::Timer = slint::Timer::default();
 }
 
-impl ConfirmationPage {
-    fn overlay_widget(&self) -> Option<gtk::Overlay> {
-        let root = &self.root;
-        let widget: &gtk::Widget = root.upcast_ref();
-        widget
-            .ancestor(gtk::Overlay::static_type())
-            .and_then(|ancestor| ancestor.downcast::<gtk::Overlay>().ok())
+pub fn init(ui: &AppWindow) {
+    let weak = ui.as_weak();
+    PROBLEM_TIMER.with(|timer| {
+        timer.start(slint::TimerMode::Repeated, Duration::from_secs(1), move || {
+            let Some(ui) = weak.upgrade() else { return };
+            if ui.global::<Nav<'_>>().get_page() != Page::Confirmation {
+                return;
+            }
+            let problem = Problem::detect().as_ref().map(Problem::msg).unwrap_or_default();
+            ui.global::<ConfirmationState<'_>>().set_problem(problem.into());
+        });
+    });
+
+    let warns = Rc::new(RefCell::new(Vec::<Warning>::new()));
+    let state = ui.global::<ConfirmationState<'_>>();
+
+    let (weak, warns2) = (ui.as_weak(), Rc::clone(&warns));
+    state.on_start(move || {
+        let Some(ui) = weak.upgrade() else { return };
+        *warns2.borrow_mut() = Warning::list().collect_vec();
+        show_next_warning(&ui, &warns2);
+    });
+
+    let (weak, warns2) = (ui.as_weak(), Rc::clone(&warns));
+    state.on_warning_confirm(move || {
+        let Some(ui) = weak.upgrade() else { return };
+        show_next_warning(&ui, &warns2);
+    });
+
+    let weak = ui.as_weak();
+    state.on_warning_cancel(move || {
+        let Some(ui) = weak.upgrade() else { return };
+        warns.borrow_mut().clear();
+        ui.global::<ConfirmationState<'_>>().set_warning_open(false);
+    });
+}
+
+/// Pop the next warning into the dialog, or start installing once the user went through all of them.
+fn show_next_warning(ui: &AppWindow, warns: &RefCell<Vec<Warning>>) {
+    let state = ui.global::<ConfirmationState<'_>>();
+    if let Some(warn) = warns.borrow_mut().pop() {
+        state.set_warning_title(warn.title().into());
+        state.set_warning_desc(warn.desc().into());
+        state.set_warning_open(true);
+    } else {
+        state.set_warning_open(false);
+        crate::pages::installation::start(ui);
     }
 }
 
@@ -229,7 +90,7 @@ impl Problem {
         None
     }
     fn msg(&self) -> String {
-        match self {
+        let msg = match self {
             Self::DeviceMounted(dev, mp) => t!(
                 "page-confirmation-problem-device-mounted",
                 dev = dev,
@@ -240,7 +101,9 @@ impl Problem {
                 dev = dev,
                 pids = pids.iter().join(", "),
             ),
-        }
+        };
+        // the translations still carry Pango markup from the GTK days
+        msg.replace("<tt>", "").replace("</tt>", "")
     }
 }
 
@@ -303,106 +166,6 @@ impl Warning {
     fn desc(&self) -> String {
         match self {
             Self::EfiPartFound => t!("dialog-confirm-warn-efipartfound-desc"),
-        }
-    }
-
-    fn pop(
-        self,
-        overlay: &gtk::Overlay,
-        sender: &ComponentSender<ConfirmationPage>,
-    ) -> Controller<Self> {
-        let root_window = overlay
-            .toplevel_window()
-            .expect("overlay missing toplevel window");
-        let mut ctrl =
-            Self::builder()
-                .launch((self, root_window))
-                .forward(sender.input_sender(), |b| {
-                    if b {
-                        ConfirmationPageMsg::WarnConfirm
-                    } else {
-                        ConfirmationPageMsg::WarnCancel
-                    }
-                });
-        let dialog_widget = ctrl.widget().clone();
-        if dialog_widget.parent().is_none() {
-            overlay.add_overlay(&dialog_widget);
-        }
-        tracing::debug!("show warning dialog");
-        dialog_widget.present();
-        libhelium::prelude::HeDialogExt::set_visible(&dialog_widget, true);
-        // XXX: by design yes this is a memleak but we have no choice
-        ctrl.detach_runtime();
-        ctrl
-    }
-}
-
-#[derive(Debug)]
-enum WarningMsg {
-    Confirm,
-    Cancel,
-}
-
-#[relm4::component]
-impl relm4::SimpleComponent for Warning {
-    type Init = (Self, gtk::Window);
-    type Input = WarningMsg;
-    type Output = bool;
-
-    view! {
-        libhelium::Dialog {
-            set_title: &model.title(),
-            set_icon: "dialog-error-symbolic",
-            connect_destroy[sender] => move |_| sender.output(false).unwrap(),
-
-            add = &gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 12,
-                set_margin_horizontal: 16,
-                set_margin_vertical: 16,
-
-                #[name = "desc_label"]
-                gtk::Label {
-                    set_wrap: true,
-                    set_xalign: 0.0,
-                }
-            },
-
-            #[name = "btn_confirm"]
-            set_primary_button = &libhelium::Button {
-                set_label: &t!("dialog-installtype-confirm"),
-                connect_clicked[sender] => move |_| sender.input(WarningMsg::Confirm),
-            },
-
-            connect_destroy[sender] => move |_| sender.input(WarningMsg::Cancel),
-
-
-            // set_cancel_button = &libhelium::Button {
-            //     set_label: &t!("dialog-installtype-cancel"),
-            //     connect_clicked[sender] => move |_| sender.input(WarningMsg::Cancel),
-            // },
-            // set_secondary_button = &libhelium::Button {
-            //     set_label: &t!("dialog-installtype-cancel"),
-            //     connect_activate[sender] => move |_| sender.input(WarningMsg::Cancel),
-            // },
-        },
-    }
-
-    fn init(
-        (model, _root_window): Self::Init,
-        root: Self::Root,
-        sender: ComponentSender<Self>,
-    ) -> ComponentParts<Self> {
-        let widgets = view_output!();
-        let _ = &sender;
-        widgets.desc_label.set_label(&model.desc());
-        ComponentParts { model, widgets }
-    }
-
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
-        match message {
-            WarningMsg::Confirm => sender.output(true).unwrap(),
-            WarningMsg::Cancel => sender.output(false).unwrap(),
         }
     }
 }
