@@ -51,74 +51,113 @@ pub struct Repart {
 
 impl DiskProvisionerModule for Repart {
     fn run(&self, playbook: &crate::playbook::Playbook) -> Result<Mounts> {
-        let repart_out = systemd_repart(
-            &playbook.destination_disk,
-            &self.directory,
-            playbook.encryption.is_some(),
-            self.copy_source.as_deref(),
-        )?;
+        let repart_out = systemd_repart(&RepartArgs {
+            blockdev: &playbook.destination_disk,
+            cfgdir: &self.directory,
+            use_keyfile: playbook.encryption.is_some(),
+            copy_source: self.copy_source.as_deref(),
+            empty: "force",
+            dry_run: None,
+        })?;
         let repartcfg_export = SystemdRepartData::get_configs(&self.directory)?;
-        let mut configs = repartcfg_export.configs.into_iter().collect_vec();
-        configs.sort_by_key(|(k, _)| k.clone());
-        Ok(Mounts(
-            configs
-                .into_iter()
-                .map(|(_, v)| v)
-                .enumerate()
-                .flat_map(
-                    |(
-                        i,
-                        Config {
-                            partition:
-                                Partition {
-                                    label,
-                                    mount_point,
-                                    encrypt,
-                                    ..
-                                },
-                        },
-                    )| {
-                        let OutputPartition { node, .. } =
-                            repart_out.partitions.get(i).expect("part doesn't exist");
-
-                        mount_point.into_iter().filter_map(move |mount_point| {
-                            if mount_point.is_empty() {
-                                return None;
-                            }
-                            // If there's a colon, split it into two fields
-                            // only the first colon is considered though, so if there are more than one, the rest are ignored
-                            let mut parts = mount_point.splitn(2, ':');
-                            let fst = parts.next()?.to_owned();
-                            let snd = parts.next().map(std::borrow::ToOwned::to_owned);
-                            Some(std::io::Result::Ok(Mount::new(
-                                PathBuf::from(node),
-                                PathBuf::from(fst),
-                                snd.unwrap_or_default(),
-                                match encrypt {
-                                    EncryptOption::Off => None,
-                                    EncryptOption::KeyFile => Some(EncryptionOption::KeyFile),
-                                    EncryptOption::Tpm2 => Some(EncryptionOption::Tpm2),
-                                    EncryptOption::KeyFileTpm2 => {
-                                        Some(EncryptionOption::KeyFileTpm2)
-                                    }
-                                },
-                                label.clone(),
-                            )))
-                        })
-                    },
-                )
-                .try_collect()?,
-        ))
+        mounts_from_output(&repart_out, repartcfg_export.configs)
     }
 }
 
-fn systemd_repart(
-    blockdev: &Path,
-    cfgdir: &Path,
-    use_keyfile: bool,
-    copy_source: Option<&Path>,
-) -> Result<Output> {
-    let dry_run = std::env::var("READYMADE_DRY_RUN").map_or(cfg!(debug_assertions), |v| v == "1");
+/// Turn systemd-repart's output into mounts, using the `MountPoint=`s of the definitions in
+/// `configs` (keyed by file name).
+///
+/// Output partitions are matched to definitions by file name rather than position: with
+/// `--empty=allow`, partitions that already existed are listed too, in partition-table order.
+///
+/// # Errors
+///
+/// Returns an error if a definition has no partition in the output.
+pub(crate) fn mounts_from_output(
+    repart_out: &Output,
+    configs: BTreeMap<String, Config>,
+) -> Result<Mounts> {
+    Ok(Mounts(
+        configs
+            .into_iter()
+            .map(|(file, config)| {
+                let node = repart_out
+                    .partitions
+                    .iter()
+                    .find(|part| part.file().file_name() == Some(std::ffi::OsStr::new(&file)))
+                    .map(|OutputPartition { node, .. }| node)
+                    .ok_or_else(|| eyre!("systemd-repart output has no partition for {file}"))?;
+                Ok((node, config))
+            })
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flat_map(
+                |(
+                    node,
+                    Config {
+                        partition:
+                            Partition {
+                                label,
+                                mount_point,
+                                encrypt,
+                                ..
+                            },
+                    },
+                )| {
+                    mount_point.into_iter().filter_map(move |mount_point| {
+                        if mount_point.is_empty() {
+                            return None;
+                        }
+                        // If there's a colon, split it into two fields
+                        // only the first colon is considered though, so if there are more than one, the rest are ignored
+                        let mut parts = mount_point.splitn(2, ':');
+                        let fst = parts.next()?.to_owned();
+                        let snd = parts.next().map(ToOwned::to_owned);
+                        Some(Mount::new(
+                            PathBuf::from(node),
+                            PathBuf::from(fst),
+                            snd.unwrap_or_default(),
+                            match encrypt {
+                                EncryptOption::Off => None,
+                                EncryptOption::KeyFile => Some(EncryptionOption::KeyFile),
+                                EncryptOption::Tpm2 => Some(EncryptionOption::Tpm2),
+                                EncryptOption::KeyFileTpm2 => Some(EncryptionOption::KeyFileTpm2),
+                            },
+                            label.clone(),
+                        ))
+                    })
+                },
+            )
+            .collect(),
+    ))
+}
+
+pub(crate) struct RepartArgs<'a> {
+    pub blockdev: &'a Path,
+    pub cfgdir: &'a Path,
+    pub use_keyfile: bool,
+    pub copy_source: Option<&'a Path>,
+    /// `--empty=`, see `systemd-repart(8)`
+    pub empty: &'a str,
+    /// Force (or forbid) a dry run, instead of following `READYMADE_DRY_RUN`
+    pub dry_run: Option<bool>,
+}
+
+/// Whether to only pretend to touch disks, from `READYMADE_DRY_RUN` (default on in debug builds).
+pub(crate) fn dry_run() -> bool {
+    std::env::var("READYMADE_DRY_RUN").map_or(cfg!(debug_assertions), |v| v == "1")
+}
+
+pub(crate) fn systemd_repart(args: &RepartArgs<'_>) -> Result<Output> {
+    let &RepartArgs {
+        blockdev,
+        cfgdir,
+        use_keyfile,
+        copy_source,
+        empty,
+        dry_run,
+    } = args;
+    let dry_run = dry_run.unwrap_or_else(self::dry_run);
     tracing::debug!(?dry_run, "Running systemd-repart");
     let arg_keyfile = use_keyfile.then(|| {
         let keyfile_path = crate::consts::LUKS_KEYFILE_PATH;
@@ -134,7 +173,7 @@ fn systemd_repart(
             .write(true)
             .open(blockdev)
             .context("Failed to open block device")?;
-        let mut _lock = file_guard::lock(&mut device, Lock::Exclusive, 0, 1)?;
+        let _lock = file_guard::lock(&mut device, Lock::Exclusive, 0, 1)?;
 
         // HACK: Disable whole-device TRIM to reduce wear on SSDs and formatting time
         // https://github.com/systemd/systemd/issues/32760
@@ -149,7 +188,7 @@ fn systemd_repart(
         cmd.env("SYSTEMD_REPART_MKFS_OPTIONS_BTRFS", "--nodiscard")
             .args(["--dry-run", if dry_run { "yes" } else { "no" }])
             .args(["--definitions", cfgdir.to_str().unwrap()])
-            .args(["--empty", "force", "--offline", "false", "--json", "pretty"])
+            .args(["--empty", empty, "--offline", "false", "--json", "pretty"])
             .args(arg_keyfile.iter().flatten())
             .arg(blockdev)
             .stdout(Stdio::piped())

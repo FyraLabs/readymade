@@ -122,7 +122,7 @@ pub struct InstallationPage {
 #[derive(Debug)]
 pub enum InstallationPageMsg {
     Open(String),
-    StartInstallation(Playbook),
+    StartInstallation(Box<Playbook>),
     #[doc(hidden)]
     Progress(PlaybookProgress),
     Update,

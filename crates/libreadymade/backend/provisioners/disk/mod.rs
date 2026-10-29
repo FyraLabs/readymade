@@ -1,9 +1,11 @@
 use crate::prelude::*;
+use dualboot::DualBoot;
 use enum_dispatch::enum_dispatch;
 use manual::Manual;
 use repart::Repart;
 use serde::{Deserialize, Serialize};
 
+pub mod dualboot;
 pub mod manual;
 pub mod repart;
 
@@ -30,4 +32,7 @@ pub enum DiskProvisioner {
     Repart,
     /// Readymade will not partition the disk. Instead, the user provides a list of mountpoints.
     Manual,
+    /// Shrinks an existing Windows partition and partitions the freed space with systemd-repart,
+    /// sharing Windows' EFI system partition.
+    DualBoot,
 }
