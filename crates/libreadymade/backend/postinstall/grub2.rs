@@ -102,6 +102,60 @@ fn grub2_install_bios<P: AsRef<Path>>(disk: P) -> Result<()> {
     Ok(())
 }
 
+/// Windows Boot Manager on the ESP, as seen from inside the chroot.
+const BOOTMGFW: &str = "/boot/efi/EFI/Microsoft/Boot/bootmgfw.efi";
+const WINDOWS_ENTRY_SCRIPT: &str = "/etc/grub.d/35_readymade_windows";
+
+/// A `grub.d` script chainloading Windows Boot Manager from the ESP with filesystem UUID
+/// `esp_uuid`.
+///
+/// We write this instead of relying on os-prober, which is disabled by default on Fedora and
+/// can't always see the other partitions from inside the chroot.
+fn windows_entry(esp_uuid: &str) -> String {
+    format!(
+        "#!/usr/bin/sh
+exec tail -n +3 $0
+menuentry 'Windows Boot Manager' --class windows --class os {{
+	insmod part_gpt
+	insmod fat
+	search --no-floppy --fs-uuid --set=root {esp_uuid}
+	chainloader /EFI/Microsoft/Boot/bootmgfw.efi
+}}
+"
+    )
+}
+
+/// If Windows shares our ESP (dual boot), add it to the GRUB menu and make sure the menu shows.
+fn add_windows_entry(context: &Context) -> Result<()> {
+    if !Path::new(BOOTMGFW).exists() {
+        return Ok(());
+    }
+    let esp = context.mounts.get_esp_partition()
+        .ok_or_else(|| eyre!("Windows Boot Manager found but no ESP is mounted"))?;
+    let uuid = lsblk::BlockDevice::list()?.into_iter()
+        .find(|dev| dev.fullname == esp.partition)
+        .and_then(|dev| dev.uuid)
+        .ok_or_else(|| eyre!("Could not find UUID for ESP {:?}", esp.partition))?;
+    info!(
+        ?uuid,
+        "Windows Boot Manager found on the ESP, adding a GRUB entry for it"
+    );
+    std::fs::write(WINDOWS_ENTRY_SCRIPT, windows_entry(&uuid))?;
+    std::fs::set_permissions(
+        WINDOWS_ENTRY_SCRIPT,
+        std::os::unix::fs::PermissionsExt::from_mode(0o755),
+    )?;
+    // Fedora hides the menu after a successful boot when menu_auto_hide is set, which would make
+    // Windows unreachable
+    let status = Command::new("grub2-editenv")
+        .args(["-", "unset", "menu_auto_hide"])
+        .status();
+    if !status.as_ref().is_ok_and(std::process::ExitStatus::success) {
+        warn!(?status, "Cannot unset menu_auto_hide in grubenv");
+    }
+    Ok(())
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct GRUB2;
 
@@ -125,7 +179,7 @@ impl PostInstallModule for GRUB2 {
                 // todo: In the event someone thinks this code stinks, please please PLEASE refactor it for us.
 
                 let joined_cmdline = crypt_data.cmdline_opts.join(" ");
-                tracing::info!("Adding cryptsetup cmdline options: {joined_cmdline}");
+                info!("Adding cryptsetup cmdline options: {joined_cmdline}");
                 defaults.cmdline_linux = format!("{joined_cmdline} {current_value}");
             }
 
@@ -179,6 +233,8 @@ impl PostInstallModule for GRUB2 {
                 grub_cfg.write_all(final_str.as_bytes())?;
             });
 
+            add_windows_entry(context)?;
+
             stage!(grub2 "Generating stage 2 grub.cfg in /boot/grub2/grub.cfg..." {
                 crate::cmd!("grub2-mkconfig" [["-o", "/boot/grub2/grub.cfg"]] => |r| bail!("grub2-mkconfig failed with exit code {:?}", r.code()));
             });
@@ -189,5 +245,19 @@ impl PostInstallModule for GRUB2 {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn windows_entry() {
+        let entry = super::windows_entry("ABCD-1234");
+        assert!(
+            entry
+                .starts_with("#!/usr/bin/sh\nexec tail -n +3 $0\nmenuentry 'Windows Boot Manager'")
+        );
+        assert!(entry.contains("search --no-floppy --fs-uuid --set=root ABCD-1234\n"));
+        assert!(entry.contains("chainloader /EFI/Microsoft/Boot/bootmgfw.efi\n}\n"));
     }
 }

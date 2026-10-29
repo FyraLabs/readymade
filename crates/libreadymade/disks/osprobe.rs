@@ -6,7 +6,8 @@ use itertools::Itertools;
 pub struct OSProbe {
     pub part: PathBuf,
     pub os_name_pretty: String,
-    // pub os_name: String,
+    /// Short name, e.g. `Windows`
+    pub os_name: String,
     // pub part_type: String,
     // pub part_fs: Option<String>,
     // pub part_uuid: Option<String>,
@@ -21,7 +22,7 @@ impl OSProbe {
 
         // Minimum 4 parts, Part 5, 6 and 7 are optional
 
-        let [part, os_name_pretty, /*os_name, part_type,*/ ..] = parts[..] else {
+        let [part, os_name_pretty, os_name, /*part_type,*/ ..] = parts[..] else {
             panic!(
                 "Expected at least 4 OS Probe entries for `{entry}`, but found the following: {parts:?}"
             );
@@ -30,12 +31,20 @@ impl OSProbe {
         tracing::info_span!("Serializing os-prober entry").in_scope(|| Self {
             part: part.into(),
             os_name_pretty: os_name_pretty.to_owned(),
-            // os_name: os_name.to_owned(),
+            os_name: os_name.to_owned(),
             // part_type: part_type.to_owned(),
             // part_fs: parts.get(4).map(ToString::to_string),
             // part_uuid: parts.get(5).map(ToString::to_string),
             // kernel_opts: parts.get(6).map(ToString::to_string),
         })
+    }
+
+    /// The partition os-prober found this OS on, without the `@/EFI/...` suffix it adds for EFI
+    /// boot loaders.
+    #[must_use]
+    pub fn partition(&self) -> PathBuf {
+        let part = self.part.to_string_lossy();
+        PathBuf::from(part.split_once('@').map_or(&*part, |(part, _)| part))
     }
 
     pub fn scan() -> Option<Vec<Self>> {
@@ -58,5 +67,26 @@ impl OSProbe {
             tracing::error!("{ERROR}");
             None
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn windows_efi_entry() {
+        let os = OSProbe::from_entry(
+            "/dev/nvme0n1p1@/EFI/Microsoft/Boot/bootmgfw.efi:Windows Boot Manager:Windows:efi",
+        );
+        assert_eq!(os.os_name, "Windows");
+        assert_eq!(os.os_name_pretty, "Windows Boot Manager");
+        assert_eq!(os.partition(), PathBuf::from("/dev/nvme0n1p1"));
+    }
+
+    #[test]
+    fn windows_chain_entry() {
+        let os = OSProbe::from_entry("/dev/sda3:Windows 10:Windows:chain");
+        assert_eq!(os.partition(), PathBuf::from("/dev/sda3"));
     }
 }

@@ -112,10 +112,10 @@ enum AppMsg {
 #[allow(clippy::str_to_string)]
 #[relm4::component]
 impl SimpleComponent for AppModel {
-    type Init = ();
-
     type Input = AppMsg;
+
     type Output = ();
+    type Init = ();
 
     view! {
         libhelium::ApplicationWindow {
@@ -201,7 +201,7 @@ impl SimpleComponent for AppModel {
                 match playbook {
                     Ok(playbook) => self
                         .installation_page
-                        .emit(InstallationPageMsg::StartInstallation(playbook)),
+                        .emit(InstallationPageMsg::StartInstallation(Box::new(playbook))),
                     Err(err) => {
                         self.page = Page::Failure;
                         self.failure_page

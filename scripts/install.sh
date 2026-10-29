@@ -30,7 +30,7 @@ ln -s foresty-skies-light.webp $root/$BENTO/4
 ln -s foresty-skies-dark.webp $root/$BENTO/4-dark
 popd
 
-pushd templates
+pushd crates/libreadymade/templates
 for dir in `ls -d */`; do
     install -Dd $root/usr/share/readymade/repart-cfgs/$dir
     for f in $dir/*.conf; do

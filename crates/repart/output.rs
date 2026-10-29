@@ -1,5 +1,5 @@
 use bytesize::ByteSize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 // /// Wrapper struct for encryption data, so we don't have to pass around multiple
 // /// arguments
@@ -101,7 +101,7 @@ impl Output {
     /// Generate a `BTreeMap` of mountpoint -> node name for generating /etc/fstab
     /// from DDI partition types
     pub fn mountpoints(&self) -> impl Iterator<Item = (&'static str, String)> + '_ {
-        (self.partitions.iter())
+        self.partitions.iter()
             .filter_map(|part| part.ddi_mountpoint().map(|mp| (mp, part.node.clone())))
     }
 
@@ -352,10 +352,15 @@ pub struct OutputPartition {
     // "type"
     #[serde(rename = "type")]
     pub part_type: String,
+    #[serde(default, deserialize_with = "null_as_default")]
     label: String,
     uuid: uuid::Uuid,
     partno: i32,
     /// Path to repart config template
+    ///
+    /// With `--empty=allow`, existing partitions that no definition matched are listed too, with
+    /// `"file": null`; those get an empty path.
+    #[serde(default, deserialize_with = "null_as_default")]
     file: PathBuf,
     /// /dev node (/dev/XXX)
     pub node: String,
@@ -367,7 +372,28 @@ pub struct OutputPartition {
     /// action systemd-repart did to this partition
     activity: String,
 }
+fn null_as_default<'de, D, T>(de: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Default + serde::Deserialize<'de>,
+{
+    <Option<T> as serde::Deserialize>::deserialize(de).map(Option::unwrap_or_default)
+}
+
 impl OutputPartition {
+    /// Path to the repart definition this partition was created from, empty if no definition
+    /// matched it.
+    #[must_use]
+    pub fn file(&self) -> &Path {
+        &self.file
+    }
+
+    /// What systemd-repart did (or would do) to this partition, e.g. `create` or `unchanged`.
+    #[must_use]
+    pub fn activity(&self) -> &str {
+        &self.activity
+    }
+
     /// Returns a Discoverable Disk Image (DDI) mountpoint if defined
     /// by checking the partition type
     #[must_use]
@@ -534,6 +560,7 @@ mod tests {
 
     use super::*;
     const OUTPUT_EXAMPLE: &str = include_str!("test/repart-out.json");
+    const OUTPUT_DUALBOOT: &str = include_str!("test/repart-out-dualboot.json");
 
     fn deserialize() -> Output {
         let val = serde_json::from_str(OUTPUT_EXAMPLE).unwrap();
@@ -584,6 +611,23 @@ mod tests {
     fn test_deserialize() {
         let output = deserialize();
         assert_eq!(output.partitions.len(), 3);
+    }
+
+    #[test]
+    fn test_deserialize_existing_partitions() {
+        // `--empty=allow` on a disk with Windows on it, from systemd 259
+        let output: Output = serde_json::from_str(OUTPUT_DUALBOOT).unwrap();
+        assert_eq!(output.partitions.len(), 6);
+        let esp = output.partitions.first().unwrap();
+        assert_eq!(esp.file().file_name().unwrap(), "20-efi.conf");
+        assert_eq!(esp.activity(), "unchanged");
+        let foreign = output
+            .partitions
+            .iter()
+            .filter(|p| p.file().as_os_str().is_empty())
+            .collect::<Vec<_>>();
+        assert_eq!(foreign.len(), 3);
+        assert!(foreign.iter().all(|p| p.activity() == "unchanged"));
     }
 
     #[test]
