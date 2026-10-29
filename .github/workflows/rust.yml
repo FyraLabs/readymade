@@ -8,6 +8,9 @@ on:
 
 jobs:
   rust:
+    permissions:
+      contents: read
+      security-events: write
     uses: FyraLabs/actions/.github/workflows/rust.yml@main
     with:
       test-cache: true
