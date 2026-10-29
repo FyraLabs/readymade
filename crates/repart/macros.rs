@@ -54,10 +54,12 @@ macro_rules! ini_enum {
                         s if s == ini_enum!(@match $field $(=> $s)?) => Ok(Self::$field),
                     )*
                     other => {
-                        let variants: &[&str] = &[$(
-                            stringify!($field),
+                        let variants = [$(
+                            ini_enum!(@match $field $(=> $s)?),
                         )*];
-                        Err(serde::de::Error::unknown_variant(other, variants))
+                        Err(serde::de::Error::custom(format_args!(
+                            "unknown variant `{other}`, expected one of {variants:?}"
+                        )))
                     }
                 }
             }

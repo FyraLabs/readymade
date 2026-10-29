@@ -1,4 +1,4 @@
-// Shared utilities for the backend and frontend GTK app
+// Shared utilities for the install backend
 
 pub mod cmd;
 pub mod fs;

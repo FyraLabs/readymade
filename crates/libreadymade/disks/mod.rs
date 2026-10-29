@@ -19,18 +19,31 @@ pub struct Disk {
 
 /// Try and scan the system for disks and their installed OS
 ///
-/// # Panics
-///
-/// Panics if block devices cannot be listed.
+/// Returns no disks if block devices cannot be listed.
 pub fn detect_os() -> Vec<Disk> {
-    let disks = lsblk::BlockDevice::list().unwrap();
+    let disks = match lsblk::BlockDevice::list() {
+        Ok(disks) => disks,
+        Err(e) => {
+            tracing::error!(?e, "Cannot list block devices");
+            return vec![];
+        }
+    };
     let live_device = find_live_device();
 
     tracing::debug!(?disks, "Found disks");
 
-    let osprobe: HashMap<_, _> = OSProbe::scan()
-        .map(|probe| (probe.into_iter().map(|os| (os.part, os.os_name_pretty))).collect())
-        .unwrap_or_default();
+    // disk name (e.g. `sda`) → name of the first OS found on one of its partitions
+    let mut osprobe: HashMap<String, String> = HashMap::new();
+    for os in OSProbe::scan().unwrap_or_default() {
+        let Some(disk) = (disks.iter())
+            .find(|dev| dev.fullname == os.part)
+            .and_then(|dev| dev.disk_name().ok())
+        else {
+            tracing::debug!(?os, "Cannot find the disk of the partition os-prober found");
+            continue;
+        };
+        osprobe.entry(disk).or_insert(os.os_name_pretty);
+    }
 
     (disks.into_iter())
         .filter(|disk| is_valid_disk(live_device.as_deref(), disk))
@@ -38,21 +51,17 @@ pub fn detect_os() -> Vec<Disk> {
         .collect()
 }
 
-fn make_disk(osprobe: &HashMap<PathBuf, String>, mut disk: lsblk::BlockDevice) -> Disk {
+fn make_disk(osprobe: &HashMap<String, String>, mut disk: lsblk::BlockDevice) -> Disk {
     let model =
         (disk.sysfs()).and_then(|p| std::fs::read_to_string(p.join("device").join("model")));
     let ret = Disk {
         disk_name: (model.map(|s| s.trim().to_owned()).ok())
+            .filter(|s| !s.is_empty())
             .or_else(|| disk.label.take().or_else(|| disk.id.take()))
             .map_or_else(|| disk.name.clone(), |s| format!("{s} ({})", disk.name)),
-        os_name: (osprobe.iter())
-            .filter_map(|(path, osname)| path.to_str().zip(Some(osname)))
-            .find_map(|(path, osname)| {
-                path.starts_with(disk.fullname.to_str().unwrap())
-                    .then_some(osname)
-            })
-            .map(ToOwned::to_owned),
-        size: bytesize::ByteSize::kib(disk.capacity().unwrap().unwrap() >> 1),
+        os_name: osprobe.get(&disk.name).cloned(),
+        // capacity is in 512-byte sectors; is_valid_disk() ensures it can be read
+        size: bytesize::ByteSize::kib(disk.capacity().ok().flatten().unwrap_or_default() >> 1),
         devpath: disk.fullname,
     };
     tracing::debug!(?ret, "Found disk");
@@ -63,7 +72,7 @@ fn is_valid_disk(live_device: Option<&str>, disk: &lsblk::BlockDevice) -> bool {
     disk.is_disk()
         && live_device != Some(&disk.name)
         && (cfg!(debug_assertions) || disk.is_physical())
-        && !matches!(disk.capacity(), Err(_) | Ok(Some(0))) // #71
+        && matches!(disk.capacity(), Ok(Some(n)) if n > 0) // #71
 }
 
 fn find_live_device() -> Option<String> {
@@ -71,7 +80,8 @@ fn find_live_device() -> Option<String> {
     // For live systems, we can look for the the device associated with the live mountpoint
     // This way, we can avoid showing the live system as a valid target
     lsblk::Mount::list()
-        .unwrap()
+        .inspect_err(|e| tracing::error!(?e, "Cannot list mounts"))
+        .ok()?
         .find(|mount| {
             [Path::new("/run/initramfs/live"), Path::new("/")].contains(&&*mount.mountpoint)
                 && mount.device.starts_with("/dev/")

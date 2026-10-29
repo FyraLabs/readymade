@@ -318,7 +318,7 @@ kurage::generate_component!(EncryptPassDialogue {
             gtk::Label {
                 set_wrap: true,
                 add_css_class: "warning",
-                set_label: "Password is too weak. We recommend a password with at least 8 uppercase or lowercase characters.",
+                set_label: &t!("dialog-installtype-weak-password"),
                 // make the spacing constant
                 #[watch]
                 inline_css: &format!("opacity: {}", if model.weak_passwd { 1 } else { 0 }),

@@ -112,7 +112,7 @@ page!(Language {
                         .load_languages(&crate::Localizations, &["en-Xowo".parse().unwrap()])
                         .expect("fail to load languages");
                     *crate::LL.write() = loader;
-                    crate::APPLICATION_STATE.write().lang = Some("en-US".to_owned());
+                    crate::APPLICATION_STATE.write().lang = Some("en_US".to_owned());
                 } else {
                     set_lang(lang);
                 }
@@ -164,10 +164,12 @@ page!(Language {
 
 fn set_lang(lang: &LanguageRow) {
     tracing::info!(lang.locale, "Using selected locale");
-    if let Ok(locale) = lang
+    // glibc locales look like `en_US.UTF-8`, the installed system gets the codeset added back
+    let glibc_locale = lang
         .locale
         .split_once('.')
-        .map_or(lang.locale, |(left, _)| left)
+        .map_or(lang.locale, |(left, _)| left);
+    if let Ok(locale) = glibc_locale
         .to_owned()
         .parse::<i18n_embed::unic_langid::LanguageIdentifier>()
         .inspect_err(|e| tracing::error!(?e, "Cannot apply language"))
@@ -186,6 +188,6 @@ fn set_lang(lang: &LanguageRow) {
             .expect("fail to load languages");
         tracing::debug!(lang=?loader.current_languages(), welcome=loader.get_args_concrete("page-welcome", std::iter::once(("distro", "Ultramarine Linux".into())).collect()), "new loader");
         *crate::LL.write() = loader;
-        crate::APPLICATION_STATE.write().lang = Some(lang.locale.to_owned());
+        crate::APPLICATION_STATE.write().lang = Some(glibc_locale.to_owned());
     }
 }

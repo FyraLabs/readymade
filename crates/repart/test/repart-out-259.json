@@ -1,0 +1,34 @@
+[
+	{
+		"type" : "esp",
+		"label" : "esp",
+		"uuid" : "057bdcfb-34d6-4eb8-9bea-42908fae8e59",
+		"partno" : 0,
+		"file" : "/etc/repart.d/20-efi.conf",
+		"node" : "img1",
+		"offset" : 1048576,
+		"old_size" : 0,
+		"raw_size" : 536870912,
+		"old_padding" : 0,
+		"raw_padding" : 0,
+		"activity" : "create",
+		"drop-in_files" : null
+	},
+	{
+		"type" : "root-x86-64",
+		"label" : "root-x86-64",
+		"uuid" : "f481501f-fc7e-40f6-9894-42e3c466c303",
+		"partno" : 1,
+		"file" : "/etc/repart.d/50-root.conf",
+		"node" : "img2",
+		"offset" : 537919488,
+		"old_size" : 0,
+		"raw_size" : 3757027328,
+		"old_padding" : 0,
+		"raw_padding" : 0,
+		"activity" : "create",
+		"drop-in_files" : [
+			"/etc/repart.d/50-root.conf.d/override.conf"
+		]
+	}
+]

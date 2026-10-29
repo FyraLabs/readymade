@@ -1,6 +1,8 @@
 on:
   push:
+    branches: [ main ]
   pull_request:
+  workflow_dispatch:
 
 name: Build RPM snapshot package
 
@@ -8,23 +10,43 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     container:
-      image: ghcr.io/terrapkg/builder:f42
+      image: ghcr.io/terrapkg/builder:f45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
 
       - name: Install dependencies
         run: dnf builddep -y ci/readymade.spec && dnf in -y rpmdevtools
 
+      # %cargo_prep_online wipes CARGO_HOME and the build dir path changes with every commit,
+      # so point cargo at a stable target dir outside of rpmbuild's tree and cache that instead
+      - name: Restore Cargo target cache
+        id: cargo-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: rpm-target/
+          key: rpmbuild-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            rpmbuild-cargo-
+
       - name: run rpmbuild
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/rpm-target
         run: |
           git_sha=${{ github.sha }}
           git_short=${git_sha:0:7}
           rpmdev-setuptree
           rpmbuild -ba ci/readymade.spec --define "gitcommit $git_sha" --define "shortcommit $git_short" --define "_rpmdir $PWD/build" --define "_disable_source_fetch 0"
 
+      - name: Save Cargo target cache
+        if: ${{ !cancelled() && steps.cargo-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: rpm-target/
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           path: build/**/*.rpm

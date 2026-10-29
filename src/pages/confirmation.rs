@@ -136,9 +136,15 @@ page!(Confirmation {
             #[watch]
             set_label: &t!("prev"),
             add_css_class: "large-button",
-            connect_clicked => ConfirmationPageMsg::Navigate(NavigationAction::GoTo(
+            connect_clicked[sender] => move |_| {
+                // custom installs come here from the partitioning page, not the type page
+                let page = if APPLICATION_STATE.read().installation_type == Some(InstallationType::Custom) {
+                    crate::Page::InstallCustom
+                } else {
                     crate::Page::InstallationType
-            )),
+                };
+                sender.input(ConfirmationPageMsg::Navigate(NavigationAction::GoTo(page)));
+            },
         },
 
         gtk::Box {
@@ -159,6 +165,13 @@ page!(Confirmation {
 );
 
 impl ConfirmationPage {
+    fn overlay_widget(&self) -> Option<gtk::Overlay> {
+        let root = &self.root;
+        let widget: &gtk::Widget = root.upcast_ref();
+        widget
+            .ancestor(gtk::Overlay::static_type())
+            .and_then(|ancestor| ancestor.downcast::<gtk::Overlay>().ok())
+    }
     fn clear_warning_dialog(&mut self) {
         if let Some(ctrl) = self.warn_dialog.take() {
             let dialog = ctrl.widget();
@@ -186,16 +199,6 @@ impl ConfirmationPage {
         } else {
             false
         }
-    }
-}
-
-impl ConfirmationPage {
-    fn overlay_widget(&self) -> Option<gtk::Overlay> {
-        let root = &self.root;
-        let widget: &gtk::Widget = root.upcast_ref();
-        widget
-            .ancestor(gtk::Overlay::static_type())
-            .and_then(|ancestor| ancestor.downcast::<gtk::Overlay>().ok())
     }
 }
 
@@ -269,25 +272,24 @@ enum Warning {
 
 impl Warning {
     fn efi_part_found() -> Option<Self> {
-        Command::new("sh")
-            .arg("-c")
-            .arg(format!(
-                "lsblk {} -o parttype | grep 'c12a7328-f81f-11d2-ba4b-00a0c93ec93b'",
-                APPLICATION_STATE
-                    .read()
-                    .destination_disk
-                    .as_ref()
-                    .unwrap()
-                    .devpath
-                    .display()
-            ))
-            .status()
-            .expect("cannot execute sh")
-            .success()
+        const ESP_GUID: &str = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b";
+        let devpath = {
+            let app = APPLICATION_STATE.read();
+            if app.installation_type != Some(InstallationType::WholeDisk) {
+                return None;
+            }
+            app.destination_disk.as_ref()?.devpath.clone()
+        };
+        let out = Command::new("lsblk")
+            .arg(&devpath)
+            .args(["--noheadings", "--output", "PARTTYPE"])
+            .output()
+            .inspect_err(|e| tracing::error!(?e, "cannot run lsblk"))
+            .ok()?;
+        String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .any(|parttype| parttype.trim().eq_ignore_ascii_case(ESP_GUID))
             .then_some(Self::EfiPartFound)
-            .filter(|_| {
-                APPLICATION_STATE.read().installation_type.unwrap() == InstallationType::WholeDisk
-            })
     }
 
     fn list() -> impl Iterator<Item = Self> {
@@ -394,7 +396,6 @@ impl relm4::SimpleComponent for Warning {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let widgets = view_output!();
-        let _ = &sender;
         widgets.desc_label.set_label(&model.desc());
         ComponentParts { model, widgets }
     }

@@ -17,24 +17,18 @@ use std::collections::HashMap;
 /// Returns an error if the string cannot be parsed as a valid systemd unit file.
 ///
 pub fn parse(s: &str) -> Result<SystemdIni, Err> {
-    Ok(SystemdIni {
-        sections: parser::parse_str(s).map(|h| {
-            h.into_iter()
-                .map(|(section, entries)| {
-                    (section, entries.into_iter().into_grouping_map().collect())
-                })
-                .map(|(section, entries)| {
-                    (
-                        section,
-                        entries
-                            .into_iter()
-                            .map(|(k, v): (_, Vec<_>)| (k, Value::from_vec(&v)))
-                            .collect(),
-                    )
-                })
-                .collect()
-        })?,
-    })
+    let sections = parser::parse_str(s)?
+        .into_iter()
+        .map(|(section, entries)| {
+            let entries = (entries.into_iter().into_grouping_map())
+                .collect::<Vec<_>>()
+                .into_iter()
+                .map(|(k, v)| (k, Value::from_vec(&v)))
+                .collect();
+            (section, entries)
+        })
+        .collect();
+    Ok(SystemdIni { sections })
 }
 
 // we can probably have duplicate keys with different values
@@ -90,18 +84,20 @@ pub struct SystemdIni {
 }
 
 impl std::fmt::Display for SystemdIni {
+    /// Write the sections and keys out in sorted order, so the output is deterministic.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (k, v) in &self.sections {
-            f.write_fmt(format_args!("[{k}]\n"))?;
-            for (k, v) in v {
-                for s in (match v {
-                    Value::String(s) => {
-                        Box::new(std::iter::once(&**s)) as Box<dyn Iterator<Item = &str>>
-                    }
-                    Value::Array(v) => Box::new(v.iter().map(String::as_str)),
-                } as Box<dyn Iterator<Item = &str>>)
-                {
-                    f.write_fmt(format_args!("{k}={s}\n"))?;
+        for (i, (section, keys)) in self.sections.iter().sorted_by_key(|(k, _)| *k).enumerate() {
+            if i != 0 {
+                writeln!(f)?;
+            }
+            writeln!(f, "[{section}]")?;
+            for (key, value) in keys.iter().sorted_by_key(|(k, _)| *k) {
+                let values = match value {
+                    Value::String(s) => std::slice::from_ref(s),
+                    Value::Array(arr) => arr,
+                };
+                for s in values {
+                    writeln!(f, "{key}={s}")?;
                 }
             }
         }
@@ -185,9 +181,7 @@ impl<'de> serde::de::Deserializer<'de> for &'de SystemdIni {
                 Vv: serde::de::DeserializeSeed<'de>,
             {
                 if let Some((_, v)) = self.current.take() {
-                    seed.deserialize(SectionDeserializer {
-                        map: &v.clone().into_iter().collect(),
-                    })
+                    seed.deserialize(SectionDeserializer { map: v })
                 } else {
                     Err(serde::de::Error::custom("Value missing"))
                 }
@@ -209,16 +203,7 @@ impl<'de> serde::de::Deserializer<'de> for &'de SystemdIni {
 
 impl std::fmt::Debug for SystemdIni {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (section, keys) in &self.sections {
-            writeln!(f, "[{section}]")?;
-            for (key, value) in keys {
-                match value {
-                    Value::String(s) => writeln!(f, "{key}={s}")?,
-                    Value::Array(arr) => write_array(f, key, arr)?,
-                }
-            }
-        }
-        Ok(())
+        std::fmt::Display::fmt(self, f)
     }
 }
 
@@ -233,13 +218,6 @@ where
 {
     let ini = s.parse::<SystemdIni>().map_err(serde::de::Error::custom)?;
     serde::Deserialize::deserialize(&ini)
-}
-
-fn write_array(f: &mut std::fmt::Formatter<'_>, key: &str, arr: &[String]) -> std::fmt::Result {
-    for s in arr {
-        writeln!(f, "{key}={s}")?;
-    }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -454,6 +432,63 @@ key3=value1
         let test: TestEnum = from_str(ini).unwrap();
         assert_eq!(test.section.mode, Mode::ReadWrite);
         assert_eq!(test.section.modes, vec![Mode::Read, Mode::Write]);
+    }
+
+    #[test]
+    fn test_deserialize_scalars() {
+        #[derive(serde::Deserialize, Debug, PartialEq)]
+        struct Unit {
+            s: Section,
+        }
+        #[derive(serde::Deserialize, Debug, PartialEq)]
+        struct Section {
+            on: bool,
+            off: bool,
+            signed: i16,
+            float: f64,
+            // repeated keys: the last assignment wins for single values, like in systemd
+            repeated: u8,
+            repeated_str: String,
+        }
+
+        let ini = "[s]\non=Yes\noff=off\nsigned=-3\nfloat=1.5\nrepeated=1\nrepeated=2\n\
+                   repeated_str=a\nrepeated_str=b\n";
+        assert_eq!(
+            from_str::<Unit>(ini).unwrap(),
+            Unit {
+                s: Section {
+                    on: true,
+                    off: false,
+                    signed: -3,
+                    float: 1.5,
+                    repeated: 2,
+                    repeated_str: "b".into(),
+                }
+            }
+        );
+        from_str::<Unit>("[s]\non=maybe\n").unwrap_err();
+    }
+
+    #[test]
+    fn test_deserialize_optional_section() {
+        #[derive(serde::Deserialize, Debug, PartialEq)]
+        struct Unit {
+            a: Option<HashMap<String, String>>,
+            b: Option<HashMap<String, String>>,
+        }
+
+        let test: Unit = from_str("[a]\nk=v\n").unwrap();
+        assert_eq!(test.a, Some(HashMap::from([("k".into(), "v".into())])));
+        assert_eq!(test.b, None);
+    }
+
+    #[test]
+    fn test_display_round_trip() {
+        let input = "[B]\nz=1\na=2\na=3\n[A]\nk=v\n[B]\nm=4\n";
+        let ini: SystemdIni = input.parse().unwrap();
+        let output = ini.to_string();
+        assert_eq!(output, "[A]\nk=v\n\n[B]\na=2\na=3\nm=4\nz=1\n");
+        assert_eq!(output.parse::<SystemdIni>().unwrap(), ini);
     }
 
     #[test]

@@ -15,7 +15,11 @@ impl PostInstallModule for Language {
 
     fn run(&self, _context: &Context) -> Result<()> {
         // use UTF-8 locale, since the non-UTF-8 ones break stuff
-        let lang = format!("{}.UTF-8", self.lang);
+        let lang = self
+            .lang
+            .split_once('.')
+            .map_or(&*self.lang, |(lang, _)| lang);
+        let lang = format!("{lang}.UTF-8");
         // shadowing here because format!() has shit lifetime
         let lang = lang.as_bytes();
         // `LOCALE.CONF(5)`: /etc/locale.conf
@@ -24,7 +28,8 @@ impl PostInstallModule for Language {
             format_bytes::format_bytes!(
                 b"LANG={}
 LANGUAGE={}
-LC_MESSAGES={}",
+LC_MESSAGES={}
+",
                 lang,
                 lang,
                 lang

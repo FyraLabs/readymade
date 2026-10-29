@@ -1,4 +1,5 @@
-pub(crate) use crate::{APPLICATION_STATE, NavigationAction, Page};
+pub use crate::state::APPLICATION_STATE;
+pub use crate::{NavigationAction, Page};
 pub use color_eyre::eyre::{Context, ContextCompat, OptionExt, WrapErr, bail, eyre};
 pub use color_eyre::{Result, Section};
 pub use itertools::Itertools;

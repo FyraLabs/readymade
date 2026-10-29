@@ -336,15 +336,27 @@ pub fn copy_dir_uutils<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_
     Ok(())
 }
 
+/// Get the `/sys/dev/block/MAJ:MIN` directory of a block device. Symlinks such as
+/// `/dev/disk/by-uuid/…` or `/dev/mapper/…` are followed.
+fn sysfs_block_path(dev: &Path) -> color_eyre::Result<PathBuf> {
+    let metadata =
+        std::fs::metadata(dev).wrap_err_with(|| format!("cannot stat {}", dev.display()))?;
+    if !metadata.file_type().is_block_device() {
+        bail!("{} is not a block device", dev.display());
+    }
+    let rdev = metadata.rdev();
+    Ok(PathBuf::from(format!(
+        "/sys/dev/block/{}:{}",
+        nix::sys::stat::major(rdev),
+        nix::sys::stat::minor(rdev)
+    )))
+}
+
 /// Get partition number from partition path
 ///
 /// # Arguments
 ///
-/// * `partition_path` - A string slice that holds the path to the partition
-///
-/// # Returns
-///
-/// * `Result<usize>` - A string that holds the partition number
+/// * `partition_path` - The path to the partition
 ///
 /// # Errors
 ///
@@ -354,32 +366,16 @@ pub fn copy_dir_uutils<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> color_
 ///
 /// # Example
 ///
-/// ```rust
+/// ```no_run
+/// use libreadymade::backend::util::fs::partition_number;
+/// use std::path::Path;
 ///
-/// let partition_path = "/dev/sda1";
-/// let partition_number = get_partition_number(partition_path);
-///
-/// assert_eq!(partition_number.unwrap(), 1);
-///
-/// let partition_path = "/dev/nvme0n1p2";
-/// let partition_number = get_partition_number(partition_path);
-///
-/// assert_eq!(partition_number.unwrap(), 2);
-///
+/// assert_eq!(partition_number(Path::new("/dev/sda1")).unwrap(), 1);
+/// assert_eq!(partition_number(Path::new("/dev/nvme0n1p2")).unwrap(), 2);
 /// ```
 #[tracing::instrument]
 pub fn partition_number(partition_path: &Path) -> color_eyre::Result<usize> {
-    // first, let's
-    let metadata = std::fs::metadata(partition_path)?;
-    if !metadata.file_type().is_block_device() {
-        bail!("Not a valid block device");
-    }
-
-    let sys_path = format!(
-        "/sys/class/block/{}",
-        partition_path.to_string_lossy().trim_start_matches("/dev/")
-    );
-    let partition_number_path = format!("{sys_path}/partition");
+    let partition_number_path = sysfs_block_path(partition_path)?.join("partition");
 
     let partition_number = std::fs::read_to_string(partition_number_path)
         .map_err(|e| eyre!("Could not read partition number: {e}"))?
@@ -394,19 +390,14 @@ pub fn partition_number(partition_path: &Path) -> color_eyre::Result<usize> {
 ///
 /// # Errors
 ///
-/// Returns an error if the device's entry in `/sys/class/block` cannot be read.
+/// Returns an error if `dev` is not a block device.
 #[tracing::instrument]
 pub fn get_maj_min(dev: &Path) -> color_eyre::Result<String> {
-    let sys_path = format!(
-        "/sys/class/block/{}",
-        dev.to_string_lossy().trim_start_matches("/dev/")
-    );
-
-    let maj_min = std::fs::read_to_string(format!("{sys_path}/dev"))
-        .map_err(|e| eyre!("Could not read maj:min: {e}"))?
-        .trim()
-        .to_owned();
-
+    let sys_path = sysfs_block_path(dev)?;
+    let maj_min = (sys_path.file_name())
+        .ok_or_else(|| eyre!("Could not read maj:min"))?
+        .to_string_lossy()
+        .into_owned();
     Ok(maj_min)
 }
 
@@ -414,24 +405,73 @@ pub fn get_maj_min(dev: &Path) -> color_eyre::Result<String> {
 ///
 /// # Errors
 ///
-/// Returns an error if the partition's device number or parent device cannot be resolved via sysfs.
+/// Returns an error if `partition_path` is not a partition, or its parent device cannot be
+/// resolved via sysfs.
 #[tracing::instrument]
 pub fn get_whole_disk(partition_path: &Path) -> color_eyre::Result<String> {
-    let majmin = get_maj_min(partition_path)?;
-    let sys_path = format!("/sys/dev/block/{majmin}");
+    let sys_path = sysfs_block_path(partition_path)?;
+    if !sys_path.join("partition").exists() {
+        bail!("{} is not a partition", partition_path.display());
+    }
 
-    let path = std::fs::canonicalize(PathBuf::from(sys_path).join(".."))
-        .map_err(|e| eyre!("Could not get whole disk: {e}"))?
-        .to_string_lossy()
-        .to_string();
+    // /sys/dev/block/MAJ:MIN links to /sys/devices/…/<disk>/<partition>
+    let path =
+        std::fs::canonicalize(&sys_path).map_err(|e| eyre!("Could not get whole disk: {e}"))?;
+    let disk = (path.parent().and_then(Path::file_name))
+        .ok_or_else(|| eyre!("Could not get whole disk of {}", path.display()))?;
 
-    // we finally got the node name, so let's do some tiny string manipulation
-    // so we can replace the /sys/devices with /dev
-    let path = path
-        .rsplit_once('/')
-        .map_or_else(|| path.clone(), |(_, tail)| format!("/dev/{tail}"));
+    Ok(format!("/dev/{}", disk.to_string_lossy()))
+}
 
-    Ok(path)
+/// A temporary directory to mount filesystems under.
+///
+/// Unlike [`tempfile::TempDir`], dropping this never deletes files: only empty directories on the
+/// same filesystem as the directory itself are removed. If something under it is still mounted
+/// (e.g. because unmounting failed), the mounted filesystem is left untouched.
+#[derive(Debug)]
+pub struct MountRoot(PathBuf);
+
+impl MountRoot {
+    /// Create a new empty temporary directory.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the directory cannot be created.
+    pub fn new() -> std::io::Result<Self> {
+        Ok(Self(
+            tempfile::Builder::new()
+                .prefix("readymade-")
+                .tempdir()?
+                .keep(),
+        ))
+    }
+
+    #[must_use]
+    pub fn path(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for MountRoot {
+    fn drop(&mut self) {
+        fn remove_empty_dirs(dir: &Path, dev: u64) {
+            for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+                // DirEntry::metadata() doesn't follow symlinks; mountpoints report the mounted
+                // filesystem's device, so they are skipped here.
+                if entry.metadata().is_ok_and(|m| m.is_dir() && m.dev() == dev) {
+                    remove_empty_dirs(&entry.path(), dev);
+                }
+            }
+            if let Err(e) = std::fs::remove_dir(dir) {
+                tracing::warn!(?e, ?dir, "Cannot remove temporary mount directory");
+            }
+        }
+
+        match std::fs::symlink_metadata(&self.0) {
+            Ok(m) => remove_empty_dirs(&self.0, m.dev()),
+            Err(e) => tracing::warn!(?e, path = ?self.0, "Cannot stat temporary mount directory"),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -439,6 +479,24 @@ mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
     use std::path::Path;
+
+    #[test]
+    fn test_mount_root_keeps_files() {
+        let root = MountRoot::new().unwrap();
+        let path = root.path().to_owned();
+        std::fs::create_dir_all(path.join("boot/efi")).unwrap();
+        std::fs::write(path.join("boot/file"), "keep me").unwrap();
+        drop(root);
+        assert!(path.join("boot/file").exists());
+        assert!(!path.join("boot/efi").exists());
+        std::fs::remove_dir_all(path).unwrap();
+
+        let root = MountRoot::new().unwrap();
+        let path = root.path().to_owned();
+        std::fs::create_dir_all(path.join("a/b/c")).unwrap();
+        drop(root);
+        assert!(!path.exists());
+    }
     fn test_copy_impl<F>(name: &str, copy_fn: F) -> color_eyre::Result<()>
     where
         F: Fn(&Path, &Path) -> color_eyre::Result<()>,
@@ -489,5 +547,81 @@ mod tests {
     #[cfg(feature = "uutils")]
     fn test_copy_uucp() -> color_eyre::Result<()> {
         test_copy_impl("uutils", |from, to| copy_dir_uutils(from, to))
+    }
+}
+
+/// A directory to copy the new system from, mounted for as long as this lives if it had to be.
+///
+/// Copy sources can be a directory, or an image file or block device (such as the live ISO's
+/// `/dev/mapper/live-base`) that has to be mounted first. That needs root, so it happens here in
+/// the playbook rather than in the frontend.
+#[derive(Debug)]
+pub struct CopySource {
+    path: PathBuf,
+    mount: Option<MountRoot>,
+}
+
+impl CopySource {
+    /// Use `source` as-is if it is a directory, otherwise mount it read-only.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `source` doesn't exist, isn't a directory, file or block device, or
+    /// cannot be mounted.
+    pub fn open(source: &Path) -> color_eyre::Result<Self> {
+        let meta = std::fs::metadata(source)
+            .wrap_err_with(|| format!("cannot find copy source {}", source.display()))?;
+        if meta.is_dir() {
+            return Ok(Self {
+                path: source.to_path_buf(),
+                mount: None,
+            });
+        }
+        if !meta.is_file() && !meta.file_type().is_block_device() {
+            bail!(
+                "copy source {} is not a directory, image or block device",
+                source.display()
+            );
+        }
+
+        let root = MountRoot::new()?;
+        tracing::info!(?source, mountpoint = ?root.path(), "Mounting copy source");
+        let output = std::process::Command::new("mount")
+            .args(["-o", "ro"])
+            .arg(source)
+            .arg(root.path())
+            .output()
+            .wrap_err("cannot run mount")?;
+        if !output.status.success() {
+            bail!(
+                "cannot mount copy source {}: {}",
+                source.display(),
+                String::from_utf8_lossy(&output.stderr).trim()
+            );
+        }
+        Ok(Self {
+            path: root.path().to_path_buf(),
+            mount: Some(root),
+        })
+    }
+
+    #[must_use]
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for CopySource {
+    fn drop(&mut self) {
+        // the MountRoot is dropped after this, and only cleans up if this succeeded
+        if self.mount.is_some() {
+            match std::process::Command::new("umount")
+                .arg(&self.path)
+                .status()
+            {
+                Ok(status) if status.success() => {}
+                res => tracing::warn!(?res, path = ?self.path, "Cannot unmount copy source"),
+            }
+        }
     }
 }

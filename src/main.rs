@@ -119,7 +119,7 @@ impl SimpleComponent for AppModel {
 
     view! {
         libhelium::ApplicationWindow {
-            set_title: Some("Readymade Installer"),
+            set_title: Some(&t!("readymade-installer")),
             set_default_width: 550,
             set_default_height: 600,
             set_vexpand: true,
@@ -249,6 +249,7 @@ fn handle_l10n() -> i18n_embed::fluent::FluentLanguageLoader {
 #[allow(clippy::missing_errors_doc)]
 #[allow(clippy::missing_panics_doc)]
 fn main() -> Result<()> {
+    apply_env_args();
     let _guard = sentry::init((
         "https://d5f6d7f57fee8ac5deac757e05d1b0bd@o271654.ingest.us.sentry.io/4510871707713536",
         sentry::ClientOptions {
@@ -267,25 +268,30 @@ fn main() -> Result<()> {
     if let Some((i, _)) = std::env::args().find_position(|arg| arg == "--non-interactive") {
         tracing::info!("Running in non-interactive mode");
         let playbook: Playbook = serde_json::from_reader(std::io::stdin())?;
-        let progress = if let Some(channel_id) = std::env::args().nth(i.wrapping_add(1)) {
+        let (progress, rx) = Playbook::channel();
+        let forwarder = if let Some(channel_id) = std::env::args().nth(i.wrapping_add(1)) {
             let sender = ipc_channel::ipc::IpcSender::connect(channel_id)?;
-            let (tx, rx) = Playbook::channel();
-            std::thread::spawn(move || {
+            Some(std::thread::spawn(move || {
                 if let Err(err) = rx.into_iter().try_for_each(|msg| sender.send(msg)) {
                     tracing::error!("Failed to send progress to parent process: {err:?}");
                 }
-            });
-            tx
+            }))
         } else {
-            let (tx, _rx) = Playbook::channel();
-            tx
+            None
         };
 
         *LL.write() = handle_l10n();
         langs_th.join().expect("cannot join available_langs_th");
-        return playbook
+        let res = playbook
             .play(progress)
             .inspect_err(|e| _ = sentry_eyre::capture_report(e));
+        // the sender is dropped once play() returns, so this flushes the last messages and exits
+        if let Some(forwarder) = forwarder
+            && forwarder.join().is_err()
+        {
+            tracing::error!("progress forwarding thread panicked");
+        }
+        return res;
     }
 
     *CONFIG.write() = cfg::get_cfg()?;
@@ -304,6 +310,7 @@ fn main() -> Result<()> {
         Result::<()>::Ok(())
     });
 
+    // SAFETY: from_glib_none copies the color out of the pointer, which is valid for this block
     let default_accent = unsafe {
         &libhelium::RGBColor::from_glib_none(std::ptr::from_mut(&mut libhelium::ffi::HeRGBColor {
             r: 0.0,
@@ -326,6 +333,24 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+/// Apply `KEY=VALUE` arguments as environment variables.
+///
+/// `pkexec` scrubs the environment, so [`state::install_using_subprocess`] forwards the
+/// variables we care about as arguments instead.
+fn apply_env_args() {
+    const PREFIXES: &[&str] = &["READYMADE_", "REPART_", "NO_COLOR", "RUST_BACKTRACE"];
+    for arg in std::env::args().skip(1) {
+        let Some((key, value)) = arg.split_once('=') else {
+            continue;
+        };
+        if PREFIXES.iter().any(|prefix| key.starts_with(prefix)) {
+            println!("Setting env var {key} to {value}");
+            // SAFETY: this runs first thing in main(), before any other thread is spawned
+            unsafe { std::env::set_var(key, value) };
+        }
+    }
+}
+
 /// Returns a logging guard.
 ///
 /// # Panics
@@ -333,17 +358,6 @@ fn main() -> Result<()> {
 /// - cannot create readymade tempdir
 #[allow(clippy::cognitive_complexity)]
 fn setup_hooks() -> impl std::any::Any {
-    for arg in std::env::args() {
-        if arg.starts_with("READYMADE_")
-            || arg.starts_with("REPART_COPY_SOURCE")
-            || arg.starts_with("NO_COLOR")
-        {
-            let (key, value) = arg.split_once('=').unwrap();
-            println!("Setting env var {key} to {value}");
-            unsafe { std::env::set_var(key, value) };
-        }
-    }
-
     let is_non_interactive = std::env::args().any(|arg| arg == "--non-interactive");
 
     let readymade_log_file = if is_non_interactive {
@@ -358,20 +372,21 @@ fn setup_hooks() -> impl std::any::Any {
         .tempdir()
         .expect("create readymade logs tempdir")
         .keep();
-    // create dir
-    std::fs::create_dir_all(&temp_dir).expect("create readymade logs tempdir");
     let file_appender = tracing_appender::rolling::never(&temp_dir, readymade_log_file);
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+
+    // journald isn't around in every environment (containers, CI), that shouldn't stop us
+    let journald = tracing_journald::layer()
+        .inspect_err(|e| eprintln!("Cannot connect to journald: {e}"))
+        .ok()
+        .map(|layer| layer.with_syslog_identifier("readymade".to_owned()));
+    let has_journald = journald.is_some();
 
     tracing_subscriber::registry()
         .with(fmt::layer().pretty().with_ansi(!no_color::is_no_color()))
         .with(sentry::integrations::tracing::layer())
         .with(EnvFilter::from_env("READYMADE_LOG"))
-        .with(
-            tracing_journald::layer()
-                .unwrap()
-                .with_syslog_identifier("readymade".to_owned()),
-        )
+        .with(journald)
         .with(
             fmt::layer()
                 .with_writer(non_blocking)
@@ -387,10 +402,12 @@ fn setup_hooks() -> impl std::any::Any {
         "Readymade Installer {version}",
         version = env!("CARGO_PKG_VERSION")
     );
-    tracing::info!("Logging to journald");
+    if has_journald {
+        tracing::info!("Logging to journald");
+    }
     tracing::info!(
-        "Logging to {tmp}/readymade.log",
-        tmp = temp_dir.to_string_lossy()
+        "Logging to {}",
+        temp_dir.join(readymade_log_file).to_string_lossy()
     );
     guard
 }

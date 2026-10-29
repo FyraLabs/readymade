@@ -9,19 +9,22 @@ BuildRequires:	anda-srpm-macros rust-packaging
 BuildRequires:  pkgconfig(libhelium-1)
 BuildRequires:  clang-devel
 BuildRequires:  gcc
-BuildRequires:  mold
+BuildRequires:  lld
 BuildRequires:  cmake
 BuildRequires:  glibc-all-langpacks
 BuildRequires:  openssl-devel
 BuildRequires:  pkgconfig(libacl)
 # We'll need cryptsetup to unlock disks for now
 Requires:       cryptsetup
+# the installer re-executes itself as root through pkexec, then partitions with systemd-repart
+Requires:       polkit
+Requires:       systemd-repart
 Recommends:     readymade-config
 
 %description
-Readymade is a Linux Distribution installer based on the great distinst library by System76.
+Readymade is a Linux distribution installer built on top of systemd-repart and bootc.
 
-It is created as a replacement to Red Hat's Anaconda installer for Ultramarine Linux and tauOS after we have heard many complaints about the poor UX design of Anaconda, and the lack of working alternative installers for RPM-based distributions.
+It was created as a replacement for Red Hat's Anaconda installer for Ultramarine Linux, after many complaints about the poor UX of Anaconda and the lack of working alternative installers for RPM-based distributions.
 
 %package config-ultramarine
 Summary:        Readymade Configuration for Ultramarine Linux
@@ -39,7 +42,7 @@ This package contains the configuration files for Readymade to install Ultramari
 %{cargo_build} --locked
 
 %install
-install -Dm755 target/rpm/readymade %buildroot%_bindir/readymade
+install -Dm755 ${CARGO_TARGET_DIR:-target}/rpm/readymade %buildroot%_bindir/readymade
 ./install.sh %buildroot
 
 %files
