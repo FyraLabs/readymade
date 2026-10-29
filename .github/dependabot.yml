@@ -1,0 +1,12 @@
+version: 2
+
+multi-ecosystem-groups:
+  actions:
+    schedule:
+      interval: "weekly"
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    multi-ecosystem-group: "actions"
+    patterns: ["*"]
